@@ -6,6 +6,7 @@ use App\Actions\Channels\CreateChannel;
 use App\Actions\Channels\JoinChannel;
 use App\Data\ChannelData;
 use App\Data\MessageData;
+use App\Data\UserData;
 use App\Enums\ChannelVisibility;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Channels\CreateChannelRequest;
@@ -63,13 +64,16 @@ class ChannelController extends Controller
                 'slug' => $team->slug,
             ],
             'channel' => ChannelData::fromChannel($channel),
+            // Team members feed the composer's @mention autocomplete; mentions are
+            // scoped to the team, never limited to the current channel's members.
+            'members' => UserData::collect($team->members()->orderBy('name')->get()),
             // Newest 50 first; the InfiniteScroll composer runs in reverse mode, so
             // scrolling up appends older pages and the client reverses for display.
             // Deleted rows are kept (withTrashed) so the client can render a
             // "message deleted" tombstone in place; MessageData blanks their body.
             'messages' => Inertia::scroll(fn () => $channel->messages()
                 ->withTrashed()
-                ->with('user')
+                ->with(['user', 'mentionedUsers'])
                 ->orderByDesc('id')
                 ->cursorPaginate(50)
                 ->through(fn (Message $message) => MessageData::fromMessage($message))),

@@ -290,7 +290,14 @@ function confirmDelete(): void {
                             class="py-0.5 text-[14.5px] leading-[1.55] break-words whitespace-pre-wrap text-foreground/90"
                             :class="isPending(message) ? 'opacity-60' : ''"
                         >
-                            <span v-html="renderMessageBody(message.body)"></span>
+                            <span
+                                v-html="
+                                    renderMessageBody(
+                                        message.body,
+                                        message.mentions,
+                                    )
+                                "
+                            ></span>
                             <span
                                 v-if="message.editedAt"
                                 :data-test="'message-edited'"

@@ -10,12 +10,15 @@ use App\Models\User;
 
 class PostMessage
 {
+    public function __construct(private SyncMentions $syncMentions) {}
+
     /**
      * Post a message to a channel on behalf of a user.
      *
      * Keyed on the client-generated uuid so a resent optimistic message resolves
      * to the row that already exists instead of creating a duplicate. Only a
-     * genuinely new message broadcasts, keeping the retry path side-effect free.
+     * genuinely new message parses its mentions and broadcasts, keeping the retry
+     * path side-effect free.
      */
     public function handle(Channel $channel, User $author, string $body, string $clientUuid): Message
     {
@@ -25,7 +28,9 @@ class PostMessage
         );
 
         if ($message->wasRecentlyCreated) {
+            $this->syncMentions->handle($channel, $message);
             $message->setRelation('user', $author);
+            $message->load('mentionedUsers');
             MessageSent::dispatch($channel, MessageData::fromMessage($message));
         }
 
