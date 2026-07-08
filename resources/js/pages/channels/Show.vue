@@ -19,12 +19,13 @@ import MessageComposer from '@/components/MessageComposer.vue';
 import MessageList from '@/components/MessageList.vue';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import type { Channel, Message, MessagePage } from '@/types';
+import type { Channel, Mention, Message, MessagePage } from '@/types';
 
 const props = defineProps<{
     team: { id: string; name: string; slug: string };
     channel: Channel;
     messages: MessagePage;
+    members: Mention[];
 }>();
 
 const page = usePage();
@@ -33,6 +34,11 @@ const currentUser = computed(() => ({
     id: String(page.props.auth.user.id),
     name: page.props.auth.user.name,
 }));
+
+// You can't @mention yourself; drop the current user from the composer list.
+const mentionableMembers = computed(() =>
+    props.members.filter((member) => member.id !== currentUser.value.id),
+);
 
 // A team Admin+ may delete anyone's message in the channel (moderation).
 const canModerate = computed(() =>
@@ -205,7 +211,7 @@ onBeforeUnmount(() => {
     unsubscribe(props.channel.id);
 });
 
-function send(body: string): void {
+function send(body: string, mentions: Mention[]): void {
     const clientUuid = crypto.randomUUID();
 
     pending.value.push({
@@ -216,6 +222,7 @@ function send(body: string): void {
         createdAt: new Date().toISOString(),
         editedAt: null,
         isDeleted: false,
+        mentions,
     });
 
     nextTick(scrollToBottom);
@@ -349,6 +356,10 @@ function deleteMessage(message: Message): void {
             </div>
         </div>
 
-        <MessageComposer :channel-name="props.channel.name" @send="send" />
+        <MessageComposer
+            :channel-name="props.channel.name"
+            :members="mentionableMembers"
+            @send="send"
+        />
     </div>
 </template>

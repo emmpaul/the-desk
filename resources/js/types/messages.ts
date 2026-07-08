@@ -3,6 +3,15 @@ export type MessageAuthor = {
     name: string;
 };
 
+/**
+ * A team member referenced by an `@mention` in a message body. Mirrors the
+ * `MentionData` DTO and rides on every MessageData payload.
+ */
+export type Mention = {
+    id: string;
+    name: string;
+};
+
 export type Message = {
     id: string;
     clientUuid: string;
@@ -11,6 +20,7 @@ export type Message = {
     createdAt: string;
     editedAt: string | null;
     isDeleted: boolean;
+    mentions: Mention[];
 };
 
 /**
