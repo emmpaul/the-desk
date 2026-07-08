@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property-read User $creator
  * @property-read Collection<int, ChannelMember> $channelMembers
  * @property-read Collection<int, User> $members
+ * @property-read Collection<int, Message> $messages
  */
 #[Fillable(['team_id', 'name', 'slug', 'visibility', 'topic', 'created_by', 'archived_at'])]
 class Channel extends Model
@@ -85,6 +86,16 @@ class Channel extends Model
     public function channelMembers(): HasMany
     {
         return $this->hasMany(ChannelMember::class);
+    }
+
+    /**
+     * Get the messages posted to the channel.
+     *
+     * @return HasMany<Message, $this>
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
     }
 
     /**

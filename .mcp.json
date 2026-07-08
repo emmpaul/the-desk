@@ -1,10 +1,14 @@
 {
   "mcpServers": {
     "laravel-boost": {
-      "command": "wsl.exe",
+      "command": "docker",
       "args": [
-        "/home/epaul/.config/herd-lite/bin/php",
-        "/home/epaul/slack-clone/artisan",
+        "compose",
+        "exec",
+        "-T",
+        "laravel.test",
+        "php",
+        "artisan",
         "boost:mcp"
       ]
     },

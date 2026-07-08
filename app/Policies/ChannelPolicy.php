@@ -34,6 +34,20 @@ class ChannelPolicy
     }
 
     /**
+     * Determine whether the user can post a message to the channel.
+     *
+     * Only members of a non-archived channel may post.
+     */
+    public function postMessage(User $user, Channel $channel): bool
+    {
+        if ($channel->isArchived()) {
+            return false;
+        }
+
+        return $channel->members()->whereKey($user->id)->exists();
+    }
+
+    /**
      * Determine whether the user can join the channel by browsing.
      *
      * Only non-archived public channels are self-joinable, and only by team

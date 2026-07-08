@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Channels;
 use App\Actions\Channels\CreateChannel;
 use App\Actions\Channels\JoinChannel;
 use App\Data\ChannelData;
+use App\Data\MessageData;
 use App\Enums\ChannelVisibility;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Channels\CreateChannelRequest;
 use App\Models\Channel;
+use App\Models\Message;
 use App\Models\Team;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,6 +63,13 @@ class ChannelController extends Controller
                 'slug' => $team->slug,
             ],
             'channel' => ChannelData::fromChannel($channel),
+            // Newest 50 first; the InfiniteScroll composer runs in reverse mode, so
+            // scrolling up appends older pages and the client reverses for display.
+            'messages' => Inertia::scroll(fn () => $channel->messages()
+                ->with('user')
+                ->orderByDesc('id')
+                ->cursorPaginate(50)
+                ->through(fn (Message $message) => MessageData::fromMessage($message))),
         ]);
     }
 
