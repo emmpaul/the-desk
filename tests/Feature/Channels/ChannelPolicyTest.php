@@ -146,6 +146,29 @@ test('a private channel member or admin may manage its membership', function () 
         ->and($plainMember->can('removeMember', $private))->toBeFalse();
 });
 
+test('only channel members may post a message', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $team = app(CreateTeam::class)->handle($owner, 'Acme');
+    $team->memberships()->create(['user_id' => $member->id, 'role' => TeamRole::Member]);
+
+    $channel = Channel::factory()->for($team)->create();
+    $channel->channelMembers()->create(['user_id' => $owner->id]);
+
+    // $owner is a channel member; $member belongs to the team but not the channel.
+    expect($owner->can('postMessage', $channel))->toBeTrue()
+        ->and($member->can('postMessage', $channel))->toBeFalse();
+});
+
+test('a channel member cannot post to an archived channel', function () {
+    $owner = User::factory()->create();
+    $team = app(CreateTeam::class)->handle($owner, 'Acme');
+    $channel = Channel::factory()->for($team)->archived()->create();
+    $channel->channelMembers()->create(['user_id' => $owner->id]);
+
+    expect($owner->can('postMessage', $channel))->toBeFalse();
+});
+
 test('membership cannot be managed on a public channel', function () {
     $owner = User::factory()->create();
     $team = app(CreateTeam::class)->handle($owner, 'Acme');

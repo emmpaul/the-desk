@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Channels\ChannelController;
 use App\Http\Controllers\Channels\ChannelMemberController;
+use App\Http\Controllers\Channels\MessageController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,9 @@ Route::middleware(['auth', 'verified', EnsureTeamMembership::class])->group(func
     Route::post('t/{team}/c/{channel}/join', [ChannelController::class, 'join'])
         ->scopeBindings()
         ->name('channels.join');
+    Route::post('t/{team}/c/{channel}/messages', [MessageController::class, 'store'])
+        ->scopeBindings()
+        ->name('channels.messages.store');
     Route::post('t/{team}/c/{channel}/members', [ChannelMemberController::class, 'store'])
         ->scopeBindings()
         ->name('channels.members.store');
