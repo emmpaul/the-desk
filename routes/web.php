@@ -25,6 +25,10 @@ Route::middleware(['auth', 'verified', EnsureTeamMembership::class])->group(func
     Route::post('t/{team}/c/{channel}/read', [ChannelController::class, 'read'])
         ->scopeBindings()
         ->name('channels.read');
+    Route::post('t/{team}/c/{channel}/threads/{message}/read', [ChannelController::class, 'readThread'])
+        ->scopeBindings()
+        ->withTrashed()
+        ->name('channels.threads.read');
     Route::patch('t/{team}/c/{channel}/preferences', [ChannelPreferenceController::class, 'update'])
         ->scopeBindings()
         ->name('channels.preferences.update');

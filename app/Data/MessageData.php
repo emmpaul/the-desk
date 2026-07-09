@@ -29,6 +29,8 @@ class MessageData extends Data
         public int $threadReplyCount,
         public ?string $threadLastReplyAt,
         public array $threadParticipants,
+        public bool $threadFollowed = false,
+        public bool $threadUnread = false,
     ) {}
 
     /**
@@ -47,10 +49,19 @@ class MessageData extends Data
      * `threadParticipants`) are structural, so they survive a soft delete — a
      * deleted root still shows its "N replies" affordance. `threadParticipants`
      * resolves from the eager-loaded relation when present, empty otherwise.
+     *
+     * `threadFollowed` and `threadUnread` are per-viewer and only populated when
+     * the message was loaded through {@see ChannelController::withThreadReadState()};
+     * elsewhere (broadcast payloads carry no viewer) they fall back to false and
+     * the client keeps whatever state it already derived. `threadUnread` is the
+     * conjunction of following the thread and it holding unread replies.
      */
     public static function fromMessage(Message $message): self
     {
         $isDeleted = $message->trashed();
+
+        $threadFollowed = (int) ($message->getAttribute('thread_followed') ?? 0) === 1;
+        $threadHasUnread = (int) ($message->getAttribute('thread_has_unread') ?? 0) === 1;
 
         return new self(
             id: $message->id,
@@ -71,6 +82,8 @@ class MessageData extends Data
             threadParticipants: $message->relationLoaded('threadParticipants')
                 ? $message->threadParticipants->map(fn (User $user) => MentionData::fromUser($user))->all()
                 : [],
+            threadFollowed: $threadFollowed,
+            threadUnread: $threadFollowed && $threadHasUnread,
         );
     }
 }
