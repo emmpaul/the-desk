@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { MessageSquareText, MessagesSquare, Plus, Search } from '@lucide/vue';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import {
     browse,
     show,
@@ -10,6 +10,7 @@ import { index as searchMessages } from '@/actions/App/Http/Controllers/Channels
 import { index as threadsInbox } from '@/actions/App/Http/Controllers/Channels/ThreadsController';
 import CreateChannelModal from '@/components/CreateChannelModal.vue';
 import CreateTeamModal from '@/components/CreateTeamModal.vue';
+import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal.vue';
 import NavUser from '@/components/NavUser.vue';
 import PendingInvitationsModal from '@/components/PendingInvitationsModal.vue';
 import QuickSwitcher from '@/components/QuickSwitcher.vue';
@@ -35,8 +36,10 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { adjacentSlug } from '@/composables/keyboardShortcuts';
 import { useChimeNotifications } from '@/composables/useChimeNotifications';
 import { useInitials } from '@/composables/useInitials';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useSidebarBadges } from '@/composables/useSidebarBadges';
 import { useTeamSwitch } from '@/composables/useTeamSwitch';
 
@@ -61,24 +64,40 @@ const hasUnreadThreads = computed(() => page.props.hasUnreadThreads ?? false);
 const { getInitials } = useInitials();
 const { switchTeam } = useTeamSwitch();
 
-// Cmd/Ctrl+K toggles the quick switcher from anywhere in the workspace.
 const quickSwitcherOpen = ref(false);
+const shortcutsOpen = ref(false);
 
-function handleQuickSwitcherShortcut(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        quickSwitcherOpen.value = !quickSwitcherOpen.value;
+/**
+ * Jump `delta` channels along the sidebar list from the active one, wrapping at
+ * either end. Does nothing until a team and its channels are loaded.
+ */
+function moveChannel(delta: number): void {
+    if (!currentTeam.value) {
+        return;
+    }
+
+    const slug = adjacentSlug(
+        channels.value.map((channel) => channel.slug),
+        activeChannelSlug.value,
+        delta,
+    );
+
+    if (slug) {
+        router.visit(show({ team: currentTeam.value.slug, channel: slug }).url);
     }
 }
+
+useKeyboardShortcuts({
+    'quick-switcher': () =>
+        (quickSwitcherOpen.value = !quickSwitcherOpen.value),
+    'previous-channel': () => moveChannel(-1),
+    'next-channel': () => moveChannel(1),
+    'show-shortcuts': () => (shortcutsOpen.value = !shortcutsOpen.value),
+});
 
 onMounted(() => {
     // Lazily pull the (optional) shared invitations so the post-login prompt appears.
     router.reload({ only: ['pendingInvitations'] });
-    window.addEventListener('keydown', handleQuickSwitcherShortcut);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('keydown', handleQuickSwitcherShortcut);
 });
 </script>
 
@@ -356,5 +375,7 @@ onUnmounted(() => {
             :channels="channels"
             :team-slug="currentTeam.slug"
         />
+
+        <KeyboardShortcutsModal v-model:open="shortcutsOpen" />
     </SidebarProvider>
 </template>
