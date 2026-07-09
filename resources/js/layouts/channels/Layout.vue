@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
+    ChevronRight,
     MessageSquareText,
     MessagesSquare,
-    Pencil,
     Plus,
     Search,
 } from '@lucide/vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 import {
     browse,
     show,
 } from '@/actions/App/Http/Controllers/Channels/ChannelController';
 import { index as searchMessages } from '@/actions/App/Http/Controllers/Channels/SearchController';
 import { index as threadsInbox } from '@/actions/App/Http/Controllers/Channels/ThreadsController';
+import { update as updateSidebarSections } from '@/actions/App/Http/Controllers/SidebarSectionController';
+import ChannelListItem from '@/components/ChannelListItem.vue';
 import CreateChannelModal from '@/components/CreateChannelModal.vue';
 import CreateTeamModal from '@/components/CreateTeamModal.vue';
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal.vue';
@@ -29,7 +32,6 @@ import {
     SidebarGroup,
     SidebarGroupAction,
     SidebarGroupContent,
-    SidebarGroupLabel,
     SidebarHeader,
     SidebarInset,
     SidebarMenu,
@@ -49,6 +51,11 @@ import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useKeyboardShortcutsModal } from '@/composables/useKeyboardShortcutsModal';
 import { useSidebarBadges } from '@/composables/useSidebarBadges';
 import { useTeamSwitch } from '@/composables/useTeamSwitch';
+import {
+    partitionChannels,
+    toggleCollapsedSection,
+} from '@/lib/channelSections';
+import type { SidebarSectionKey } from '@/lib/channelSections';
 
 const page = usePage();
 
@@ -67,6 +74,59 @@ const activeChannelSlug = computed(
 );
 const pendingInvitations = computed(() => page.props.pendingInvitations ?? []);
 const hasUnreadThreads = computed(() => page.props.hasUnreadThreads ?? false);
+
+// Split the flat channel list into the pinned "Starred" section and the main
+// list, re-derived whenever the shared `channels` prop changes (a star toggle or
+// a live badge update).
+const sections = computed(() => partitionChannels(channels.value));
+const starredChannels = computed(() => sections.value.starred);
+const otherChannels = computed(() => sections.value.others);
+
+// Which sidebar sections the user has collapsed, seeded from the shared prop and
+// kept in sync when the server recomputes it (e.g. after a reload on another
+// device). A local ref lets the header toggle feel instant before the persisted
+// state round-trips.
+const collapsedSections = ref<string[]>([
+    ...(page.props.collapsedChannelSections ?? []),
+]);
+
+watch(
+    () => page.props.collapsedChannelSections,
+    (value) => {
+        collapsedSections.value = [...(value ?? [])];
+    },
+);
+
+function isSectionCollapsed(section: SidebarSectionKey): boolean {
+    return collapsedSections.value.includes(section);
+}
+
+/**
+ * Collapse or expand a sidebar section, persisting the new set so the layout
+ * follows the user across reloads and devices. The toggle is optimistic and
+ * rolls back if the request fails.
+ */
+function toggleSection(section: SidebarSectionKey): void {
+    const previous = collapsedSections.value;
+    const next = toggleCollapsedSection(previous, section);
+    collapsedSections.value = next;
+
+    router.patch(
+        updateSidebarSections().url,
+        { collapsed: next },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['collapsedChannelSections'],
+            onError: () => {
+                collapsedSections.value = previous;
+                toast.error(
+                    'Failed to save the sidebar layout. Please try again.',
+                );
+            },
+        },
+    );
+}
 
 const { getInitials } = useInitials();
 const { switchTeam } = useTeamSwitch();
@@ -197,12 +257,64 @@ onMounted(() => {
                                 >
                             </button>
                         </div>
-                        <SidebarGroup>
-                            <SidebarGroupLabel
-                                class="h-7 px-2 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase"
+                        <!-- Starred channels, pinned above the main list; the
+                             whole section is hidden until the user stars one. -->
+                        <SidebarGroup
+                            v-if="starredChannels.length > 0"
+                            class="pb-0"
+                        >
+                            <button
+                                type="button"
+                                data-test="section-toggle-starred"
+                                :aria-expanded="!isSectionCollapsed('starred')"
+                                class="flex h-7 w-full items-center gap-1 rounded-md px-2 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                                @click="toggleSection('starred')"
                             >
+                                <ChevronRight
+                                    class="size-3 shrink-0 transition-transform"
+                                    :class="
+                                        isSectionCollapsed('starred')
+                                            ? ''
+                                            : 'rotate-90'
+                                    "
+                                />
+                                Starred
+                            </button>
+                            <SidebarGroupContent
+                                v-show="!isSectionCollapsed('starred')"
+                                data-test="section-content-starred"
+                            >
+                                <SidebarMenu>
+                                    <ChannelListItem
+                                        v-for="channel in starredChannels"
+                                        :key="channel.id"
+                                        :channel="channel"
+                                        :team-slug="currentTeam?.slug ?? ''"
+                                        :active-channel-slug="activeChannelSlug"
+                                    />
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+
+                        <!-- The main channel list. -->
+                        <SidebarGroup>
+                            <button
+                                type="button"
+                                data-test="section-toggle-channels"
+                                :aria-expanded="!isSectionCollapsed('channels')"
+                                class="flex h-7 w-full items-center gap-1 rounded-md px-2 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                                @click="toggleSection('channels')"
+                            >
+                                <ChevronRight
+                                    class="size-3 shrink-0 transition-transform"
+                                    :class="
+                                        isSectionCollapsed('channels')
+                                            ? ''
+                                            : 'rotate-90'
+                                    "
+                                />
                                 Channels
-                            </SidebarGroupLabel>
+                            </button>
                             <CreateChannelModal
                                 v-if="currentTeam"
                                 :team-slug="currentTeam.slug"
@@ -216,99 +328,31 @@ onMounted(() => {
                                     <span class="sr-only">Create channel</span>
                                 </SidebarGroupAction>
                             </CreateChannelModal>
+                            <SidebarGroupContent
+                                v-show="!isSectionCollapsed('channels')"
+                                data-test="section-content-channels"
+                            >
+                                <SidebarMenu>
+                                    <ChannelListItem
+                                        v-for="channel in otherChannels"
+                                        :key="channel.id"
+                                        :channel="channel"
+                                        :team-slug="currentTeam?.slug ?? ''"
+                                        :active-channel-slug="activeChannelSlug"
+                                    />
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+
+                        <!-- Workspace navigation, always visible regardless of
+                             which channel sections are collapsed. -->
+                        <SidebarGroup class="pt-0">
                             <SidebarGroupContent>
                                 <SidebarMenu>
-                                    <SidebarMenuItem
-                                        v-for="channel in channels"
-                                        :key="channel.id"
-                                    >
-                                        <SidebarMenuButton
-                                            as-child
-                                            :is-active="
-                                                channel.slug ===
-                                                activeChannelSlug
-                                            "
-                                            :data-muted="channel.muted"
-                                            class="h-[30px] gap-1.5 rounded-md px-2 text-[13.5px] text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground data-[active=true]:relative data-[active=true]:bg-sidebar-accent data-[active=true]:pl-3.5 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[muted=true]:opacity-55 data-[muted=true]:hover:opacity-100"
-                                        >
-                                            <Link
-                                                v-if="currentTeam"
-                                                :href="
-                                                    show({
-                                                        team: currentTeam.slug,
-                                                        channel: channel.slug,
-                                                    }).url
-                                                "
-                                            >
-                                                <span
-                                                    v-if="
-                                                        channel.slug ===
-                                                        activeChannelSlug
-                                                    "
-                                                    aria-hidden="true"
-                                                    class="absolute top-[7px] bottom-[7px] left-0 w-[3px] rounded-full bg-primary"
-                                                />
-                                                <span
-                                                    class="font-medium"
-                                                    :class="
-                                                        channel.slug ===
-                                                        activeChannelSlug
-                                                            ? 'text-sidebar-foreground/70'
-                                                            : 'text-muted-foreground/80'
-                                                    "
-                                                    >#</span
-                                                >
-                                                <span
-                                                    class="truncate"
-                                                    :class="
-                                                        channel.unreadCount > 0
-                                                            ? 'font-semibold text-sidebar-foreground'
-                                                            : ''
-                                                    "
-                                                    >{{ channel.name }}</span
-                                                >
-                                                <!-- A numeric badge for unread @mentions takes priority; -->
-                                                <!-- then a "draft" cue for a pending unsent message on -->
-                                                <!-- another channel; otherwise a plain unread dot. -->
-                                                <span
-                                                    v-if="
-                                                        channel.mentionCount > 0
-                                                    "
-                                                    data-test="mention-badge"
-                                                    class="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground tabular-nums"
-                                                    :aria-label="`${channel.mentionCount} unread mentions`"
-                                                    >{{
-                                                        channel.mentionCount
-                                                    }}</span
-                                                >
-                                                <span
-                                                    v-else-if="
-                                                        channel.hasDraft &&
-                                                        channel.slug !==
-                                                            activeChannelSlug
-                                                    "
-                                                    data-test="draft-indicator"
-                                                    class="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.04em] text-amber-500 uppercase"
-                                                    aria-label="Draft saved"
-                                                >
-                                                    <Pencil class="size-3" />
-                                                    Draft
-                                                </span>
-                                                <span
-                                                    v-else-if="
-                                                        channel.unreadCount > 0
-                                                    "
-                                                    data-test="unread-dot"
-                                                    aria-hidden="true"
-                                                    class="ml-auto size-1.5 rounded-full bg-primary"
-                                                />
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
                                     <SidebarMenuItem>
                                         <SidebarMenuButton
                                             as-child
-                                            class="mt-1.5 h-[30px] gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent/60"
+                                            class="h-[30px] gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent/60"
                                         >
                                             <Link
                                                 v-if="currentTeam"

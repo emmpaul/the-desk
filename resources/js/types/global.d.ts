@@ -24,6 +24,7 @@ declare module '@inertiajs/core' {
             currentTeam: Team | null;
             teams: Team[];
             channels?: Channel[];
+            collapsedChannelSections?: string[];
             hasUnreadThreads?: boolean;
             pendingInvitations?: DashboardInvitation[];
             [key: string]: unknown;

@@ -1,0 +1,131 @@
+<script setup lang="ts">
+import { Link, router } from '@inertiajs/vue3';
+import { Pencil, Star } from '@lucide/vue';
+import { toast } from 'vue-sonner';
+import { show } from '@/actions/App/Http/Controllers/Channels/ChannelController';
+import { update as updateChannelStar } from '@/actions/App/Http/Controllers/Channels/ChannelStarController';
+import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import type { Channel } from '@/types/channels';
+
+const props = defineProps<{
+    channel: Channel;
+    teamSlug: string;
+    activeChannelSlug: string | null;
+}>();
+
+/**
+ * Star or unstar the channel, reloading only the shared `channels` prop so the
+ * sidebar re-partitions between the "Starred" and "Channels" sections.
+ */
+function toggleStar(): void {
+    router.patch(
+        updateChannelStar({
+            team: props.teamSlug,
+            channel: props.channel.slug,
+        }).url,
+        { starred: !props.channel.starred },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['channels'],
+            onError: () => {
+                toast.error('Failed to update the channel. Please try again.');
+            },
+        },
+    );
+}
+</script>
+
+<template>
+    <SidebarMenuItem>
+        <SidebarMenuButton
+            as-child
+            :is-active="channel.slug === activeChannelSlug"
+            :data-muted="channel.muted"
+            class="h-[30px] gap-1.5 rounded-md py-0 pr-2 pl-7 text-[13.5px] text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground data-[active=true]:relative data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[muted=true]:opacity-55 data-[muted=true]:hover:opacity-100"
+        >
+            <Link
+                :href="
+                    show({
+                        team: teamSlug,
+                        channel: channel.slug,
+                    }).url
+                "
+            >
+                <span
+                    v-if="channel.slug === activeChannelSlug"
+                    aria-hidden="true"
+                    class="absolute top-[7px] bottom-[7px] left-0 w-[3px] rounded-full bg-primary"
+                />
+                <span
+                    class="font-medium"
+                    :class="
+                        channel.slug === activeChannelSlug
+                            ? 'text-sidebar-foreground/70'
+                            : 'text-muted-foreground/80'
+                    "
+                    >#</span
+                >
+                <span
+                    class="truncate"
+                    :class="
+                        channel.unreadCount > 0
+                            ? 'font-semibold text-sidebar-foreground'
+                            : ''
+                    "
+                    >{{ channel.name }}</span
+                >
+                <!-- A numeric badge for unread @mentions takes priority; -->
+                <!-- then a "draft" cue for a pending unsent message on -->
+                <!-- another channel; otherwise a plain unread dot. -->
+                <span
+                    v-if="channel.mentionCount > 0"
+                    data-test="mention-badge"
+                    class="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground tabular-nums"
+                    :aria-label="`${channel.mentionCount} unread mentions`"
+                    >{{ channel.mentionCount }}</span
+                >
+                <span
+                    v-else-if="
+                        channel.hasDraft && channel.slug !== activeChannelSlug
+                    "
+                    data-test="draft-indicator"
+                    class="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.04em] text-amber-500 uppercase"
+                    aria-label="Draft saved"
+                >
+                    <Pencil class="size-3" />
+                    Draft
+                </span>
+                <span
+                    v-else-if="channel.unreadCount > 0"
+                    data-test="unread-dot"
+                    aria-hidden="true"
+                    class="ml-auto size-1.5 rounded-full bg-primary"
+                />
+            </Link>
+        </SidebarMenuButton>
+        <!-- Star toggle to the left of the channel name. A separate button
+             (outside the navigation link, so the anchor stays valid) overlaid on
+             the row's reserved left padding: filled amber when starred, hollow and
+             dimmed otherwise, brightening on hover. -->
+        <button
+            type="button"
+            :data-test="`star-toggle-${channel.slug}`"
+            :data-starred="channel.starred"
+            :aria-pressed="channel.starred"
+            :aria-label="
+                channel.starred
+                    ? `Unstar ${channel.name}`
+                    : `Star ${channel.name}`
+            "
+            :title="channel.starred ? 'Unstar channel' : 'Star channel'"
+            class="absolute top-1/2 left-1 z-10 flex size-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground/60 opacity-70 transition hover:text-amber-500 hover:opacity-100 data-[starred=true]:text-amber-500 data-[starred=true]:opacity-100"
+            @click="toggleStar"
+        >
+            <Star
+                class="size-3.5"
+                :class="channel.starred ? 'fill-current' : ''"
+            />
+        </button>
+    </SidebarMenuItem>
+</template>

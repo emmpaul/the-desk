@@ -8,6 +8,7 @@ import {
     BellMinus,
     BellOff,
     EllipsisVertical,
+    Star,
 } from '@lucide/vue';
 import type { AcceptableValue } from 'reka-ui';
 import {
@@ -27,6 +28,7 @@ import {
 } from '@/actions/App/Http/Controllers/Channels/ChannelController';
 import { update as saveChannelDraft } from '@/actions/App/Http/Controllers/Channels/ChannelDraftController';
 import { update as updateChannelPreferences } from '@/actions/App/Http/Controllers/Channels/ChannelPreferenceController';
+import { update as updateChannelStar } from '@/actions/App/Http/Controllers/Channels/ChannelStarController';
 import {
     destroy as destroyMessage,
     store as storeMessage,
@@ -492,6 +494,7 @@ watch(
         typing.reset();
         notificationLevel.value = props.channel.notificationLevel;
         muted.value = props.channel.muted;
+        starred.value = props.channel.starred;
         subscribe(newId);
         computeUnreadDivider();
         markRead();
@@ -816,6 +819,33 @@ const notificationLevel = ref<NotificationLevel>(
     props.channel.notificationLevel,
 );
 const muted = ref<boolean>(props.channel.muted);
+const starred = ref<boolean>(props.channel.starred);
+
+/**
+ * Star or unstar this channel, reloading only the shared `channels` prop so the
+ * sidebar re-partitions its "Starred" section. Optimistic, rolled back on error.
+ */
+function toggleStar(): void {
+    const previous = starred.value;
+    starred.value = !previous;
+
+    router.patch(
+        updateChannelStar({
+            team: props.team.slug,
+            channel: props.channel.slug,
+        }).url,
+        { starred: starred.value },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['channels'],
+            onError: () => {
+                starred.value = previous;
+                toast.error('Failed to update the channel. Please try again.');
+            },
+        },
+    );
+}
 
 // Thread-unread dots are silenced under the same rule as the sidebar's unread
 // badge: a muted channel or any level below "all". Mirrors the server's
@@ -956,6 +986,28 @@ function archive(): void {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="w-56">
                         <template v-if="props.canManagePreferences">
+                            <DropdownMenuItem
+                                data-test="star-channel"
+                                :aria-pressed="starred"
+                                @select="
+                                    (event: Event) => {
+                                        event.preventDefault();
+                                        toggleStar();
+                                    }
+                                "
+                            >
+                                <Star
+                                    :class="
+                                        starred
+                                            ? 'fill-current text-amber-500'
+                                            : ''
+                                    "
+                                />
+                                {{
+                                    starred ? 'Unstar channel' : 'Star channel'
+                                }}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuLabel
                                 class="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase"
                             >

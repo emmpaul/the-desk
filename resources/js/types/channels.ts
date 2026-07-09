@@ -22,4 +22,7 @@ export type Channel = {
     // channel, so the composer can restore it.
     hasDraft: boolean;
     draft: string | null;
+    // Whether the viewer has starred (favorited) this channel, pinning it to the
+    // sidebar's "Starred" section.
+    starred: boolean;
 };
