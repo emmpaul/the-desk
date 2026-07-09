@@ -3,6 +3,7 @@ import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
 import { echo } from '@laravel/echo-vue';
 import {
     Archive,
+    ArrowUp,
     AtSign,
     BellMinus,
     BellOff,
@@ -62,6 +63,7 @@ import {
 import { useTeamPresence } from '@/composables/useTeamPresence';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
 import type { TypingUser } from '@/composables/useTypingIndicator';
+import { unreadDividerMessageId } from '@/lib/unreadDivider';
 import type {
     Channel,
     Mention,
@@ -81,6 +83,9 @@ const props = defineProps<{
     canManagePreferences: boolean;
     notificationLevels: NotificationLevelOption[];
     jumpToMessageId?: string | null;
+    // The viewer's read pointer at load time, used to place the "New messages"
+    // divider; null when the channel has never been read.
+    lastReadMessageId?: string | null;
     // The open thread, loaded on demand as an optional prop keyed by `?thread=`.
     thread?: Thread | null;
 }>();
@@ -199,6 +204,65 @@ function jumpToMessage(id: string): void {
     });
 }
 
+// The message the "New messages" divider sits above, frozen at the moment the
+// channel opens: the read pointer keeps advancing as the user reads, but the
+// boundary stays put until they leave the channel. Recomputed on open and on
+// every channel switch from the read pointer the server captured before its
+// debounced advance.
+const unreadDividerId = ref<string | null>(null);
+const unreadDividerInView = ref(false);
+let unreadObserver: IntersectionObserver | null = null;
+
+// The floating "jump to new messages" pill shows only while there's a boundary
+// the user hasn't scrolled to yet.
+const showJumpToUnread = computed(
+    () => unreadDividerId.value !== null && !unreadDividerInView.value,
+);
+
+function computeUnreadDivider(): void {
+    unreadDividerId.value = unreadDividerMessageId(
+        displayMessages.value,
+        props.lastReadMessageId ?? null,
+        currentUser.value.id,
+    );
+
+    observeUnreadDivider();
+}
+
+// Watch the divider element so the jump pill hides once it scrolls into view.
+function observeUnreadDivider(): void {
+    unreadObserver?.disconnect();
+    unreadObserver = null;
+    unreadDividerInView.value = false;
+
+    if (unreadDividerId.value === null) {
+        return;
+    }
+
+    nextTick(() => {
+        const el = document.getElementById('unread-divider');
+        const root = scrollContainer.value;
+
+        if (!el || !root) {
+            return;
+        }
+
+        unreadObserver = new IntersectionObserver(
+            ([entry]) => {
+                unreadDividerInView.value = entry.isIntersecting;
+            },
+            { root },
+        );
+        unreadObserver.observe(el);
+    });
+}
+
+function scrollToUnread(): void {
+    document
+        .getElementById('unread-divider')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
 // Append a message to the main timeline, keeping the view pinned to newest only
 // when the reader was already near the bottom.
 function appendLiveMain(message: Message): void {
@@ -292,6 +356,7 @@ function markRead(): void {
 
 onMounted(() => {
     subscribe(props.channel.id);
+    computeUnreadDivider();
     markRead();
     window.addEventListener('focus', markRead);
 
@@ -347,12 +412,14 @@ watch(
         notificationLevel.value = props.channel.notificationLevel;
         muted.value = props.channel.muted;
         subscribe(newId);
+        computeUnreadDivider();
         markRead();
     },
 );
 
 onBeforeUnmount(() => {
     unsubscribe(props.channel.id);
+    unreadObserver?.disconnect();
     window.removeEventListener('focus', markRead);
 
     if (markReadTimer) {
@@ -738,7 +805,27 @@ function archive(): void {
                 </DropdownMenu>
             </header>
 
-            <div class="flex min-h-0 flex-1 flex-col">
+            <div class="relative flex min-h-0 flex-1 flex-col">
+                <Transition
+                    enter-active-class="transition duration-150 ease-out"
+                    enter-from-class="-translate-y-1 opacity-0"
+                    enter-to-class="translate-y-0 opacity-100"
+                    leave-active-class="transition duration-100 ease-in"
+                    leave-from-class="translate-y-0 opacity-100"
+                    leave-to-class="-translate-y-1 opacity-0"
+                >
+                    <button
+                        v-if="showJumpToUnread"
+                        type="button"
+                        data-test="jump-to-unread"
+                        class="absolute top-2.5 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1 text-[12px] font-semibold text-white shadow-md hover:bg-rose-600"
+                        @click="scrollToUnread"
+                    >
+                        <ArrowUp class="size-3.5" />
+                        New messages
+                    </button>
+                </Transition>
+
                 <div
                     ref="scrollContainer"
                     class="min-h-0 flex-1 overflow-y-auto"
@@ -756,6 +843,7 @@ function archive(): void {
                             :can-moderate="canModerate"
                             :online-ids="onlineIds"
                             :highlight-message-id="highlightedMessageId"
+                            :unread-divider-id="unreadDividerId"
                             :active-thread-root-id="activeThreadRootId"
                             @edit="editMessage"
                             @delete="deleteMessage"

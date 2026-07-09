@@ -5,6 +5,7 @@ use App\Actions\Teams\CreateTeam;
 use App\Enums\ChannelVisibility;
 use App\Enums\TeamRole;
 use App\Models\Channel;
+use App\Models\Message;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -98,4 +99,33 @@ test('a user who is not a team member cannot view the team\'s channels', functio
     $this->actingAs($outsider)
         ->get(route('channels.show', ['team' => $team->slug, 'channel' => 'general']))
         ->assertForbidden();
+});
+
+test('the channel page exposes the viewer\'s read pointer for the new-messages divider', function () {
+    $user = User::factory()->create();
+    $team = app(CreateTeam::class)->handle($user, 'Acme');
+    $general = Channel::where('team_id', $team->id)->where('slug', 'general')->firstOrFail();
+
+    $messages = Message::factory()->count(3)->for($general)->for($user)->create();
+    $user->channels()->updateExistingPivot($general->id, ['last_read_message_id' => $messages[1]->id]);
+
+    $this->actingAs($user)
+        ->get(route('channels.show', ['team' => $team->slug, 'channel' => $general->slug]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('lastReadMessageId', (string) $messages[1]->id)
+        );
+});
+
+test('the read pointer is null on a channel the viewer has never read', function () {
+    $user = User::factory()->create();
+    $team = app(CreateTeam::class)->handle($user, 'Acme');
+    $general = Channel::where('team_id', $team->id)->where('slug', 'general')->firstOrFail();
+
+    Message::factory()->for($general)->for($user)->create();
+
+    $this->actingAs($user)
+        ->get(route('channels.show', ['team' => $team->slug, 'channel' => $general->slug]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('lastReadMessageId', null));
 });
