@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
 import { echo } from '@laravel/echo-vue';
+import { Archive, EllipsisVertical } from '@lucide/vue';
 import {
     computed,
     nextTick,
@@ -10,6 +11,7 @@ import {
     watch,
 } from 'vue';
 import { toast } from 'vue-sonner';
+import { archive as archiveChannel } from '@/actions/App/Http/Controllers/Channels/ChannelController';
 import {
     destroy as destroyMessage,
     store as storeMessage,
@@ -18,12 +20,26 @@ import {
 import MessageComposer from '@/components/MessageComposer.vue';
 import MessageList from '@/components/MessageList.vue';
 import TypingIndicator from '@/components/TypingIndicator.vue';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import {
-    useTypingIndicator,
-    type TypingUser,
-} from '@/composables/useTypingIndicator';
+import { useTypingIndicator } from '@/composables/useTypingIndicator';
+import type { TypingUser } from '@/composables/useTypingIndicator';
 import type { Channel, Mention, Message, MessagePage } from '@/types';
 
 const props = defineProps<{
@@ -31,6 +47,7 @@ const props = defineProps<{
     channel: Channel;
     messages: MessagePage;
     members: Mention[];
+    canArchive: boolean;
 }>();
 
 const page = usePage();
@@ -288,6 +305,7 @@ function editMessage(message: Message, body: string): void {
                 } else {
                     patches.value.delete(message.clientUuid);
                 }
+
                 toast.error('Your edit failed to save. Please try again.');
             },
         },
@@ -314,7 +332,26 @@ function deleteMessage(message: Message): void {
                 } else {
                     patches.value.delete(message.clientUuid);
                 }
+
                 toast.error('Failed to delete the message. Please try again.');
+            },
+        },
+    );
+}
+
+// Drives the archive confirmation dialog opened from the channel header menu.
+const confirmingArchive = ref(false);
+
+function archive(): void {
+    confirmingArchive.value = false;
+
+    router.post(
+        archiveChannel({ team: props.team.slug, channel: props.channel.slug })
+            .url,
+        {},
+        {
+            onError: () => {
+                toast.error('Failed to archive the channel. Please try again.');
             },
         },
     );
@@ -340,6 +377,37 @@ function deleteMessage(message: Message): void {
                 {{ props.channel.topic }}
             </p>
         </template>
+
+        <span
+            v-if="props.channel.isArchived"
+            class="ml-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+        >
+            <Archive class="size-3" />
+            Archived
+        </span>
+
+        <DropdownMenu v-if="props.canArchive">
+            <DropdownMenuTrigger as-child>
+                <button
+                    type="button"
+                    aria-label="Channel options"
+                    data-test="channel-options"
+                    class="ml-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    <EllipsisVertical class="size-4" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                    data-test="archive-channel"
+                    class="text-destructive focus:text-destructive"
+                    @select="confirmingArchive = true"
+                >
+                    <Archive class="size-4" />
+                    Archive channel
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
     </header>
 
     <div class="flex min-h-0 flex-1 flex-col">
@@ -379,13 +447,50 @@ function deleteMessage(message: Message): void {
             </div>
         </div>
 
-        <TypingIndicator :names="typingNames" class="mx-5 shrink-0" />
+        <div
+            v-if="props.channel.isArchived"
+            data-test="archived-notice"
+            class="m-5 shrink-0 rounded-lg border border-border bg-muted/40 px-4 py-3 text-center text-[13px] text-muted-foreground"
+        >
+            This channel is archived. It's read-only, but its history is
+            preserved.
+        </div>
 
-        <MessageComposer
-            :channel-name="props.channel.name"
-            :members="mentionableMembers"
-            @send="send"
-            @typing="onTyping"
-        />
+        <template v-else>
+            <TypingIndicator :names="typingNames" class="mx-5 shrink-0" />
+
+            <MessageComposer
+                :channel-name="props.channel.name"
+                :members="mentionableMembers"
+                @send="send"
+                @typing="onTyping"
+            />
+        </template>
     </div>
+
+    <Dialog v-model:open="confirmingArchive">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Archive #{{ props.channel.name }}</DialogTitle>
+                <DialogDescription>
+                    The channel becomes read-only and leaves the sidebar. Its
+                    messages are kept and stay searchable.
+                </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter class="gap-2">
+                <DialogClose as-child>
+                    <Button variant="secondary"> Cancel </Button>
+                </DialogClose>
+
+                <Button
+                    data-test="archive-channel-confirm"
+                    variant="destructive"
+                    @click="archive"
+                >
+                    Archive
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>

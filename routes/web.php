@@ -19,6 +19,9 @@ Route::middleware(['auth', 'verified', EnsureTeamMembership::class])->group(func
     Route::post('t/{team}/c/{channel}/join', [ChannelController::class, 'join'])
         ->scopeBindings()
         ->name('channels.join');
+    Route::post('t/{team}/c/{channel}/archive', [ChannelController::class, 'archive'])
+        ->scopeBindings()
+        ->name('channels.archive');
     Route::post('t/{team}/c/{channel}/messages', [MessageController::class, 'store'])
         ->scopeBindings()
         ->name('channels.messages.store');
