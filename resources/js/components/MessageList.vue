@@ -23,6 +23,9 @@ const props = defineProps<{
     canModerate?: boolean;
     onlineIds?: Set<string>;
     highlightMessageId?: string | null;
+    // The message the "New messages" divider sits above — the first unread on
+    // channel open — or null when there's no unread boundary to mark.
+    unreadDividerId?: string | null;
     // Rendered inside a thread panel: hides the per-message thread affordances
     // (you're already in the thread), so the panel only shows the conversation.
     inThread?: boolean;
@@ -74,6 +77,8 @@ type RenderDivider = {
     type: 'divider';
     key: string;
     label: string;
+    // 'day' groups messages by date; 'unread' is the "New messages" boundary.
+    variant: 'day' | 'unread';
 };
 
 type RenderItem = RenderGroup | RenderDivider;
@@ -127,8 +132,24 @@ const renderItems = computed<RenderItem[]>(() => {
                 type: 'divider',
                 key: `divider-${messageDay}`,
                 label: dividerLabel(message.createdAt),
+                variant: 'day',
             });
             currentDay = messageDay;
+        }
+
+        // The "New messages" boundary breaks the run of grouped messages so the
+        // divider sits on its own line directly above the first unread message.
+        const isUnreadBoundary =
+            props.unreadDividerId != null &&
+            message.id === props.unreadDividerId;
+
+        if (isUnreadBoundary) {
+            items.push({
+                type: 'divider',
+                key: 'unread-divider',
+                label: 'New',
+                variant: 'unread',
+            });
         }
 
         const sameAuthor = currentGroup?.author.id === message.user.id;
@@ -138,7 +159,13 @@ const renderItems = computed<RenderItem[]>(() => {
                 new Date(lastCreatedAt).getTime() <=
                 GROUPING_WINDOW_MS;
 
-        if (!currentGroup || startsNewDay || !sameAuthor || !withinWindow) {
+        if (
+            !currentGroup ||
+            startsNewDay ||
+            isUnreadBoundary ||
+            !sameAuthor ||
+            !withinWindow
+        ) {
             currentGroup = {
                 type: 'group',
                 key: `group-${message.id}`,
@@ -259,7 +286,21 @@ function confirmDelete(): void {
     <div class="px-5 pt-4 pb-2">
         <template v-for="item in renderItems" :key="item.key">
             <div
-                v-if="item.type === 'divider'"
+                v-if="item.type === 'divider' && item.variant === 'unread'"
+                id="unread-divider"
+                data-test="unread-divider"
+                class="relative my-3 flex items-center gap-2"
+            >
+                <span aria-hidden="true" class="h-px flex-1 bg-rose-500/50" />
+                <span
+                    class="text-[11px] font-semibold tracking-[0.05em] text-rose-500 uppercase"
+                >
+                    {{ item.label }}
+                </span>
+            </div>
+
+            <div
+                v-else-if="item.type === 'divider'"
                 class="relative my-4 flex items-center justify-center"
             >
                 <span

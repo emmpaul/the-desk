@@ -101,6 +101,11 @@ class ChannelController extends Controller
             // The message the client should scroll to and highlight on load, or
             // null for a normal channel visit.
             'jumpToMessageId' => $jumpToMessageId,
+            // The viewer's read pointer captured at render time, before the
+            // client's debounced MarkChannelRead advances it. Drives the
+            // "New messages" divider so it lands at the last-read boundary on
+            // open; null when the channel has never been read.
+            'lastReadMessageId' => $membership?->last_read_message_id !== null ? (string) $membership->last_read_message_id : null,
             // The open thread (root + its replies), resolved from the `?thread=`
             // query param, or null for a normal visit. The client opens a thread
             // with a partial reload of just this prop; on a full visit the closure
