@@ -71,6 +71,7 @@ class HandleInertiaRequests extends Middleware
 
         $channels = $user->channels()
             ->where('channels.team_id', $team->id)
+            ->whereNull('channels.archived_at')
             ->orderBy('name')
             ->get();
 

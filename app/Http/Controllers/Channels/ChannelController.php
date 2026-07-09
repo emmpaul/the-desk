@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Channels;
 
+use App\Actions\Channels\ArchiveChannel;
 use App\Actions\Channels\CreateChannel;
 use App\Actions\Channels\JoinChannel;
 use App\Data\ChannelData;
@@ -64,6 +65,9 @@ class ChannelController extends Controller
                 'slug' => $team->slug,
             ],
             'channel' => ChannelData::fromChannel($channel),
+            // Drives the header's archive control; authoritative so the button
+            // only appears for a creator or Admin+ on a non-#general channel.
+            'canArchive' => Gate::allows('archive', $channel),
             // Team members feed the composer's @mention autocomplete; mentions are
             // scoped to the team, never limited to the current channel's members.
             'members' => UserData::collect($team->members()->orderBy('name')->get()),
@@ -114,5 +118,23 @@ class ChannelController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Joined #:channel.', ['channel' => $channel->name])]);
 
         return to_route('channels.show', ['team' => $team->slug, 'channel' => $channel->slug]);
+    }
+
+    /**
+     * Archive a channel and redirect to the team's #general channel.
+     *
+     * The archived channel becomes read-only and drops out of the active
+     * sidebar, so we send the user back to #general rather than to a channel
+     * that no longer appears in their list.
+     */
+    public function archive(Request $request, Team $team, Channel $channel, ArchiveChannel $archiveChannel): RedirectResponse
+    {
+        Gate::authorize('archive', $channel);
+
+        $archiveChannel->handle($channel);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Archived #:channel.', ['channel' => $channel->name])]);
+
+        return to_route('channels.index', ['team' => $team->slug]);
     }
 }
