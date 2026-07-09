@@ -94,8 +94,46 @@ export function useMessageStream(
         return true;
     }
 
+    /**
+     * Locate the currently-rendered copy of a message by client uuid, preferring
+     * an existing patch, then a live echo, then the server page.
+     */
+    function currentCopy(clientUuid: string): Message | undefined {
+        return (
+            patches.value.get(clientUuid) ??
+            live.value.find((m) => m.clientUuid === clientUuid) ??
+            serverMessages.value.find((m) => m.clientUuid === clientUuid)
+        );
+    }
+
     function applyPatch(message: Message): void {
-        patches.value.set(message.clientUuid, message);
+        // A broadcast patch (edit, delete, thread reply-count bump) carries no
+        // viewer context, so its `threadFollowed`/`threadUnread` are always the
+        // server defaults. Preserve whatever the client has already derived for
+        // this message so a root's dot isn't cleared by its own reply-count bump.
+        const prior = currentCopy(message.clientUuid);
+
+        patches.value.set(message.clientUuid, {
+            ...message,
+            threadFollowed: prior?.threadFollowed ?? message.threadFollowed,
+            threadUnread: prior?.threadUnread ?? message.threadUnread,
+        });
+    }
+
+    /**
+     * Overlay per-viewer thread read-state on a rendered message, found by its
+     * message id (the id a reply carries as `threadRootId`). Used to raise or
+     * clear a root's unread dot and mark it followed as the viewer engages,
+     * keeping every other field of the rendered copy intact.
+     */
+    function patchThreadState(id: string, partial: Partial<Message>): void {
+        const current = displayMessages.value.find((m) => m.id === id);
+
+        if (!current) {
+            return;
+        }
+
+        patches.value.set(current.clientUuid, { ...current, ...partial });
     }
 
     function getPatch(clientUuid: string): Message | undefined {
@@ -134,6 +172,7 @@ export function useMessageStream(
         pendingUuids,
         appendLive,
         applyPatch,
+        patchThreadState,
         getPatch,
         restorePatch,
         addPending,
@@ -180,5 +219,7 @@ export function optimisticMessage(params: {
         threadReplyCount: 0,
         threadLastReplyAt: null,
         threadParticipants: [],
+        threadFollowed: false,
+        threadUnread: false,
     };
 }

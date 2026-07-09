@@ -47,6 +47,17 @@ export type Message = {
     threadReplyCount: number;
     threadLastReplyAt: string | null;
     threadParticipants: Mention[];
+    /**
+     * Per-viewer thread read-state (mirror the `MessageData` DTO), meaningful on
+     * a root. `threadFollowed` is the Slack-style auto-follow signal — the viewer
+     * authored the root, replied, or was mentioned in the thread — and gates
+     * whether a live reply raises the dot. `threadUnread` drives the dot on the
+     * root's "N replies" affordance and clears when the thread is read. Broadcast
+     * payloads omit viewer context, so the client preserves its own values across
+     * patches rather than taking the server's defaults.
+     */
+    threadFollowed: boolean;
+    threadUnread: boolean;
 };
 
 /**

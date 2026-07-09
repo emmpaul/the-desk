@@ -470,6 +470,12 @@ function confirmDelete(): void {
                                 </span>
                             </span>
                             <span
+                                v-if="message.threadUnread"
+                                data-test="thread-unread-dot"
+                                aria-label="Unread replies"
+                                class="size-2 shrink-0 rounded-full bg-rose-500"
+                            ></span>
+                            <span
                                 class="text-[12.5px] font-semibold text-primary hover:underline"
                             >
                                 {{ message.threadReplyCount }}

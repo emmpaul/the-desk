@@ -22,6 +22,7 @@ import { toast } from 'vue-sonner';
 import {
     archive as archiveChannel,
     read as markChannelRead,
+    readThread as markThreadReadAction,
 } from '@/actions/App/Http/Controllers/Channels/ChannelController';
 import { update as updateChannelPreferences } from '@/actions/App/Http/Controllers/Channels/ChannelPreferenceController';
 import {
@@ -63,6 +64,7 @@ import {
 import { useTeamPresence } from '@/composables/useTeamPresence';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
 import type { TypingUser } from '@/composables/useTypingIndicator';
+import { shouldFlagThreadUnread } from '@/lib/shouldFlagThreadUnread';
 import { unreadDividerMessageId } from '@/lib/unreadDivider';
 import type {
     Channel,
@@ -288,6 +290,69 @@ function routeIncoming(message: Message): void {
     ) {
         threadStream.appendLive(message);
     }
+
+    // A thread reply either keeps the open, focused thread read as it streams in,
+    // or raises the unread dot on its root back in the main timeline.
+    if (message.threadRootId !== null) {
+        const viewingThreadFocused =
+            message.threadRootId === activeThreadRootId.value &&
+            document.hasFocus();
+
+        if (viewingThreadFocused) {
+            markThreadRead();
+
+            return;
+        }
+
+        const root = displayMessages.value.find(
+            (candidate) => candidate.id === message.threadRootId,
+        );
+
+        if (
+            shouldFlagThreadUnread({
+                isReply: true,
+                isOwnReply: message.user.id === currentUser.value.id,
+                isFollowedThread: root?.threadFollowed ?? false,
+                isViewingThreadFocused: false,
+                isSuppressed: threadUnreadSuppressed.value,
+            })
+        ) {
+            mainStream.patchThreadState(message.threadRootId, {
+                threadUnread: true,
+            });
+        }
+    }
+}
+
+// Advance the open thread's read pointer so its unread dot clears, mirroring the
+// channel's markRead: debounced, gated on focus, and optimistically clearing the
+// dot on the root back in the main timeline.
+let threadReadTimer: ReturnType<typeof setTimeout> | null = null;
+
+function markThreadRead(): void {
+    const rootId = activeThreadRootId.value;
+
+    if (!rootId || !document.hasFocus()) {
+        return;
+    }
+
+    if (threadReadTimer) {
+        clearTimeout(threadReadTimer);
+    }
+
+    threadReadTimer = setTimeout(() => {
+        router.post(
+            markThreadReadAction({
+                team: props.team.slug,
+                channel: props.channel.slug,
+                message: rootId,
+            }).url,
+            {},
+            { preserveScroll: true, preserveState: true, only: ['channels'] },
+        );
+
+        mainStream.patchThreadState(rootId, { threadUnread: false });
+    }, 400);
 }
 
 function channelName(id: string): string {
@@ -359,6 +424,7 @@ onMounted(() => {
     computeUnreadDivider();
     markRead();
     window.addEventListener('focus', markRead);
+    window.addEventListener('focus', markThreadRead);
 
     if (props.jumpToMessageId) {
         jumpToMessage(props.jumpToMessageId);
@@ -421,9 +487,14 @@ onBeforeUnmount(() => {
     unsubscribe(props.channel.id);
     unreadObserver?.disconnect();
     window.removeEventListener('focus', markRead);
+    window.removeEventListener('focus', markThreadRead);
 
     if (markReadTimer) {
         clearTimeout(markReadTimer);
+    }
+
+    if (threadReadTimer) {
+        clearTimeout(threadReadTimer);
     }
 
     if (highlightTimer) {
@@ -500,6 +571,13 @@ function sendThreadReply(
     });
 
     threadStream.addPending(optimistic);
+
+    // Replying makes the viewer a follower of the thread and means they've seen
+    // it, so keep the root's affordance in the main timeline dot-free.
+    mainStream.patchThreadState(rootId, {
+        threadFollowed: true,
+        threadUnread: false,
+    });
 
     if (sendToChannel) {
         appendPendingMain(optimistic);
@@ -601,11 +679,16 @@ function openThread(rootId: string): void {
     threadData.value = null;
     threadLoading.value = true;
 
+    // Opening the thread clears its dot straight away; the read pointer advances
+    // once the replies load (and again on focus / as new replies stream in).
+    mainStream.patchThreadState(rootId, { threadUnread: false });
+
     router.reload({
         only: ['thread'],
         data: { thread: rootId },
         onFinish: () => {
             threadLoading.value = false;
+            markThreadRead();
         },
     });
 }
@@ -625,6 +708,13 @@ const notificationLevel = ref<NotificationLevel>(
     props.channel.notificationLevel,
 );
 const muted = ref<boolean>(props.channel.muted);
+
+// Thread-unread dots are silenced under the same rule as the sidebar's unread
+// badge: a muted channel or any level below "all". Mirrors the server's
+// suppression so a live dot and a navigation-time dot agree.
+const threadUnreadSuppressed = computed(
+    () => muted.value || notificationLevel.value !== 'all',
+);
 
 function savePreferences(rollback: () => void): void {
     router.patch(
