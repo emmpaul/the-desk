@@ -27,6 +27,7 @@ class ChannelMemberFactory extends Factory
             'muted' => false,
             'notification_level' => NotificationLevel::All,
             'draft' => null,
+            'starred' => false,
         ];
     }
 
@@ -36,6 +37,14 @@ class ChannelMemberFactory extends Factory
     public function muted(): static
     {
         return $this->state(fn (array $attributes): array => ['muted' => true]);
+    }
+
+    /**
+     * Indicate the membership is starred (favorited).
+     */
+    public function starred(): static
+    {
+        return $this->state(fn (array $attributes): array => ['starred' => true]);
     }
 
     /**

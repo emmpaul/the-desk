@@ -54,6 +54,7 @@ class HandleInertiaRequests extends Middleware
             'currentTeam' => fn () => $user?->currentTeam ? $user->toUserTeam($user->currentTeam) : null,
             'teams' => fn () => $user?->toUserTeams(includeCurrent: true) ?? [],
             'channels' => fn () => $this->channelsForSidebar($request, $user),
+            'collapsedChannelSections' => fn () => $user->collapsed_channel_sections ?? [],
             'hasUnreadThreads' => fn () => $this->hasUnreadThreads($request, $user),
             'pendingInvitations' => Inertia::optional(fn () => $user ? $this->pendingInvitationsFor($user) : []),
         ];
@@ -76,7 +77,7 @@ class HandleInertiaRequests extends Middleware
             ->where('channels.team_id', $team->id)
             ->whereNull('channels.archived_at')
             ->select('channels.*')
-            ->addSelect(['channel_members.muted', 'channel_members.notification_level'])
+            ->addSelect(['channel_members.muted', 'channel_members.notification_level', 'channel_members.starred'])
             // Only the presence of a draft drives the sidebar cue; the draft text
             // itself is shipped solely to the open channel, so keep it out of the
             // sidebar payload and expose a 1/0 flag instead (an integer, not a

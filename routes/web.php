@@ -4,9 +4,11 @@ use App\Http\Controllers\Channels\ChannelController;
 use App\Http\Controllers\Channels\ChannelDraftController;
 use App\Http\Controllers\Channels\ChannelMemberController;
 use App\Http\Controllers\Channels\ChannelPreferenceController;
+use App\Http\Controllers\Channels\ChannelStarController;
 use App\Http\Controllers\Channels\MessageController;
 use App\Http\Controllers\Channels\SearchController;
 use App\Http\Controllers\Channels\ThreadsController;
+use App\Http\Controllers\SidebarSectionController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +41,9 @@ Route::middleware(['auth', 'verified', EnsureTeamMembership::class])->group(func
     Route::patch('t/{team}/c/{channel}/draft', [ChannelDraftController::class, 'update'])
         ->scopeBindings()
         ->name('channels.draft.update');
+    Route::patch('t/{team}/c/{channel}/star', [ChannelStarController::class, 'update'])
+        ->scopeBindings()
+        ->name('channels.star.update');
     Route::post('t/{team}/c/{channel}/archive', [ChannelController::class, 'archive'])
         ->scopeBindings()
         ->name('channels.archive');
@@ -60,6 +65,8 @@ Route::middleware(['auth', 'verified', EnsureTeamMembership::class])->group(func
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::patch('sidebar/sections', [SidebarSectionController::class, 'update'])->name('sidebar.sections.update');
+
     Route::get('invitations/{invitation}/accept', [TeamInvitationController::class, 'accept'])->name('invitations.accept');
     Route::delete('invitations/{invitation}', [TeamInvitationController::class, 'decline'])->name('invitations.decline');
 });

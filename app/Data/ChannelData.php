@@ -24,6 +24,7 @@ class ChannelData extends Data
         public int $mentionCount = 0,
         public bool $hasDraft = false,
         public ?string $draft = null,
+        public bool $starred = false,
     ) {}
 
     /**
@@ -43,6 +44,9 @@ class ChannelData extends Data
      * (`Show`) carries the full `draft` so the composer restores it; the sidebar
      * ships only the `has_draft` boolean, so `draft` stays null there and only
      * the presence cue is exposed.
+     *
+     * `starred` is the viewer's own favorite flag, driving whether the channel is
+     * pinned to the sidebar's "Starred" section.
      */
     public static function fromChannel(Channel $channel): self
     {
@@ -59,6 +63,8 @@ class ChannelData extends Data
         $hasDraftAttribute = $channel->getAttribute('has_draft');
         $hasDraft = $hasDraftAttribute !== null ? (bool) $hasDraftAttribute : $draft !== null;
 
+        $starred = (bool) ($channel->getAttribute('starred') ?? false);
+
         return new self(
             id: $channel->id,
             name: $channel->name,
@@ -73,6 +79,7 @@ class ChannelData extends Data
             mentionCount: ! $muted && $level->alertsOnMention() ? $mentionCount : 0,
             hasDraft: $hasDraft,
             draft: $draft,
+            starred: $starred,
         );
     }
 }

@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $remember_token
  * @property string|null $current_team_id
  * @property ChimeSound $chime_sound
+ * @property array<int, string>|null $collapsed_channel_sections
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Team|null $currentTeam
@@ -36,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Team> $teams
  * @property-read Collection<int, Channel> $channels
  */
-#[Fillable(['name', 'email', 'password', 'current_team_id', 'chime_sound'])]
+#[Fillable(['name', 'email', 'password', 'current_team_id', 'chime_sound', 'collapsed_channel_sections'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -54,6 +55,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'chime_sound' => ChimeSound::class,
+            'collapsed_channel_sections' => 'array',
         ];
     }
 
@@ -65,7 +67,7 @@ class User extends Authenticatable
     public function channels(): BelongsToMany
     {
         return $this->belongsToMany(Channel::class, 'channel_members')
-            ->withPivot(['last_read_message_id', 'muted', 'notification_level', 'draft'])
+            ->withPivot(['last_read_message_id', 'muted', 'notification_level', 'draft', 'starred'])
             ->withTimestamps();
     }
 }
