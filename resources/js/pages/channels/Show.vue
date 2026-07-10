@@ -73,6 +73,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
+import { useDebouncedPost } from '@/composables/useDebouncedPost';
 import {
     useMessageStream,
     optimisticMessage,
@@ -306,21 +307,10 @@ function scrollToUnread(): void {
 
 // Advance the open thread's read pointer so its unread dot clears, mirroring the
 // channel's markRead: debounced, gated on focus, and optimistically clearing the
-// dot on the root back in the main timeline.
-let threadReadTimer: ReturnType<typeof setTimeout> | null = null;
-
-function markThreadRead(): void {
-    const rootId = activeThreadRootId.value;
-
-    if (!rootId || !document.hasFocus()) {
-        return;
-    }
-
-    if (threadReadTimer) {
-        clearTimeout(threadReadTimer);
-    }
-
-    threadReadTimer = setTimeout(() => {
+// dot on the root back in the main timeline. The root id is captured as the
+// debounced payload so a fire uses the thread that was open when it was scheduled.
+const threadReadPost = useDebouncedPost(
+    (rootId: string) => {
         router.post(
             markThreadReadAction({
                 team: props.team.slug,
@@ -332,7 +322,18 @@ function markThreadRead(): void {
         );
 
         mainStream.patchThreadState(rootId, { threadUnread: false });
-    }, 400);
+    },
+    { delay: 400, gate: () => document.hasFocus() },
+);
+
+function markThreadRead(): void {
+    const rootId = activeThreadRootId.value;
+
+    if (!rootId) {
+        return;
+    }
+
+    threadReadPost.schedule(rootId);
 }
 
 function channelName(id: string): string {
@@ -343,18 +344,8 @@ function channelName(id: string): string {
 // Debounced and gated on tab focus: a channel is only "read" while the user is
 // actually looking at it, and a burst of arriving messages collapses to one
 // request. The redirect refreshes just the shared `channels` prop.
-let markReadTimer: ReturnType<typeof setTimeout> | null = null;
-
-function markRead(): void {
-    if (!document.hasFocus()) {
-        return;
-    }
-
-    if (markReadTimer) {
-        clearTimeout(markReadTimer);
-    }
-
-    markReadTimer = setTimeout(() => {
+const readPost = useDebouncedPost(
+    () => {
         router.post(
             markChannelRead({
                 team: props.team.slug,
@@ -363,7 +354,12 @@ function markRead(): void {
             {},
             { preserveScroll: true, preserveState: true, only: ['channels'] },
         );
-    }, 400);
+    },
+    { delay: 400, gate: () => document.hasFocus() },
+);
+
+function markRead(): void {
+    readPost.schedule();
 }
 
 // The active channel's Echo subscribe/route/teardown lives in this composable: it
@@ -434,9 +430,10 @@ watch(
 watch(
     () => props.channel.id,
     () => {
-        // Persist the outgoing channel's draft before switching; `pendingDraft`
-        // still carries the old channel's slug, so it writes to the right place.
-        flushDraft();
+        // Persist the outgoing channel's draft before switching; the pending
+        // payload still carries the old channel's slug, so it writes to the right
+        // place.
+        draftPost.flush();
 
         mainStream.reset();
         resetScrollPin();
@@ -453,20 +450,12 @@ watch(
 );
 
 onBeforeUnmount(() => {
-    // Leaving the workspace (or a full navigation away) still persists a
-    // just-typed draft that the debounce hasn't written yet.
-    flushDraft();
+    // The draft persists itself on teardown (flushOnUnmount) and the read posts
+    // cancel themselves, so leaving the workspace neither loses a just-typed draft
+    // nor fires a stale mark-read.
     unreadObserver?.disconnect();
     window.removeEventListener('focus', markRead);
     window.removeEventListener('focus', markThreadRead);
-
-    if (markReadTimer) {
-        clearTimeout(markReadTimer);
-    }
-
-    if (threadReadTimer) {
-        clearTimeout(threadReadTimer);
-    }
 
     if (highlightTimer) {
         clearTimeout(highlightTimer);
@@ -582,13 +571,6 @@ function forwardMessage({
 // send clears the draft server-side, so only manual edits flow through here.
 const DRAFT_DEBOUNCE_MS = 700;
 
-let draftTimer: ReturnType<typeof setTimeout> | null = null;
-
-// The latest pending draft, tagged with the slug of the channel it belongs to,
-// so a flush triggered by switching channels still writes to the channel that
-// was actually being edited rather than the one just navigated to.
-let pendingDraft: { slug: string; body: string } | null = null;
-
 function persistDraft(slug: string, body: string): void {
     router.patch(
         saveChannelDraft({ team: props.team.slug, channel: slug }).url,
@@ -597,40 +579,25 @@ function persistDraft(slug: string, body: string): void {
     );
 }
 
-// Write any pending draft immediately, cancelling the debounce. Called before
-// leaving the channel so a just-typed draft is never lost to an unfired timer.
-function flushDraft(): void {
-    if (draftTimer) {
-        clearTimeout(draftTimer);
-        draftTimer = null;
-    }
-
-    if (pendingDraft) {
-        persistDraft(pendingDraft.slug, pendingDraft.body);
-        pendingDraft = null;
-    }
-}
+// The debounced draft save. The payload is tagged with the slug of the channel it
+// belongs to, so a flush triggered by switching channels still writes to the
+// channel that was actually being edited rather than the one just navigated to.
+// It flushes on unmount so a just-typed draft is never lost to an unfired timer.
+const draftPost = useDebouncedPost(
+    (draft: { slug: string; body: string }) =>
+        persistDraft(draft.slug, draft.body),
+    { delay: DRAFT_DEBOUNCE_MS, flushOnUnmount: true },
+);
 
 // Debounce a draft save for the current channel; an empty body clears it.
 function onDraftChange(body: string): void {
-    pendingDraft = { slug: props.channel.slug, body };
-
-    if (draftTimer) {
-        clearTimeout(draftTimer);
-    }
-
-    draftTimer = setTimeout(flushDraft, DRAFT_DEBOUNCE_MS);
+    draftPost.schedule({ slug: props.channel.slug, body });
 }
 
 function send(body: string, mentions: Mention[]): void {
     // Sending clears the draft server-side, so drop any debounced save still in
     // flight; otherwise it would re-persist the just-sent text after the clear.
-    if (draftTimer) {
-        clearTimeout(draftTimer);
-        draftTimer = null;
-    }
-
-    pendingDraft = null;
+    draftPost.cancel();
 
     const clientUuid = crypto.randomUUID();
     const target = replyTarget.value;
@@ -681,12 +648,7 @@ function scheduleMessage(
     _mentions: Mention[],
     sendAt: string,
 ): void {
-    if (draftTimer) {
-        clearTimeout(draftTimer);
-        draftTimer = null;
-    }
-
-    pendingDraft = null;
+    draftPost.cancel();
 
     const target = replyTarget.value;
 

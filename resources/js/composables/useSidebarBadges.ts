@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount } from 'vue';
+import { computed } from 'vue';
 import { useChannelFleetSubscription } from '@/composables/useChannelFleetSubscription';
+import { useDebouncedPost } from '@/composables/useDebouncedPost';
 import { shouldRefreshSidebar } from '@/lib/shouldRefreshSidebar';
 
 /** Coalesce a burst of arrivals into a single sidebar reload. */
@@ -27,20 +28,13 @@ export function useSidebarBadges(): void {
         () => (page.props.channel as { id?: string } | undefined)?.id ?? null,
     );
 
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-
-    function scheduleRefresh(): void {
-        if (refreshTimer) {
-            clearTimeout(refreshTimer);
-        }
-
-        refreshTimer = setTimeout(() => {
-            // reload defaults to preserving scroll and page state; it re-evaluates
-            // the shared `channels` prop to recompute every badge count, plus the
-            // aggregate `hasUnreadThreads` flag behind the sidebar's Threads dot.
-            router.reload({ only: ['channels', 'hasUnreadThreads'] });
-        }, REFRESH_DEBOUNCE_MS);
-    }
+    // reload defaults to preserving scroll and page state; it re-evaluates the
+    // shared `channels` prop to recompute every badge count, plus the aggregate
+    // `hasUnreadThreads` flag behind the sidebar's Threads dot.
+    const refresh = useDebouncedPost(
+        () => router.reload({ only: ['channels', 'hasUnreadThreads'] }),
+        { delay: REFRESH_DEBOUNCE_MS },
+    );
 
     useChannelFleetSubscription((channelId, message) => {
         const decision = shouldRefreshSidebar({
@@ -55,13 +49,7 @@ export function useSidebarBadges(): void {
         });
 
         if (decision) {
-            scheduleRefresh();
-        }
-    });
-
-    onBeforeUnmount(() => {
-        if (refreshTimer) {
-            clearTimeout(refreshTimer);
+            refresh.schedule();
         }
     });
 }
