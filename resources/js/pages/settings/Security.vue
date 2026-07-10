@@ -5,15 +5,17 @@ import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import ManageSessions from '@/components/ManageSessions.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
+import SecurityActivity from '@/components/SecurityActivity.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { edit } from '@/routes/security';
-import type { ActiveSession } from '@/types';
+import type { ActiveSession, SecurityActivityEvent } from '@/types';
 
 type Props = {
     passwordRules: string;
     sessions: ActiveSession[];
+    securityEvents: SecurityActivityEvent[];
 };
 
 const props = defineProps<Props>();
@@ -107,5 +109,9 @@ defineOptions({
         <Separator />
 
         <ManageSessions :sessions="props.sessions" />
+
+        <Separator />
+
+        <SecurityActivity :events="props.securityEvents" />
     </div>
 </template>
