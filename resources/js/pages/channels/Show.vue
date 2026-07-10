@@ -7,6 +7,7 @@ import {
     AtSign,
     BellMinus,
     BellOff,
+    ChevronDown,
     EllipsisVertical,
     Star,
 } from '@lucide/vue';
@@ -68,6 +69,7 @@ import {
     useMessageStream,
     optimisticMessage,
 } from '@/composables/useMessageStream';
+import { useScrollPin } from '@/composables/useScrollPin';
 import { useTeamPresence } from '@/composables/useTeamPresence';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
 import type { TypingUser } from '@/composables/useTypingIndicator';
@@ -158,11 +160,20 @@ const canModerate = computed(() =>
     ['admin', 'owner'].includes(page.props.currentTeam?.role ?? ''),
 );
 
-// Distance (px) from the bottom within which the view stays pinned to newest,
-// so an incoming message never yanks a user who is reading older history.
-const NEAR_BOTTOM_THRESHOLD = 120;
-
 const scrollContainer = ref<HTMLElement | null>(null);
+
+// Shared scroll/pin bookkeeping: the pinned-to-newest flag, the "N new messages"
+// count while scrolled up, and the smooth jump back to the bottom. The thread
+// panel runs its own instance of the same composable.
+const {
+    pinnedToBottom,
+    newMessageCount,
+    isNearBottom,
+    scrollToBottom,
+    notifyAppended,
+    onScroll,
+    reset: resetScrollPin,
+} = useScrollPin(scrollContainer);
 
 // `Inertia::scroll` delivers messages newest-first; reverse for display.
 const serverMessages = computed<Message[]>(() =>
@@ -199,27 +210,6 @@ const threadServerMessages = computed<Message[]>(() =>
 const threadStream = useMessageStream(threadServerMessages);
 const threadMessages = threadStream.displayMessages;
 const threadPendingUuids = threadStream.pendingUuids;
-
-function isNearBottom(): boolean {
-    const el = scrollContainer.value;
-
-    if (!el) {
-        return true;
-    }
-
-    return (
-        el.scrollHeight - el.scrollTop - el.clientHeight <=
-        NEAR_BOTTOM_THRESHOLD
-    );
-}
-
-function scrollToBottom(): void {
-    const el = scrollContainer.value;
-
-    if (el) {
-        el.scrollTop = el.scrollHeight;
-    }
-}
 
 // The message to briefly highlight after a search jump. The server windows the
 // initial page so the target is loaded; we scroll it into view and clear the
@@ -304,13 +294,14 @@ function scrollToUnread(): void {
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
-// Append a message to the main timeline, keeping the view pinned to newest only
-// when the reader was already near the bottom.
+// Append a message to the main timeline. When the reader was near the bottom the
+// view follows it down; otherwise the arrival raises the "new messages" count on
+// the jump-to-latest control instead of scrolling silently.
 function appendLiveMain(message: Message): void {
-    const pinned = isNearBottom();
+    const wasNearBottom = isNearBottom();
 
-    if (mainStream.appendLive(message) && pinned) {
-        nextTick(scrollToBottom);
+    if (mainStream.appendLive(message)) {
+        notifyAppended(wasNearBottom);
     }
 }
 
@@ -542,6 +533,7 @@ watch(
         }
 
         mainStream.reset();
+        resetScrollPin();
         resetThreadPanel();
         replyTarget.value = null;
         typing.reset();
@@ -752,7 +744,7 @@ function send(body: string, mentions: Mention[]): void {
     );
 
     cancelReply();
-    nextTick(scrollToBottom);
+    nextTick(() => scrollToBottom());
 
     router.post(
         storeMessage({ team: props.team.slug, channel: props.channel.slug })
@@ -830,12 +822,14 @@ function sendThreadReply(
 }
 
 // Add an optimistic row to the main timeline, keeping the pinned-to-bottom rule.
+// This is the viewer's own message (a forward or sent-to-channel reply), so it
+// follows them down when near the bottom but never inflates the unread count.
 function appendPendingMain(message: Message): void {
     const pinned = isNearBottom();
     mainStream.addPending(message);
 
     if (pinned) {
-        nextTick(scrollToBottom);
+        nextTick(() => scrollToBottom());
     }
 }
 
@@ -1233,80 +1227,121 @@ function archive(): void {
             </header>
 
             <div class="relative flex min-h-0 flex-1 flex-col">
-                <Transition
-                    enter-active-class="transition duration-150 ease-out"
-                    enter-from-class="-translate-y-1 opacity-0"
-                    enter-to-class="translate-y-0 opacity-100"
-                    leave-active-class="transition duration-100 ease-in"
-                    leave-from-class="translate-y-0 opacity-100"
-                    leave-to-class="-translate-y-1 opacity-0"
-                >
-                    <button
-                        v-if="showJumpToUnread"
-                        type="button"
-                        data-test="jump-to-unread"
-                        class="absolute top-2.5 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1 text-[12px] font-semibold text-white shadow-md hover:bg-rose-600"
-                        @click="scrollToUnread"
+                <div class="relative flex min-h-0 flex-1 flex-col">
+                    <Transition
+                        enter-active-class="transition duration-150 ease-out"
+                        enter-from-class="-translate-y-1 opacity-0"
+                        enter-to-class="translate-y-0 opacity-100"
+                        leave-active-class="transition duration-100 ease-in"
+                        leave-from-class="translate-y-0 opacity-100"
+                        leave-to-class="-translate-y-1 opacity-0"
                     >
-                        <ArrowUp class="size-3.5" />
-                        New messages
-                    </button>
-                </Transition>
-
-                <div
-                    ref="scrollContainer"
-                    class="min-h-0 flex-1 overflow-y-auto"
-                >
-                    <InfiniteScroll
-                        v-if="hasMessages"
-                        data="messages"
-                        reverse
-                        preserve-url
-                    >
-                        <MessageList
-                            :messages="displayMessages"
-                            :team-slug="props.team.slug"
-                            :pending-uuids="pendingUuids"
-                            :current-user-id="currentUser.id"
-                            :can-moderate="canModerate"
-                            :can-react="props.canReact"
-                            :online-ids="onlineIds"
-                            :readers="channelReadersList"
-                            :highlight-message-id="highlightedMessageId"
-                            :unread-divider-id="unreadDividerId"
-                            :active-thread-root-id="activeThreadRootId"
-                            @edit="editMessage"
-                            @delete="deleteMessage"
-                            @reply="startReply"
-                            @forward="openForward"
-                            @react="reactToMessage"
-                            @open-thread="openThread"
-                            @jump="jumpToMessage"
-                            @mention="mentionInChannel"
-                        />
-                    </InfiniteScroll>
+                        <button
+                            v-if="showJumpToUnread"
+                            type="button"
+                            data-test="jump-to-unread"
+                            class="absolute top-2.5 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1 text-[12px] font-semibold text-white shadow-md hover:bg-rose-600"
+                            @click="scrollToUnread"
+                        >
+                            <ArrowUp class="size-3.5" />
+                            New messages
+                        </button>
+                    </Transition>
 
                     <div
-                        v-else
-                        class="flex h-full flex-col items-center justify-center gap-1"
+                        ref="scrollContainer"
+                        class="scrollbar-thin min-h-0 flex-1 scrollbar-thumb-border scrollbar-track-transparent overflow-y-auto overscroll-contain"
+                        @scroll.passive="onScroll"
                     >
+                        <InfiniteScroll
+                            v-if="hasMessages"
+                            data="messages"
+                            reverse
+                            preserve-url
+                        >
+                            <MessageList
+                                :messages="displayMessages"
+                                :team-slug="props.team.slug"
+                                :pending-uuids="pendingUuids"
+                                :current-user-id="currentUser.id"
+                                :can-moderate="canModerate"
+                                :can-react="props.canReact"
+                                :online-ids="onlineIds"
+                                :readers="channelReadersList"
+                                :highlight-message-id="highlightedMessageId"
+                                :unread-divider-id="unreadDividerId"
+                                :active-thread-root-id="activeThreadRootId"
+                                @edit="editMessage"
+                                @delete="deleteMessage"
+                                @reply="startReply"
+                                @forward="openForward"
+                                @react="reactToMessage"
+                                @open-thread="openThread"
+                                @jump="jumpToMessage"
+                                @mention="mentionInChannel"
+                            />
+                        </InfiniteScroll>
+
                         <div
-                            class="flex size-14 items-center justify-center rounded-2xl border border-border bg-muted text-2xl font-semibold text-muted-foreground"
-                            aria-hidden="true"
+                            v-else
+                            class="flex h-full flex-col items-center justify-center gap-1"
                         >
-                            #
+                            <div
+                                class="flex size-14 items-center justify-center rounded-2xl border border-border bg-muted text-2xl font-semibold text-muted-foreground"
+                                aria-hidden="true"
+                            >
+                                #
+                            </div>
+                            <p
+                                class="mt-2.5 text-[15px] font-semibold text-foreground"
+                            >
+                                No messages yet
+                            </p>
+                            <p class="text-[13.5px] text-muted-foreground">
+                                Be the first to say something in #{{
+                                    props.channel.name
+                                }}.
+                            </p>
                         </div>
-                        <p
-                            class="mt-2.5 text-[15px] font-semibold text-foreground"
-                        >
-                            No messages yet
-                        </p>
-                        <p class="text-[13.5px] text-muted-foreground">
-                            Be the first to say something in #{{
-                                props.channel.name
-                            }}.
-                        </p>
                     </div>
+
+                    <Transition
+                        enter-active-class="transition duration-150 ease-out"
+                        enter-from-class="translate-y-1 opacity-0"
+                        enter-to-class="translate-y-0 opacity-100"
+                        leave-active-class="transition duration-100 ease-in"
+                        leave-from-class="translate-y-0 opacity-100"
+                        leave-to-class="translate-y-1 opacity-0"
+                    >
+                        <button
+                            v-if="!pinnedToBottom"
+                            type="button"
+                            data-test="jump-to-latest"
+                            :data-new-count="newMessageCount"
+                            :aria-label="
+                                newMessageCount > 0
+                                    ? `${newMessageCount} new messages, jump to latest`
+                                    : 'Jump to latest message'
+                            "
+                            class="absolute right-4 bottom-4 z-10 inline-flex items-center gap-1.5 rounded-full shadow-md transition-colors"
+                            :class="
+                                newMessageCount > 0
+                                    ? 'bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground hover:opacity-90'
+                                    : 'size-9 justify-center bg-card text-muted-foreground ring-1 ring-border hover:bg-muted hover:text-foreground'
+                            "
+                            @click="scrollToBottom(true)"
+                        >
+                            <ChevronDown class="size-4 shrink-0" />
+                            <span v-if="newMessageCount > 0">
+                                {{ newMessageCount }} new
+                                {{
+                                    newMessageCount === 1
+                                        ? 'message'
+                                        : 'messages'
+                                }}
+                            </span>
+                        </button>
+                    </Transition>
                 </div>
 
                 <div

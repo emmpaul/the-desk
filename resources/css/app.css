@@ -2,6 +2,8 @@
 
 @import 'tw-animate-css';
 
+@plugin 'tailwind-scrollbar';
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
