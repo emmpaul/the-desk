@@ -3,13 +3,16 @@ import { Form, Head } from '@inertiajs/vue3';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import ManageSessions from '@/components/ManageSessions.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { edit } from '@/routes/security';
 
 type Props = {
     passwordRules: string;
+    sessions: App.Data.SessionData[];
 };
 
 const props = defineProps<Props>();
@@ -99,5 +102,9 @@ defineOptions({
                 </Button>
             </div>
         </Form>
+
+        <Separator />
+
+        <ManageSessions :sessions="props.sessions" />
     </div>
 </template>
