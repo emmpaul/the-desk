@@ -1,0 +1,45 @@
+# Rebuilt inside the image (Composer/Node stages) — never copy the host copies.
+node_modules
+vendor
+
+# VCS, CI, IDE, OS cruft.
+.git
+.gitattributes
+.github
+.idea
+.vscode
+.fleet
+.nova
+.zed
+.DS_Store
+
+# Secrets and local environment. .env.prod.example stays out of the image too;
+# it is only a template for the operator's .env.
+.env
+.env.*
+
+# Build artifacts generated inside the image.
+public/build
+public/hot
+public/storage
+bootstrap/ssr
+resources/js/actions
+resources/js/routes
+resources/js/wayfinder
+resources/js/generated
+
+# Local runtime state.
+storage/*.key
+storage/pail
+storage/logs/*
+# Host-generated compiled caches (would leak dev providers like Boost into the
+# --no-dev image); Laravel regenerates these at boot / via the entrypoint.
+bootstrap/cache/*.php
+.phpunit.cache
+.phpunit.result.cache
+
+# Dev-only / not needed in the production image.
+tests
+compose.yaml
+docker-compose.prod.yml
+*.md
