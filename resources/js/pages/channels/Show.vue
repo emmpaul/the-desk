@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, Link, router, usePage } from '@inertiajs/vue3';
 import { echo } from '@laravel/echo-vue';
 import {
     Archive,
@@ -7,6 +7,7 @@ import {
     CalendarClock,
     ChevronDown,
     EllipsisVertical,
+    Search,
     Star,
 } from '@lucide/vue';
 import {
@@ -36,6 +37,7 @@ import {
     store as storeScheduledMessage,
     update as updateScheduledMessage,
 } from '@/actions/App/Http/Controllers/Channels/ScheduledMessageController';
+import { index as searchMessages } from '@/actions/App/Http/Controllers/Channels/SearchController';
 import ForwardMessageDialog from '@/components/ForwardMessageDialog.vue';
 import MessageComposer from '@/components/MessageComposer.vue';
 import MessageList from '@/components/MessageList.vue';
@@ -63,12 +65,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useChannelDraft } from '@/composables/useChannelDraft';
 import { useChannelPreferences } from '@/composables/useChannelPreferences';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useDebouncedPost } from '@/composables/useDebouncedPost';
+import { getInitials } from '@/composables/useInitials';
 import {
     useMessageStream,
     optimisticMessage,
@@ -79,6 +81,7 @@ import { useTimezone } from '@/composables/useTimezone';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
 import type { TypingUser } from '@/composables/useTypingIndicator';
 import { useUnreadDivider } from '@/composables/useUnreadDivider';
+import { memberAvatarStack } from '@/lib/memberAvatars';
 import { toggleReaction } from '@/lib/reactions';
 import type {
     Channel,
@@ -158,6 +161,16 @@ function onTyping(): void {
 // You can't @mention yourself; drop the current user from the composer list.
 const mentionableMembers = computed(() =>
     props.members.filter((member) => member.id !== currentUser.value.id),
+);
+
+// How many member avatars the masthead shows before collapsing the rest into a
+// single "+N" overflow chip.
+const MAX_MASTHEAD_AVATARS = 3;
+
+// The overlapping member avatars for the masthead's right side, driven by the
+// team roster the page already carries for the composer.
+const mastheadAvatars = computed(() =>
+    memberAvatarStack(props.members, MAX_MASTHEAD_AVATARS),
 );
 
 // A team Admin+ may delete anyone's message in the channel (moderation).
@@ -920,125 +933,171 @@ function archive(): void {
     <div class="flex min-h-0 flex-1 overflow-hidden">
         <div class="flex min-w-0 flex-1 flex-col">
             <header
-                class="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-5"
+                class="flex shrink-0 items-end gap-4 border-b border-border px-7 pt-5 pb-3.5"
             >
                 <SidebarTrigger
-                    class="-ml-1.5 size-8 text-muted-foreground md:hidden"
+                    class="mb-1 -ml-1.5 size-8 shrink-0 text-muted-foreground md:hidden"
                 />
-                <h1 class="text-[15px] font-semibold text-foreground">
-                    <span class="mr-0.5 font-medium text-muted-foreground/70"
-                        >#</span
-                    >{{ props.channel.name }}
-                </h1>
-                <span
-                    v-if="notificationStatus"
-                    data-test="notification-status"
-                    :data-status="muted ? 'muted' : notificationLevel"
-                    class="inline-flex items-center text-muted-foreground"
-                    :title="notificationStatus.label"
-                    :aria-label="notificationStatus.label"
-                >
-                    <component :is="notificationStatus.icon" class="size-3.5" />
-                </span>
-                <template v-if="props.channel.topic">
-                    <Separator orientation="vertical" class="h-4" />
-                    <p
-                        class="min-w-0 truncate text-[13px] text-muted-foreground"
+
+                <div class="min-w-0 flex-1">
+                    <h1
+                        class="truncate font-serif text-[32px] leading-none font-semibold tracking-[-0.02em] text-foreground"
                     >
-                        {{ props.channel.topic }}
-                    </p>
-                </template>
+                        <span class="text-brass italic">#</span
+                        >{{ props.channel.name }}
+                    </h1>
 
-                <span
-                    v-if="props.channel.isArchived"
-                    class="ml-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                >
-                    <Archive class="size-3" />
-                    Archived
-                </span>
-
-                <DropdownMenu
-                    v-if="props.canManagePreferences || props.canArchive"
-                >
-                    <DropdownMenuTrigger as-child>
-                        <button
-                            type="button"
-                            aria-label="Channel options"
-                            data-test="channel-options"
-                            class="ml-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    <div
+                        class="mt-1.5 flex items-center gap-2 text-[13px] text-muted-foreground"
+                    >
+                        <span
+                            v-if="notificationStatus"
+                            data-test="notification-status"
+                            :data-status="muted ? 'muted' : notificationLevel"
+                            class="inline-flex shrink-0 items-center"
+                            :title="notificationStatus.label"
+                            :aria-label="notificationStatus.label"
                         >
-                            <EllipsisVertical class="size-4" />
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-56">
-                        <template v-if="props.canManagePreferences">
-                            <DropdownMenuItem
-                                data-test="star-channel"
-                                :aria-pressed="starred"
-                                @select="
-                                    (event: Event) => {
-                                        event.preventDefault();
-                                        toggleStar();
-                                    }
-                                "
-                            >
-                                <Star
-                                    :class="
-                                        starred
-                                            ? 'fill-current text-amber-500'
-                                            : ''
-                                    "
-                                />
-                                {{
-                                    starred ? 'Unstar channel' : 'Star channel'
-                                }}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel
-                                class="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase"
-                            >
-                                Notifications
-                            </DropdownMenuLabel>
-                            <DropdownMenuRadioGroup
-                                :model-value="notificationLevel"
-                                @update:model-value="onNotificationLevelChange"
-                            >
-                                <DropdownMenuRadioItem
-                                    v-for="level in props.notificationLevels"
-                                    :key="level.value"
-                                    :value="level.value"
-                                    :data-test="`notification-level-${level.value}`"
-                                >
-                                    {{ level.label }}
-                                </DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuCheckboxItem
-                                :model-value="muted"
-                                data-test="mute-channel"
-                                @update:model-value="onMuteChange"
-                                @select="
-                                    (event: Event) => event.preventDefault()
-                                "
-                            >
-                                Mute channel
-                            </DropdownMenuCheckboxItem>
-                        </template>
-                        <template v-if="props.canArchive">
-                            <DropdownMenuSeparator
-                                v-if="props.canManagePreferences"
+                            <component
+                                :is="notificationStatus.icon"
+                                class="size-3.5"
                             />
-                            <DropdownMenuItem
-                                data-test="archive-channel"
-                                class="text-destructive focus:text-destructive"
-                                @select="confirmingArchive = true"
+                        </span>
+
+                        <span
+                            v-if="props.channel.isArchived"
+                            class="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                        >
+                            <Archive class="size-3" />
+                            Archived
+                        </span>
+
+                        <p v-if="props.channel.topic" class="min-w-0 truncate">
+                            {{ props.channel.topic }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex shrink-0 items-center gap-3 pb-1">
+                    <span
+                        v-if="mastheadAvatars.visible.length > 0"
+                        data-test="masthead-members"
+                        class="flex -space-x-1.5"
+                    >
+                        <span
+                            v-for="member in mastheadAvatars.visible"
+                            :key="member.id"
+                            class="flex size-6 items-center justify-center rounded-full bg-primary/10 text-[9px] font-semibold text-primary ring-2 ring-card select-none"
+                            :title="member.name"
+                            aria-hidden="true"
+                        >
+                            {{ getInitials(member.name) }}
+                        </span>
+                        <span
+                            v-if="mastheadAvatars.overflow > 0"
+                            class="flex size-6 items-center justify-center rounded-full bg-muted text-[9px] font-semibold text-muted-foreground ring-2 ring-card select-none"
+                            aria-hidden="true"
+                        >
+                            +{{ mastheadAvatars.overflow }}
+                        </span>
+                    </span>
+
+                    <Link
+                        :href="searchMessages(props.team.slug).url"
+                        data-test="masthead-search"
+                        aria-label="Search messages"
+                        class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                        <Search class="size-4" />
+                    </Link>
+
+                    <DropdownMenu
+                        v-if="props.canManagePreferences || props.canArchive"
+                    >
+                        <DropdownMenuTrigger as-child>
+                            <button
+                                type="button"
+                                aria-label="Channel options"
+                                data-test="channel-options"
+                                class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
-                                <Archive class="size-4" />
-                                Archive channel
-                            </DropdownMenuItem>
-                        </template>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                                <EllipsisVertical class="size-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-56">
+                            <template v-if="props.canManagePreferences">
+                                <DropdownMenuItem
+                                    data-test="star-channel"
+                                    :aria-pressed="starred"
+                                    @select="
+                                        (event: Event) => {
+                                            event.preventDefault();
+                                            toggleStar();
+                                        }
+                                    "
+                                >
+                                    <Star
+                                        :class="
+                                            starred
+                                                ? 'fill-current text-amber-500'
+                                                : ''
+                                        "
+                                    />
+                                    {{
+                                        starred
+                                            ? 'Unstar channel'
+                                            : 'Star channel'
+                                    }}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel
+                                    class="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase"
+                                >
+                                    Notifications
+                                </DropdownMenuLabel>
+                                <DropdownMenuRadioGroup
+                                    :model-value="notificationLevel"
+                                    @update:model-value="
+                                        onNotificationLevelChange
+                                    "
+                                >
+                                    <DropdownMenuRadioItem
+                                        v-for="level in props.notificationLevels"
+                                        :key="level.value"
+                                        :value="level.value"
+                                        :data-test="`notification-level-${level.value}`"
+                                    >
+                                        {{ level.label }}
+                                    </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuCheckboxItem
+                                    :model-value="muted"
+                                    data-test="mute-channel"
+                                    @update:model-value="onMuteChange"
+                                    @select="
+                                        (event: Event) => event.preventDefault()
+                                    "
+                                >
+                                    Mute channel
+                                </DropdownMenuCheckboxItem>
+                            </template>
+                            <template v-if="props.canArchive">
+                                <DropdownMenuSeparator
+                                    v-if="props.canManagePreferences"
+                                />
+                                <DropdownMenuItem
+                                    data-test="archive-channel"
+                                    class="text-destructive focus:text-destructive"
+                                    @select="confirmingArchive = true"
+                                >
+                                    <Archive class="size-4" />
+                                    Archive channel
+                                </DropdownMenuItem>
+                            </template>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </header>
 
             <div class="relative flex min-h-0 flex-1 flex-col">
