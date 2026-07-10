@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Env;
 use Laravel\Fortify\Features;
 
 abstract class TestCase extends BaseTestCase
@@ -28,6 +29,13 @@ abstract class TestCase extends BaseTestCase
         putenv("REGISTRATION_ENABLED={$value}");
         $_ENV['REGISTRATION_ENABLED'] = $value;
         $_SERVER['REGISTRATION_ENABLED'] = $value;
+
+        // Reset the memoized env repository so its immutable "already loaded"
+        // guard is cleared. Without this, a value baked into .env at first boot
+        // (as CI does via `cp .env.example .env`) would survive the reload and
+        // clobber the override above; a fresh repository instead treats our
+        // value as an external definition that reloading .env leaves untouched.
+        Env::enablePutenv();
 
         $this->refreshApplication();
 
