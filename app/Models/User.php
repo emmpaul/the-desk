@@ -88,4 +88,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(ChannelSection::class);
     }
+
+    /**
+     * Get the user's recorded security activity, newest first.
+     *
+     * @return HasMany<SecurityEvent, $this>
+     */
+    public function securityEvents(): HasMany
+    {
+        return $this->hasMany(SecurityEvent::class)->latest();
+    }
 }
