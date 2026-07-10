@@ -7,7 +7,14 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 test('a team member can view another member profile', function () {
     $viewer = User::factory()->create();
-    $member = User::factory()->create(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']);
+    $member = User::factory()->create([
+        'name' => 'Ada Lovelace',
+        'email' => 'ada@example.com',
+        'pronouns' => 'she/her',
+        'title' => 'Mathematician',
+        'phone' => '+1 555 000 1815',
+        'timezone' => 'Europe/London',
+    ]);
     $team = Team::factory()->create();
 
     $team->members()->attach($viewer, ['role' => TeamRole::Member->value]);
@@ -22,11 +29,64 @@ test('a team member can view another member profile', function () {
             ->where('profile.id', $member->id)
             ->where('profile.name', 'Ada Lovelace')
             ->where('profile.email', 'ada@example.com')
+            ->where('profile.pronouns', 'she/her')
+            ->where('profile.title', 'Mathematician')
+            ->where('profile.phone', '+1 555 000 1815')
+            ->where('profile.timezone', 'Europe/London')
             ->where('profile.role', TeamRole::Admin->value)
             ->where('profile.roleLabel', 'Admin')
             ->where('profile.isYou', false)
             ->whereNot('profile.memberSince', null)
         );
+});
+
+test('the profile card returns a member profile as json', function () {
+    $viewer = User::factory()->create();
+    $member = User::factory()->create([
+        'name' => 'Grace Hopper',
+        'title' => 'Rear Admiral',
+        'timezone' => 'America/New_York',
+    ]);
+    $team = Team::factory()->create();
+
+    $team->members()->attach($viewer, ['role' => TeamRole::Member->value]);
+    $team->members()->attach($member, ['role' => TeamRole::Admin->value]);
+
+    $this->actingAs($viewer)
+        ->getJson(route('teams.members.card', [$team, $member]))
+        ->assertOk()
+        ->assertJson([
+            'id' => $member->id,
+            'name' => 'Grace Hopper',
+            'title' => 'Rear Admiral',
+            'timezone' => 'America/New_York',
+            'roleLabel' => 'Admin',
+            'isYou' => false,
+        ]);
+});
+
+test('the profile card 404s for a user outside the team', function () {
+    $viewer = User::factory()->create();
+    $outsider = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($viewer, ['role' => TeamRole::Member->value]);
+
+    $this->actingAs($viewer)
+        ->getJson(route('teams.members.card', [$team, $outsider]))
+        ->assertNotFound();
+});
+
+test('the profile card is forbidden for a non-member viewer', function () {
+    $outsider = User::factory()->create();
+    $member = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($member, ['role' => TeamRole::Member->value]);
+
+    $this->actingAs($outsider)
+        ->getJson(route('teams.members.card', [$team, $member]))
+        ->assertForbidden();
 });
 
 test('a member viewing their own profile is flagged as you', function () {
