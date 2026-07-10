@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { InfiniteScroll } from '@inertiajs/vue3';
-import { X } from '@lucide/vue';
+import { ChevronDown, X } from '@lucide/vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import MessageComposer from '@/components/MessageComposer.vue';
 import MessageList from '@/components/MessageList.vue';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useScrollPin } from '@/composables/useScrollPin';
 import type { Mention, Message } from '@/types';
 
 const props = defineProps<{
@@ -47,31 +48,18 @@ const hasRoot = computed(() => root.value !== undefined);
 const replyCount = computed(() => root.value?.threadReplyCount ?? 0);
 const showSkeleton = computed(() => props.loading || !hasRoot.value);
 
-// Distance (px) from the bottom within which the panel stays pinned to newest,
-// matching the main timeline's behaviour.
-const NEAR_BOTTOM_THRESHOLD = 120;
+// Shared scroll/pin bookkeeping, identical to the main timeline's: the
+// pinned-to-newest flag, the "N new replies" count while scrolled up, and the
+// smooth jump back to the bottom.
 const scrollContainer = ref<HTMLElement | null>(null);
-
-function isNearBottom(): boolean {
-    const el = scrollContainer.value;
-
-    if (!el) {
-        return true;
-    }
-
-    return (
-        el.scrollHeight - el.scrollTop - el.clientHeight <=
-        NEAR_BOTTOM_THRESHOLD
-    );
-}
-
-function scrollToBottom(): void {
-    const el = scrollContainer.value;
-
-    if (el) {
-        el.scrollTop = el.scrollHeight;
-    }
-}
+const {
+    pinnedToBottom,
+    newMessageCount,
+    isNearBottom,
+    scrollToBottom,
+    notifyAppended,
+    onScroll,
+} = useScrollPin(scrollContainer);
 
 // The thread reply composer, so a hover card on a thread message can drop a
 // mention into it rather than the main channel composer.
@@ -81,14 +69,33 @@ function mentionInThread(member: { id: string; name: string }): void {
     threadComposer.value?.insertMention(member);
 }
 
-// Keep the panel pinned to the newest reply as the conversation grows, unless
-// the reader has scrolled up to older replies.
+// The id of the newest reply currently shown, so a reply appended at the bottom
+// (which should follow the reader or raise the count) can be told apart from
+// older replies paging in at the top, which must leave the viewport anchored.
+const newestMessageId = ref<string | null>(null);
+
+// Keep the panel pinned to the newest reply as the conversation grows: the
+// initial load lands at the bottom, a later reply appended at the bottom follows
+// the reader down (or raises the "new replies" count while they're scrolled up),
+// and older replies paging in above are left in place. `isNearBottom()` is read
+// pre-flush, so it reflects the position before the new row grows the panel.
 watch(
-    () => props.messages.length,
-    () => {
-        if (isNearBottom()) {
-            nextTick(scrollToBottom);
+    () => props.messages,
+    (messages, previous) => {
+        const newestId = messages[messages.length - 1]?.id ?? null;
+        const previousLength = previous?.length ?? 0;
+
+        if (messages.length > previousLength) {
+            const wasNearBottom = isNearBottom();
+
+            if (previousLength === 0) {
+                nextTick(() => scrollToBottom());
+            } else if (newestId !== newestMessageId.value) {
+                notifyAppended(wasNearBottom);
+            }
         }
+
+        newestMessageId.value = newestId;
     },
 );
 </script>
@@ -125,51 +132,93 @@ watch(
             </button>
         </header>
 
-        <div ref="scrollContainer" class="min-h-0 flex-1 overflow-y-auto">
-            <div v-if="showSkeleton" class="space-y-4 p-5">
-                <div class="flex gap-3">
-                    <Skeleton class="size-9 rounded-[10px]" />
-                    <div class="flex-1 space-y-2">
-                        <Skeleton class="h-3 w-24" />
-                        <Skeleton class="h-3 w-3/4" />
+        <div class="relative flex min-h-0 flex-1 flex-col">
+            <div
+                ref="scrollContainer"
+                class="scrollbar-thin min-h-0 flex-1 scrollbar-thumb-border scrollbar-track-transparent overflow-y-auto overscroll-contain"
+                @scroll.passive="onScroll"
+            >
+                <div v-if="showSkeleton" class="space-y-4 p-5">
+                    <div class="flex gap-3">
+                        <Skeleton class="size-9 rounded-[10px]" />
+                        <div class="flex-1 space-y-2">
+                            <Skeleton class="h-3 w-24" />
+                            <Skeleton class="h-3 w-3/4" />
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <Skeleton class="size-9 rounded-[10px]" />
+                        <div class="flex-1 space-y-2">
+                            <Skeleton class="h-3 w-20" />
+                            <Skeleton class="h-3 w-1/2" />
+                        </div>
                     </div>
                 </div>
-                <div class="flex gap-3">
-                    <Skeleton class="size-9 rounded-[10px]" />
-                    <div class="flex-1 space-y-2">
-                        <Skeleton class="h-3 w-20" />
-                        <Skeleton class="h-3 w-1/2" />
-                    </div>
-                </div>
+
+                <!-- Older replies page in on scroll-up; keyed by root so switching
+                     threads mounts a fresh, bottom-anchored list. `preserve-url`
+                     keeps the cursor out of the URL, matching the main timeline. -->
+                <InfiniteScroll
+                    v-else
+                    :key="props.rootId"
+                    data="threadReplies"
+                    reverse
+                    preserve-url
+                >
+                    <MessageList
+                        :messages="props.messages"
+                        :team-slug="props.teamSlug"
+                        :pending-uuids="props.pendingUuids"
+                        :current-user-id="props.currentUserId"
+                        :can-moderate="props.canModerate"
+                        :can-react="props.canReact"
+                        :online-ids="props.onlineIds"
+                        in-thread
+                        @edit="(message, body) => emit('edit', message, body)"
+                        @delete="(message) => emit('delete', message)"
+                        @forward="(message) => emit('forward', message)"
+                        @react="
+                            (message, emoji) => emit('react', message, emoji)
+                        "
+                        @jump="(id) => emit('jump', id)"
+                        @mention="mentionInThread"
+                    />
+                </InfiniteScroll>
             </div>
 
-            <!-- Older replies page in on scroll-up; keyed by root so switching
-                 threads mounts a fresh, bottom-anchored list. `preserve-url`
-                 keeps the cursor out of the URL, matching the main timeline. -->
-            <InfiniteScroll
-                v-else
-                :key="props.rootId"
-                data="threadReplies"
-                reverse
-                preserve-url
+            <Transition
+                enter-active-class="transition duration-150 ease-out"
+                enter-from-class="translate-y-1 opacity-0"
+                enter-to-class="translate-y-0 opacity-100"
+                leave-active-class="transition duration-100 ease-in"
+                leave-from-class="translate-y-0 opacity-100"
+                leave-to-class="translate-y-1 opacity-0"
             >
-                <MessageList
-                    :messages="props.messages"
-                    :team-slug="props.teamSlug"
-                    :pending-uuids="props.pendingUuids"
-                    :current-user-id="props.currentUserId"
-                    :can-moderate="props.canModerate"
-                    :can-react="props.canReact"
-                    :online-ids="props.onlineIds"
-                    in-thread
-                    @edit="(message, body) => emit('edit', message, body)"
-                    @delete="(message) => emit('delete', message)"
-                    @forward="(message) => emit('forward', message)"
-                    @react="(message, emoji) => emit('react', message, emoji)"
-                    @jump="(id) => emit('jump', id)"
-                    @mention="mentionInThread"
-                />
-            </InfiniteScroll>
+                <button
+                    v-if="!pinnedToBottom"
+                    type="button"
+                    data-test="jump-to-latest-thread"
+                    :data-new-count="newMessageCount"
+                    :aria-label="
+                        newMessageCount > 0
+                            ? `${newMessageCount} new replies, jump to latest`
+                            : 'Jump to latest reply'
+                    "
+                    class="absolute right-4 bottom-4 z-10 inline-flex items-center gap-1.5 rounded-full shadow-md transition-colors"
+                    :class="
+                        newMessageCount > 0
+                            ? 'bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground hover:opacity-90'
+                            : 'size-9 justify-center bg-card text-muted-foreground ring-1 ring-border hover:bg-muted hover:text-foreground'
+                    "
+                    @click="scrollToBottom(true)"
+                >
+                    <ChevronDown class="size-4 shrink-0" />
+                    <span v-if="newMessageCount > 0">
+                        {{ newMessageCount }} new
+                        {{ newMessageCount === 1 ? 'reply' : 'replies' }}
+                    </span>
+                </button>
+            </Transition>
         </div>
 
         <MessageComposer
