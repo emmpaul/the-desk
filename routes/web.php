@@ -16,6 +16,7 @@ use App\Http\Controllers\Channels\ScheduledMessageController;
 use App\Http\Controllers\Channels\SearchController;
 use App\Http\Controllers\Channels\ThreadsController;
 use App\Http\Controllers\LocaleCatalogController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\SidebarSectionController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
@@ -104,6 +105,8 @@ Route::middleware(['auth', 'verified', EnsureTeamMembership::class])->group(func
 
 Route::middleware(['auth'])->group(function () {
     Route::patch('sidebar/sections', [SidebarSectionController::class, 'update'])->name('sidebar.sections.update');
+
+    Route::patch('onboarding', [OnboardingController::class, 'update'])->name('onboarding.update');
 
     Route::get('invitations/{invitation}/accept', [TeamInvitationController::class, 'accept'])->name('invitations.accept');
     Route::delete('invitations/{invitation}', [TeamInvitationController::class, 'decline'])->name('invitations.decline');

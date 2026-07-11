@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { Keyboard, LogOut, Settings } from '@lucide/vue';
+import { Compass, Keyboard, LogOut, Settings } from '@lucide/vue';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import UserInfo from '@/components/UserInfo.vue';
 import { useKeyboardShortcutsModal } from '@/composables/useKeyboardShortcutsModal';
+import { useOnboardingTour } from '@/composables/useOnboardingTour';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import type { User } from '@/types';
@@ -19,6 +20,7 @@ type Props = {
 };
 
 const { open: openKeyboardShortcuts } = useKeyboardShortcutsModal();
+const { open: replayOnboardingTour } = useOnboardingTour();
 
 const handleLogout = () => {
     router.flushAll();
@@ -49,6 +51,14 @@ defineProps<Props>();
             <Keyboard class="mr-2 h-4 w-4" />
             {{ $t('Keyboard shortcuts') }}
             <DropdownMenuShortcut>?</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+            class="cursor-pointer"
+            data-test="replay-tour-menu-item"
+            @select="replayOnboardingTour"
+        >
+            <Compass class="mr-2 h-4 w-4" />
+            {{ $t('Replay tour') }}
         </DropdownMenuItem>
     </DropdownMenuGroup>
     <DropdownMenuSeparator />
