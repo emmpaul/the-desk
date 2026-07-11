@@ -45,21 +45,27 @@ const indicator = computed(() =>
 );
 
 /**
- * Close (hide) this DM from the sidebar, reloading only the shared `channels`
- * prop so the row leaves without a full reload. A later message — or reopening
- * the conversation — brings it back.
+ * Close (hide) this DM from the sidebar. Closing a DM the user isn't viewing just
+ * reloads the shared `channels` prop so the row leaves in place; closing the DM
+ * they're currently on redirects them home (the server sends them to the team's
+ * default channel) so they don't linger on the now-hidden conversation. A later
+ * message — or reopening the conversation — brings it back.
  */
 function hide(): void {
+    const leaving = isActive.value;
+
     router.post(
         hideDirectMessage({
             team: props.teamSlug,
             channel: props.channel.slug,
         }).url,
-        {},
+        { leaving },
         {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['channels'],
+            // Staying put: patch only the sidebar and keep the current view.
+            // Leaving: let the redirect home drive a normal visit.
+            preserveScroll: !leaving,
+            preserveState: !leaving,
+            ...(leaving ? {} : { only: ['channels'] }),
             onError: () => {
                 toast.error(
                     t('Failed to close the conversation. Please try again.'),

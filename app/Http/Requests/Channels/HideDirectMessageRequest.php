@@ -24,7 +24,12 @@ class HideDirectMessageRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            // Set when the user closes the DM they are currently viewing, so the
+            // controller redirects them home instead of back onto the now-hidden
+            // conversation.
+            'leaving' => ['sometimes', 'boolean'],
+        ];
     }
 
     /**

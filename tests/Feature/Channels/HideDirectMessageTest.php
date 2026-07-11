@@ -128,6 +128,21 @@ test('hiding is per member and does not hide the direct message for the other pa
     expect(hideSidebarChannels($other, $team))->toHaveKey($dm->slug);
 });
 
+test('closing the direct message being viewed redirects home', function () {
+    $owner = User::factory()->create();
+    $team = app(CreateTeam::class)->handle($owner, 'Acme');
+    $other = hideTeamMember($team);
+
+    $dm = app(OpenDirectMessage::class)->handle($team, $owner, $other);
+    Message::factory()->for($dm)->for($owner, 'user')->create();
+
+    $this->actingAs($owner)
+        ->post(route('channels.dm.hide', ['team' => $team->slug, 'channel' => $dm->slug]), ['leaving' => true])
+        ->assertRedirect(route('channels.index', ['team' => $team->slug]));
+
+    expect(hideSidebarChannels($owner, $team))->not->toHaveKey($dm->slug);
+});
+
 test('a standard channel cannot be hidden', function () {
     $owner = User::factory()->create();
     $team = app(CreateTeam::class)->handle($owner, 'Acme');
