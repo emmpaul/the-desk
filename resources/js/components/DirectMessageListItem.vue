@@ -43,8 +43,16 @@ const isActive = computed(() => props.channel.slug === props.activeChannelSlug);
                 :data-test="`dm-row-${channel.slug}`"
             >
                 <span class="relative size-[18px] shrink-0">
+                    <!-- On the active row the button fills with the brass
+                         primary, so the avatar switches to a light-on-dark
+                         treatment to stay legible instead of washing out. -->
                     <span
-                        class="flex size-[18px] items-center justify-center rounded-full bg-primary/10 text-[8px] font-semibold text-primary select-none"
+                        class="flex size-[18px] items-center justify-center rounded-full text-[8px] font-semibold select-none"
+                        :class="
+                            isActive
+                                ? 'bg-sidebar-primary-foreground/25 text-sidebar-primary-foreground'
+                                : 'bg-primary/10 text-primary'
+                        "
                         aria-hidden="true"
                         >{{ getInitials(channel.name) }}</span
                     >
@@ -52,10 +60,13 @@ const isActive = computed(() => props.channel.slug === props.activeChannelSlug);
                         data-test="dm-presence-dot"
                         :data-online="online"
                         :aria-label="online ? $t('Online') : $t('Offline')"
-                        class="absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-sidebar"
-                        :class="
-                            online ? 'bg-emerald-500' : 'bg-muted-foreground/50'
-                        "
+                        class="absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2"
+                        :class="[
+                            online
+                                ? 'bg-emerald-500'
+                                : 'bg-muted-foreground/50',
+                            isActive ? 'ring-sidebar-primary' : 'ring-sidebar',
+                        ]"
                     />
                 </span>
                 <span
