@@ -6,6 +6,7 @@ import ScheduleMessageDialog from '@/components/ScheduleMessageDialog.vue';
 import { Button } from '@/components/ui/button';
 import { useInitials } from '@/composables/useInitials';
 import { useTranslations } from '@/composables/useTranslations';
+import { isInteractiveComposerTarget } from '@/lib/composerFocus';
 import type { Mention, Message } from '@/types';
 
 const props = defineProps<{
@@ -256,6 +257,33 @@ function focus(): void {
     nextTick(() => textarea.value?.focus());
 }
 
+// The whole card reads as "the message box", so a click anywhere in its chrome —
+// the padding, the whitespace around the single line of text — should activate
+// the input. Clicks that land on a control (send/attachment/schedule buttons) or
+// on the textarea itself carry their own behaviour and are left untouched; only
+// clicks on the non-interactive chrome fall through here to focus the field with
+// the caret at the end. `mousedown` is preventable before focus shifts, so the
+// redirect happens without a flicker of the card losing then regaining focus.
+function focusFromCard(event: MouseEvent): void {
+    const el = textarea.value;
+
+    if (
+        !el ||
+        isInteractiveComposerTarget(
+            event.target as Element | null,
+            event.currentTarget as Element,
+        )
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+    el.focus();
+
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+}
+
 defineExpose({ insertMention, focus });
 
 // Clear the composer after the text has been handed off (an immediate send or a
@@ -408,6 +436,7 @@ function onKeydown(event: KeyboardEvent): void {
                  wraps, with the tools pinned to the bottom edge. -->
             <div
                 class="flex items-end gap-2.5 rounded-[26px] border border-input bg-card py-2 pr-2 pl-[18px] shadow-[0_3px_12px_rgba(29,26,21,0.08)] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/20 dark:shadow-[0_3px_12px_rgba(0,0,0,0.3)]"
+                @mousedown="focusFromCard"
             >
                 <textarea
                     ref="textarea"
