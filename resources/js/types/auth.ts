@@ -16,6 +16,7 @@ export type User = {
     updated_at: string;
     chime_sound: ChimeSound;
     share_read_receipts: boolean;
+    onboarding_completed_at: string | null;
     [key: string]: unknown;
 };
 

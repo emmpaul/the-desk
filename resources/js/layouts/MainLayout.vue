@@ -39,6 +39,7 @@ import InviteMemberModal from '@/components/InviteMemberModal.vue';
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal.vue';
 import NavUser from '@/components/NavUser.vue';
 import NewDirectMessageModal from '@/components/NewDirectMessageModal.vue';
+import OnboardingTour from '@/components/OnboardingTour.vue';
 import PendingInvitationsModal from '@/components/PendingInvitationsModal.vue';
 import QuickSwitcher from '@/components/QuickSwitcher.vue';
 import SettingsNav from '@/components/SettingsNav.vue';
@@ -70,6 +71,10 @@ import { useInitials } from '@/composables/useInitials';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useKeyboardShortcutsModal } from '@/composables/useKeyboardShortcutsModal';
 import { useNewDirectMessages } from '@/composables/useNewDirectMessages';
+import {
+    shouldAutoStartTour,
+    useOnboardingTour,
+} from '@/composables/useOnboardingTour';
 import { useSidebarBadges } from '@/composables/useSidebarBadges';
 import { useTeamPresence } from '@/composables/useTeamPresence';
 import { useTeamSwitch } from '@/composables/useTeamSwitch';
@@ -483,6 +488,7 @@ function toggleSection(section: SidebarSectionKey): void {
 
 const { getInitials } = useInitials();
 const { switchTeam } = useTeamSwitch();
+const { start: startOnboardingTour } = useOnboardingTour();
 
 const quickSwitcherOpen = ref(false);
 const { isOpen: shortcutsOpen, toggle: toggleShortcuts } =
@@ -524,6 +530,13 @@ onMounted(() => {
 
     // Persist the browser's timezone on first login when none is stored yet.
     syncDetectedTimezone();
+
+    // Auto-start the first-run tour for a user who has never completed it, but
+    // not while they're deep in settings (the tour anchors live on the channel
+    // workspace); replaying is always available from the user menu.
+    if (!isSettingsSection.value && shouldAutoStartTour(page.props.auth.user)) {
+        startOnboardingTour();
+    }
 });
 </script>
 
@@ -614,6 +627,7 @@ onMounted(() => {
                             type="button"
                             :title="$t('Invite people')"
                             data-test="invite-member-trigger"
+                            data-tour="invite"
                             class="flex size-6 items-center justify-center rounded-[7px] border border-sidebar-border text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
                             @click="inviteOpen = true"
                         >
@@ -919,6 +933,7 @@ onMounted(() => {
                             <SidebarGroupAction
                                 :title="$t('Create channel')"
                                 data-test="create-channel-trigger"
+                                data-tour="create-channel"
                                 class="top-2 size-5 rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                             >
                                 <Plus class="size-[13px]" />
@@ -965,6 +980,27 @@ onMounted(() => {
                                     />
                                 </template>
                             </draggable>
+                            <!-- Brand-new workspace: nothing files into the
+                                 default list yet. A dashed hint stands in until
+                                 the first channel appears. -->
+                            <div
+                                v-if="defaultList.length === 0"
+                                data-test="no-channels-empty"
+                                class="mx-1 mt-1.5 flex flex-col gap-1 rounded-[11px] border border-dashed border-sidebar-border px-3 py-3.5 text-center"
+                            >
+                                <span
+                                    class="text-[12.5px] font-semibold text-sidebar-foreground/70"
+                                    >{{ $t('No channels yet') }}</span
+                                >
+                                <span
+                                    class="text-[11.5px] leading-[1.45] text-muted-foreground"
+                                    >{{
+                                        $t(
+                                            'Channels keep conversations organized by topic.',
+                                        )
+                                    }}</span
+                                >
+                            </div>
                         </SidebarGroupContent>
                     </SidebarGroup>
 
@@ -1181,5 +1217,7 @@ onMounted(() => {
         />
 
         <KeyboardShortcutsModal v-model:open="shortcutsOpen" />
+
+        <OnboardingTour />
     </SidebarProvider>
 </template>

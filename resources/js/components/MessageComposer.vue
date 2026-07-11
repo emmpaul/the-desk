@@ -250,7 +250,13 @@ function insertMention(member: Mention): void {
     });
 }
 
-defineExpose({ insertMention });
+// Focus the input field, e.g. from the brand-new-workspace welcome's "Post your
+// first message" action.
+function focus(): void {
+    nextTick(() => textarea.value?.focus());
+}
+
+defineExpose({ insertMention, focus });
 
 // Clear the composer after the text has been handed off (an immediate send or a
 // scheduled one), flagging the wipe so it doesn't re-persist as a draft.

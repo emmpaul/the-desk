@@ -59,10 +59,26 @@ function handleOpenChange(value: boolean) {
                 @success="emit('update:open', false)"
             >
                 <DialogHeader>
-                    <DialogTitle>{{ $t('Invite a team member') }}</DialogTitle>
-                    <DialogDescription>
-                        {{ $t('Send an invitation to join this team.') }}
-                    </DialogDescription>
+                    <template v-if="props.team.membersCount <= 1">
+                        <DialogTitle>{{
+                            $t('It’s just you in here')
+                        }}</DialogTitle>
+                        <DialogDescription>
+                            {{
+                                $t(
+                                    'A workspace comes alive with people. Invite a few teammates to get the conversation going.',
+                                )
+                            }}
+                        </DialogDescription>
+                    </template>
+                    <template v-else>
+                        <DialogTitle>{{
+                            $t('Invite a team member')
+                        }}</DialogTitle>
+                        <DialogDescription>
+                            {{ $t('Send an invitation to join this team.') }}
+                        </DialogDescription>
+                    </template>
                 </DialogHeader>
 
                 <div class="grid gap-4">

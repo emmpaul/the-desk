@@ -40,6 +40,10 @@ class UserFactory extends Factory
             'locale' => AppLocale::English->value,
             'chime_sound' => ChimeSound::Ping->value,
             'share_read_receipts' => true,
+            // Factory users are onboarded by default so the first-run tour never
+            // auto-fires in unrelated feature/browser tests; opt into the pre-tour
+            // state with the notOnboarded() helper below.
+            'onboarding_completed_at' => now(),
         ];
     }
 
@@ -78,6 +82,16 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'share_read_receipts' => false,
+        ]);
+    }
+
+    /**
+     * Indicate that the user has not yet completed the first-run onboarding tour.
+     */
+    public function notOnboarded(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'onboarding_completed_at' => null,
         ]);
     }
 

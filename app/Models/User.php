@@ -41,6 +41,7 @@ use Illuminate\Support\Str;
  * @property string|null $current_team_id
  * @property ChimeSound $chime_sound
  * @property bool $share_read_receipts
+ * @property Carbon|null $onboarding_completed_at
  * @property bool $is_tombstone
  * @property array<int, string>|null $collapsed_channel_sections
  * @property Carbon|null $created_at
@@ -53,7 +54,7 @@ use Illuminate\Support\Str;
  * @property-read Collection<int, ChannelSection> $channelSections
  * @property-read Collection<int, DataExport> $dataExports
  */
-#[Fillable(['name', 'email', 'pronouns', 'title', 'phone', 'timezone', 'locale', 'password', 'current_team_id', 'chime_sound', 'share_read_receipts', 'collapsed_channel_sections', 'is_tombstone'])]
+#[Fillable(['name', 'email', 'pronouns', 'title', 'phone', 'timezone', 'locale', 'password', 'current_team_id', 'chime_sound', 'share_read_receipts', 'onboarding_completed_at', 'collapsed_channel_sections', 'is_tombstone'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements HasLocalePreference
 {
@@ -82,6 +83,7 @@ class User extends Authenticatable implements HasLocalePreference
             'locale' => AppLocale::class,
             'chime_sound' => ChimeSound::class,
             'share_read_receipts' => 'boolean',
+            'onboarding_completed_at' => 'datetime',
             'is_tombstone' => 'boolean',
             'collapsed_channel_sections' => 'array',
         ];
