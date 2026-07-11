@@ -87,7 +87,7 @@ services:
       retries: 5
 
   meilisearch:
-    image: getmeili/meilisearch:v1.16
+    image: getmeili/meilisearch:v1.49
     environment:
       MEILI_MASTER_KEY: ${MEILISEARCH_KEY:?MEILISEARCH_KEY is required}
       MEILI_ENV: production
