@@ -5,6 +5,12 @@ on:
     branches:
       - master
 
+# Serialize release runs on master but never cancel an in-flight one — cancelling
+# release-please mid-run could leave a release PR or tag half-created.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write

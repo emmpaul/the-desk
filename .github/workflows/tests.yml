@@ -4,15 +4,17 @@ on:
   push:
     branches:
       - develop
-      - main
       - master
-      - workos
   pull_request:
     branches:
       - develop
-      - main
       - master
-      - workos
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR) so we don't
+# burn Actions minutes finishing runs whose results are already stale.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -22,8 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Symfony 8 (Laravel 13) requires PHP >= 8.4, so 8.3 cannot install the locked deps.
-        php-version: ['8.4', '8.5']
+        # We develop and ship on 8.5, so CI exercises 8.5 only to keep Actions
+        # minutes down (see #260). 8.4 remains the supported composer floor via
+        # composer.json's `require`; it's just no longer tested on every run.
+        php-version: ['8.5']
 
     # The schema relies on Postgres-only defaults (gen_random_uuid()), so tests
     # run against Postgres to match the local Sail environment.
@@ -67,12 +71,17 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '22'
+          cache: 'npm'
 
       - name: Install Node Dependencies
         run: npm i
 
+      # Caches the Composer download cache keyed on composer.lock, so unchanged
+      # dependency sets skip re-fetching packages on every run.
       - name: Install Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        uses: ramsey/composer-install@a8d0d959dab41457692a5e2041bd9b757a119e3f # v3.2.1
+        with:
+          composer-options: '--optimize-autoloader'
 
       - name: Copy Environment File
         run: cp .env.example .env
