@@ -171,6 +171,178 @@ test('team invitations can be cancelled by owners', function (): void {
     ]);
 });
 
+test('pending team invitations can be resent by owners', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+
+    $invitation = TeamInvitation::factory()->expiresIn(1)->create([
+        'team_id' => $team->id,
+        'email' => 'invited@example.com',
+        'invited_by' => $owner->id,
+    ]);
+
+    $response = $this
+        ->actingAs($owner)
+        ->post(route('teams.invitations.resend', [$team, $invitation]));
+
+    $response->assertRedirect(route('teams.edit', $team));
+    $response->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Invitation resent.']);
+
+    expect($invitation->fresh()->expires_at->diffInDays(now(), true))->toBeGreaterThan(2);
+
+    Notification::assertSentOnDemand(
+        TeamInvitationNotification::class,
+        fn (TeamInvitationNotification $notification, array $channels, object $notifiable): bool => $notifiable->routes['mail'] === 'invited@example.com'
+            && $notification->invitation->is($invitation),
+    );
+});
+
+test('resending keeps the invitation code so previous links still resolve', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+
+    $invitation = TeamInvitation::factory()->create([
+        'team_id' => $team->id,
+        'invited_by' => $owner->id,
+    ]);
+    $originalCode = $invitation->code;
+
+    $this
+        ->actingAs($owner)
+        ->post(route('teams.invitations.resend', [$team, $invitation]));
+
+    expect($invitation->fresh()->code)->toBe($originalCode);
+});
+
+test('resending an expired but still-present invitation refreshes it instead of erroring', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+
+    $invitation = TeamInvitation::factory()->expired()->create([
+        'team_id' => $team->id,
+        'invited_by' => $owner->id,
+    ]);
+
+    $response = $this
+        ->actingAs($owner)
+        ->post(route('teams.invitations.resend', [$team, $invitation]));
+
+    $response->assertRedirect(route('teams.edit', $team));
+
+    expect($invitation->fresh()->isExpired())->toBeFalse();
+
+    Notification::assertSentOnDemand(TeamInvitationNotification::class);
+});
+
+test('team invitations cannot be resent by members', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+    $team->members()->attach($member, ['role' => TeamRole::Member->value]);
+
+    $invitation = TeamInvitation::factory()->create([
+        'team_id' => $team->id,
+        'invited_by' => $owner->id,
+    ]);
+
+    $response = $this
+        ->actingAs($member)
+        ->post(route('teams.invitations.resend', [$team, $invitation]));
+
+    $response->assertForbidden();
+
+    Notification::assertNothingSent();
+});
+
+test('an invitation cannot be resent through a mismatched team', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $team = Team::factory()->create();
+    $otherTeam = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+    $otherTeam->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+
+    $invitation = TeamInvitation::factory()->create([
+        'team_id' => $team->id,
+        'invited_by' => $owner->id,
+    ]);
+
+    $response = $this
+        ->actingAs($owner)
+        ->post(route('teams.invitations.resend', [$otherTeam, $invitation]));
+
+    $response->assertNotFound();
+
+    Notification::assertNothingSent();
+});
+
+test('accepted team invitations cannot be resent', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+
+    $invitation = TeamInvitation::factory()->accepted()->create([
+        'team_id' => $team->id,
+        'invited_by' => $owner->id,
+    ]);
+
+    $response = $this
+        ->actingAs($owner)
+        ->post(route('teams.invitations.resend', [$team, $invitation]));
+
+    $response->assertNotFound();
+
+    Notification::assertNothingSent();
+});
+
+test('resending an invitation is rate limited per invitation', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+
+    $invitation = TeamInvitation::factory()->create([
+        'team_id' => $team->id,
+        'invited_by' => $owner->id,
+    ]);
+
+    $this
+        ->actingAs($owner)
+        ->post(route('teams.invitations.resend', [$team, $invitation]));
+
+    $response = $this
+        ->actingAs($owner)
+        ->post(route('teams.invitations.resend', [$team, $invitation]));
+
+    $response->assertRedirect(route('teams.edit', $team));
+    $response->assertInertiaFlash('toast', ['type' => 'error', 'message' => 'Please wait a moment before resending this invitation.']);
+
+    Notification::assertSentOnDemandTimes(TeamInvitationNotification::class, 1);
+});
+
 test('team invitations can be accepted', function (): void {
     $owner = User::factory()->create();
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);

@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 
 class TeamInvitationController extends Controller
@@ -51,6 +52,37 @@ class TeamInvitationController extends Controller
         $invitation->delete();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation cancelled.')]);
+
+        return to_route('teams.edit', ['team' => $team->slug]);
+    }
+
+    /**
+     * Resend the specified pending invitation, refreshing its expiry.
+     */
+    public function resend(Team $team, TeamInvitation $invitation): RedirectResponse
+    {
+        abort_unless($invitation->team_id === $team->id, 404);
+
+        Gate::authorize('inviteMember', $team);
+
+        abort_if($invitation->isAccepted(), 404);
+
+        $throttleKey = 'resend-invitation:'.$invitation->id;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 1)) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('Please wait a moment before resending this invitation.')]);
+
+            return to_route('teams.edit', ['team' => $team->slug]);
+        }
+
+        RateLimiter::hit($throttleKey, 60);
+
+        $invitation->update(['expires_at' => now()->addDays(3)]);
+
+        Notification::route('mail', $invitation->email)
+            ->notify(new TeamInvitationNotification($invitation));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation resent.')]);
 
         return to_route('teams.edit', ['team' => $team->slug]);
     }
