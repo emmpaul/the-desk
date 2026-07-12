@@ -21,6 +21,7 @@ import { useTranslations } from '@/composables/useTranslations';
 import { planForward } from '@/lib/forwardPlacement';
 import type { Outbox } from '@/lib/outbox';
 import { toggleReaction } from '@/lib/reactions';
+import { generateUuid } from '@/lib/uuid';
 import type { Channel, Mention, Message } from '@/types';
 import type { ForwardTarget } from '@/types/forward';
 
@@ -176,7 +177,7 @@ export function useMessageActions(
         // in flight; otherwise it would re-persist the just-sent text.
         options.cancelDraft();
 
-        const clientUuid = crypto.randomUUID();
+        const clientUuid = generateUuid();
         const target = options.replyTarget.value;
         const replyToId = target?.id ?? null;
 
@@ -338,7 +339,7 @@ export function useMessageActions(
     ): void {
         const channel = options.channel();
         const { target, note } = payload;
-        const clientUuid = crypto.randomUUID();
+        const clientUuid = generateUuid();
         const plan = planForward({ target, channel });
 
         if (plan.toCurrentChannel) {
@@ -411,7 +412,7 @@ export function useMessageActions(
         }
 
         const channel = options.channel();
-        const clientUuid = crypto.randomUUID();
+        const clientUuid = generateUuid();
         const optimistic = optimisticMessage({
             clientUuid,
             body,
@@ -477,7 +478,7 @@ export function useMessageActions(
             }).url,
             {
                 body,
-                client_uuid: crypto.randomUUID(),
+                client_uuid: generateUuid(),
                 reply_to_id: target?.id ?? null,
                 send_at: sendAt,
             },
