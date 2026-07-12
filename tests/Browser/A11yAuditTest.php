@@ -51,3 +51,67 @@ test('the authenticated channel page has no serious accessibility violations in 
     $page->wait(0.5)
         ->assertNoAccessibilityIssues();
 });
+
+test('the unread jump-to-unread pill has no serious accessibility violations in either theme', function (): void {
+    ['owner' => $alice, 'member' => $bob, 'channel' => $channel] = browserTeamWithChannel();
+
+    // Seed one read message to anchor Alice's read pointer, then a long run of
+    // unread ones. On mount the timeline auto-scrolls to the newest message, so
+    // the unread boundary lands far above the rendered window — the state that
+    // surfaces the floating "New messages" jump pill (`showJumpToUnread`). Its
+    // white-on-rose fill carried known contrast debt (#278) and, unlike the
+    // divider token, isn't a theme variable the CSS-parse contrast spec can
+    // reach — so a rendered axe pass is the only guard for the darkened pill.
+    $read = Message::factory()->create([
+        'channel_id' => $channel->id,
+        'user_id' => $bob->id,
+        'body' => 'Anchor message',
+        'created_at' => now()->subMinutes(41),
+    ]);
+
+    foreach (range(1, 40) as $i) {
+        Message::factory()->create([
+            'channel_id' => $channel->id,
+            'user_id' => $bob->id,
+            'body' => "Unread message {$i}",
+            'created_at' => now()->subMinutes(41 - $i),
+        ]);
+    }
+
+    $alice->channels()->updateExistingPivot($channel->id, [
+        'last_read_message_id' => $read->id,
+    ]);
+
+    $page = signInThroughBrowser($alice)
+        ->assertSee('Anchor message');
+
+    // The channel opens anchored on the unread divider, which keeps the pill
+    // hidden (the boundary is on-screen). Scroll the message-history region to the
+    // bottom so the virtualizer drops the divider off the top of its window — the
+    // exact condition (`dividerIndex < startIndex`) that reveals the jump pill.
+    $page->script(<<<'JS'
+    () => {
+        const region = document.querySelector('[role="region"]');
+        region.scrollTop = region.scrollHeight;
+        region.dispatchEvent(new Event('scroll'));
+    }
+    JS);
+
+    $page->wait(0.5)
+        ->assertPresent('[data-test="jump-to-unread"]')
+        ->assertNoAccessibilityIssues();
+
+    // Re-audit the pill against the dark palette (see the sibling test for why the
+    // localStorage write must precede the `.dark` class).
+    $page->script(<<<'JS'
+    () => {
+        localStorage.setItem('appearance', 'dark');
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+    }
+    JS);
+
+    $page->wait(0.5)
+        ->assertPresent('[data-test="jump-to-unread"]')
+        ->assertNoAccessibilityIssues();
+});

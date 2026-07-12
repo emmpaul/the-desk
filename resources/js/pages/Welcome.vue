@@ -154,32 +154,31 @@ const getStartedUrl = computed(() =>
                         >
                             Jump to&hellip;
                             <span
-                                class="ml-auto font-mono text-[9px] font-semibold text-muted-foreground/70"
+                                class="ml-auto font-mono text-[9px] font-semibold text-muted-foreground"
                                 >&#8984;K</span
                             >
                         </div>
 
                         <span
-                            class="px-1.5 py-1 text-[10px] font-bold tracking-[0.1em] text-muted-foreground/70 uppercase"
+                            class="px-1.5 py-1 text-[10px] font-bold tracking-[0.1em] text-muted-foreground uppercase"
                             >Starred</span
                         >
                         <div
                             class="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] text-foreground/70"
                         >
                             <span class="text-brass">&#9733;</span>
-                            <span class="text-muted-foreground/70">#</span
-                            >general
+                            <span class="text-muted-foreground">#</span>general
                         </div>
 
                         <span
-                            class="mt-2 px-1.5 py-1 text-[10px] font-bold tracking-[0.1em] text-muted-foreground/70 uppercase"
+                            class="mt-2 px-1.5 py-1 text-[10px] font-bold tracking-[0.1em] text-muted-foreground uppercase"
                             >Channels</span
                         >
                         <div class="flex flex-col gap-px">
                             <div
                                 class="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-semibold"
                             >
-                                <span class="text-muted-foreground/80">#</span
+                                <span class="text-muted-foreground">#</span
                                 >announcements
                                 <span
                                     class="ml-auto flex h-4 min-w-[17px] items-center justify-center rounded-full bg-brass px-1.5 text-[9.5px] font-bold text-brass-foreground"
@@ -189,7 +188,7 @@ const getStartedUrl = computed(() =>
                             <div
                                 class="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] text-foreground/70"
                             >
-                                <span class="text-muted-foreground/70">#</span
+                                <span class="text-muted-foreground">#</span
                                 >leadership
                             </div>
                             <div
@@ -200,7 +199,7 @@ const getStartedUrl = computed(() =>
                             <div
                                 class="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] text-foreground/70"
                             >
-                                <span class="text-muted-foreground/70">#</span
+                                <span class="text-muted-foreground">#</span
                                 >support
                             </div>
                         </div>
@@ -305,7 +304,7 @@ const getStartedUrl = computed(() =>
                                     ></span>
                                 </div>
                                 <span
-                                    class="font-mono text-[9px] text-muted-foreground/70"
+                                    class="font-mono text-[9px] text-muted-foreground"
                                     >9:14</span
                                 >
                             </div>
@@ -365,7 +364,7 @@ const getStartedUrl = computed(() =>
                                 class="h-px flex-1 bg-gradient-to-r from-transparent to-brass-border"
                             ></span>
                             <span
-                                class="font-serif text-xs text-brass-border italic"
+                                class="font-serif text-xs text-brass-fill-foreground italic"
                                 >new</span
                             >
                             <span
@@ -384,7 +383,7 @@ const getStartedUrl = computed(() =>
                                     JW
                                 </div>
                                 <span
-                                    class="font-mono text-[9px] text-muted-foreground/70"
+                                    class="font-mono text-[9px] text-muted-foreground"
                                     >10:41</span
                                 >
                             </div>
@@ -410,7 +409,7 @@ const getStartedUrl = computed(() =>
                             class="mt-1.5 mb-1 flex items-center justify-end gap-1.5"
                         >
                             <span
-                                class="font-serif text-[10.5px] text-muted-foreground/70 italic"
+                                class="font-serif text-[10.5px] text-muted-foreground italic"
                                 >Seen by</span
                             >
                             <span class="flex">
@@ -492,7 +491,7 @@ const getStartedUrl = computed(() =>
                             <div class="flex items-baseline gap-1.5">
                                 <span class="text-xs font-bold">Maya Chen</span>
                                 <span
-                                    class="font-mono text-[9px] text-muted-foreground/70"
+                                    class="font-mono text-[9px] text-muted-foreground"
                                     >9:14</span
                                 >
                             </div>
@@ -516,7 +515,7 @@ const getStartedUrl = computed(() =>
                                         >Jonas Weber</span
                                     >
                                     <span
-                                        class="font-mono text-[9px] text-muted-foreground/70"
+                                        class="font-mono text-[9px] text-muted-foreground"
                                         >10:44</span
                                     >
                                 </div>
@@ -541,7 +540,7 @@ const getStartedUrl = computed(() =>
                                         >Priya Nair</span
                                     >
                                     <span
-                                        class="font-mono text-[9px] text-muted-foreground/70"
+                                        class="font-mono text-[9px] text-muted-foreground"
                                         >10:52</span
                                     >
                                 </div>
@@ -563,12 +562,11 @@ const getStartedUrl = computed(() =>
                         <div
                             class="flex items-center gap-2 rounded-full border border-input bg-card py-1.5 pr-1.5 pl-3.5"
                         >
-                            <span
-                                class="flex-1 text-xs text-muted-foreground/70"
+                            <span class="flex-1 text-xs text-muted-foreground"
                                 >Reply&hellip;</span
                             >
                             <span
-                                class="flex size-[26px] items-center justify-center rounded-full bg-muted text-muted-foreground/70"
+                                class="flex size-[26px] items-center justify-center rounded-full bg-muted text-muted-foreground"
                                 >&uarr;</span
                             >
                         </div>
