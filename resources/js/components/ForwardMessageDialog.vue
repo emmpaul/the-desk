@@ -245,7 +245,7 @@ function submit(): void {
                     class="mb-1 block text-[12px] font-medium text-muted-foreground"
                 >
                     {{ $t('Add a note') }}
-                    <span class="font-normal text-muted-foreground/70">{{
+                    <span class="font-normal text-muted-foreground">{{
                         $t('(optional)')
                     }}</span>
                 </label>

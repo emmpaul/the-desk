@@ -106,7 +106,7 @@ function toggleStar(): void {
                             ? 'text-brass'
                             : channel.unreadCount > 0
                               ? 'text-muted-foreground'
-                              : 'text-muted-foreground/60'
+                              : 'text-muted-foreground'
                     "
                     >#</span
                 >

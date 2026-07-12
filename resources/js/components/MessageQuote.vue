@@ -23,7 +23,7 @@ const preview = computed(() =>
         <span
             v-if="isDeleted"
             data-test="quote-deleted"
-            class="truncate font-serif text-muted-foreground/70 italic"
+            class="truncate font-serif text-muted-foreground italic"
         >
             {{ $t('Original message was deleted') }}
         </span>

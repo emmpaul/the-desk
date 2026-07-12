@@ -154,13 +154,13 @@ function jumpHref(result: MessageSearchResult): string {
                                     <span class="font-semibold text-foreground">
                                         {{ result.message.user.name }}
                                     </span>
-                                    <span class="text-muted-foreground/70">
-                                        <span class="text-muted-foreground/50"
+                                    <span class="text-muted-foreground">
+                                        <span class="text-muted-foreground"
                                             >#</span
                                         >{{ result.channelName }}
                                     </span>
                                     <span
-                                        class="ml-auto shrink-0 text-[11px] text-muted-foreground/70"
+                                        class="ml-auto shrink-0 text-[11px] text-muted-foreground"
                                     >
                                         {{
                                             formatTimestamp(

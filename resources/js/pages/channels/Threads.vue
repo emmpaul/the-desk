@@ -109,14 +109,14 @@ function formatTimestamp(iso: string): string {
                                     <span class="font-semibold text-foreground">
                                         {{ item.root.user.name }}
                                     </span>
-                                    <span class="text-muted-foreground/70">
-                                        <span class="text-muted-foreground/50"
+                                    <span class="text-muted-foreground">
+                                        <span class="text-muted-foreground"
                                             >#</span
                                         >{{ item.channelName }}
                                     </span>
                                     <span
                                         v-if="item.root.threadLastReplyAt"
-                                        class="ml-auto shrink-0 text-[11px] text-muted-foreground/70"
+                                        class="ml-auto shrink-0 text-[11px] text-muted-foreground"
                                     >
                                         {{
                                             formatTimestamp(

@@ -33,7 +33,7 @@ const rendered = computed(() =>
             <Forward class="size-3 shrink-0" aria-hidden="true" />
             <span v-if="channelName">
                 {{ $t('Forwarded from') }}
-                <span class="text-muted-foreground/70">#</span>{{ channelName }}
+                <span class="text-muted-foreground">#</span>{{ channelName }}
             </span>
             <span v-else>
                 {{ $t('Forwarded from a direct message') }}
@@ -45,7 +45,7 @@ const rendered = computed(() =>
             <p
                 v-if="isDeleted"
                 data-test="forward-deleted"
-                class="font-serif text-[13px] text-muted-foreground/70 italic"
+                class="font-serif text-[13px] text-muted-foreground italic"
             >
                 {{ $t('Original message was deleted') }}
             </p>

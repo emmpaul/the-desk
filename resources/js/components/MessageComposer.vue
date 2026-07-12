@@ -452,7 +452,7 @@ function onKeydown(event: KeyboardEvent): void {
                     data-lpignore="true"
                     data-bwignore
                     data-form-type="other"
-                    class="max-h-[200px] min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+                    class="max-h-[200px] min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground"
                     @input="(resize(), refreshSuggestions(), emit('typing'))"
                     @click="refreshSuggestions"
                     @keydown="onKeydown"

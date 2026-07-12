@@ -48,7 +48,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         <slot />
 
         <DialogClose
-          class="absolute top-4 right-4 p-0.5 transition-colors rounded-md hover:bg-secondary"
+          class="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-md p-0.5 transition-colors hover:bg-secondary focus:ring-2 focus:ring-offset-2 focus:outline-hidden"
         >
           <X class="w-4 h-4" />
           <span class="sr-only">{{ $t('Close') }}</span>

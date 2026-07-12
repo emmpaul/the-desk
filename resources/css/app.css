@@ -119,20 +119,26 @@
     --secondary: #eeeade;
     --secondary-foreground: #1d1a15;
     --muted: #f0ece0;
-    --muted-foreground: #9b937f;
+    /* Secondary text (timestamps, labels, placeholders). Darkened to clear WCAG
+       AA 4.5:1 on every surface — background, card, muted, sidebar (#269). */
+    --muted-foreground: #6b6355;
     --accent: #f0ece0;
     --accent-foreground: #1d1a15;
     --destructive: hsl(0 72% 45%);
     --destructive-foreground: #f3efe4;
     --border: #e3dfd5;
     --input: #e0dbcd;
-    --ring: #c9a35c;
+    /* Focus indicator — decoupled from --brass and darkened to a bronze so the
+       ring itself clears the 3:1 non-text threshold (WCAG 2.4.7/1.4.11) on the
+       sand background; --brass keeps its lighter accent value (#269). */
+    --ring: #8a6a1f;
     --brass: #c9a35c;
     /* Ink text on a solid-brass fill (unread badges); stays ink in dark too. */
     --brass-foreground: #1d1a15;
     --brass-border: #b98e3f;
     --brass-fill: rgba(201, 163, 92, 0.14);
-    --brass-fill-foreground: #7d6023;
+    /* Reaction-pill text on the translucent brass fill — AA 4.5:1 (#269). */
+    --brass-fill-foreground: #6a521e;
     --chart-1: #c9a35c;
     --chart-2: #7d6023;
     --chart-3: #8b8370;
@@ -146,7 +152,7 @@
     --sidebar-accent: #f0ece0;
     --sidebar-accent-foreground: #1d1a15;
     --sidebar-border: #e3dfd5;
-    --sidebar-ring: #c9a35c;
+    --sidebar-ring: #8a6a1f;
     --sidebar: #fbfaf7;
     --sidebar-rail: #eeeade;
 }
@@ -163,7 +169,8 @@
     --secondary: #2a271f;
     --secondary-foreground: #f3efe4;
     --muted: #2a271f;
-    --muted-foreground: #8b8370;
+    /* Lightened to clear WCAG AA 4.5:1 on the dark muted/secondary surface (#269). */
+    --muted-foreground: #9d947e;
     --accent: #2e2a21;
     --accent-foreground: #f3efe4;
     --destructive: hsl(0 72% 55%);

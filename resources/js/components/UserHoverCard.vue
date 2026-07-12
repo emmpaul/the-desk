@@ -108,7 +108,7 @@ function onMessage(): void {
                             >
                             <span
                                 v-if="profile?.pronouns"
-                                class="font-serif text-xs text-muted-foreground/80 italic"
+                                class="font-serif text-xs text-muted-foreground italic"
                                 >{{ profile.pronouns }}</span
                             >
                         </div>

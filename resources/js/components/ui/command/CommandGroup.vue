@@ -37,7 +37,7 @@ onUnmounted(() => {
     :class="cn('text-foreground overflow-hidden p-1', props.class)"
     :hidden="isRender ? undefined : true"
   >
-    <ListboxGroupLabel v-if="heading" data-slot="command-group-heading" class="px-2.5 pt-1.5 pb-1 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground/80 uppercase">
+    <ListboxGroupLabel v-if="heading" data-slot="command-group-heading" class="px-2.5 pt-1.5 pb-1 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
       {{ heading }}
     </ListboxGroupLabel>
     <slot />

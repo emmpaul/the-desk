@@ -808,7 +808,7 @@ onMounted(() => {
                             <Search class="size-[13px] shrink-0" />
                             <span>{{ $t('Jump to…') }}</span>
                             <kbd
-                                class="ml-auto font-mono text-[10px] font-semibold tracking-wide text-muted-foreground/70"
+                                class="ml-auto font-mono text-[10px] font-semibold tracking-wide text-muted-foreground"
                                 >⌘K</kbd
                             >
                         </Button>
@@ -823,7 +823,7 @@ onMounted(() => {
                             variant="ghost"
                             data-test="section-toggle-starred"
                             :aria-expanded="!isSectionCollapsed('starred')"
-                            class="flex h-7 w-full items-center justify-start gap-1 rounded-md px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground/70 uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                            class="flex h-7 w-full items-center justify-start gap-1 rounded-md px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                             @click="toggleSection('starred')"
                         >
                             <ChevronRight
@@ -881,7 +881,7 @@ onMounted(() => {
                                 :data-test="`section-custom-${group.section.id}`"
                             >
                                 <div
-                                    class="group/section flex h-7 w-full items-center gap-1 rounded-md pr-1 pl-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground/70 uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                                    class="group/section flex h-7 w-full items-center gap-1 rounded-md pr-1 pl-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                                 >
                                     <Button
                                         variant="ghost"
@@ -1043,7 +1043,7 @@ onMounted(() => {
                                     </draggable>
                                     <p
                                         v-if="group.channels.length === 0"
-                                        class="px-7 pb-1 text-[12px] text-muted-foreground/50 normal-case"
+                                        class="px-7 pb-1 text-[12px] text-muted-foreground normal-case"
                                     >
                                         {{ $t('Drag channels here') }}
                                     </p>
@@ -1060,7 +1060,7 @@ onMounted(() => {
                             variant="ghost"
                             data-test="section-toggle-channels"
                             :aria-expanded="!isSectionCollapsed('channels')"
-                            class="flex h-7 w-full items-center justify-start gap-1 rounded-md px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground/70 uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                            class="flex h-7 w-full items-center justify-start gap-1 rounded-md px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                             @click="toggleSection('channels')"
                         >
                             <ChevronRight
@@ -1163,7 +1163,7 @@ onMounted(() => {
                             variant="ghost"
                             data-test="section-toggle-direct"
                             :aria-expanded="!isSectionCollapsed('direct')"
-                            class="flex h-7 w-full items-center justify-start gap-1 rounded-md px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground/70 uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                            class="flex h-7 w-full items-center justify-start gap-1 rounded-md px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                             @click="toggleSection('direct')"
                         >
                             <ChevronRight
@@ -1206,7 +1206,7 @@ onMounted(() => {
                             <p
                                 v-if="directList.length === 0"
                                 data-test="direct-messages-empty"
-                                class="px-2 pb-1 text-[12px] text-muted-foreground/50 normal-case"
+                                class="px-2 pb-1 text-[12px] text-muted-foreground normal-case"
                             >
                                 {{ $t('No direct messages yet') }}
                             </p>

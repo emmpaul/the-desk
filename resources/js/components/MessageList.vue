@@ -558,7 +558,7 @@ function confirmDelete(): void {
                             </div>
                         </UserHoverCard>
                         <span
-                            class="font-mono text-[9.5px] text-muted-foreground/70"
+                            class="font-mono text-[9.5px] text-muted-foreground"
                             >{{ formatTime(item.leadCreatedAt) }}</span
                         >
                     </div>
@@ -618,7 +618,7 @@ function confirmDelete(): void {
                             <p
                                 v-if="message.isDeleted"
                                 :data-test="'message-tombstone'"
-                                class="py-0.5 font-serif text-[13.5px] text-muted-foreground/70 italic"
+                                class="py-0.5 font-serif text-[13.5px] text-muted-foreground italic"
                             >
                                 {{ $t('This message was deleted') }}
                             </p>
@@ -749,7 +749,7 @@ function confirmDelete(): void {
                                 <span
                                     v-if="message.editedAt"
                                     :data-test="'message-edited'"
-                                    class="ml-1 align-baseline text-[11px] text-muted-foreground/70 select-none"
+                                    class="ml-1 align-baseline text-[11px] text-muted-foreground select-none"
                                     >{{ $t('(edited)') }}</span
                                 >
                             </p>

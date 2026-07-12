@@ -36,7 +36,8 @@ describe('"The Desk" design foundation', () => {
             ['--foreground', '#1d1a15'],
             ['--primary', '#1d1a15'],
             ['--primary-foreground', '#f3efe4'],
-            ['--muted-foreground', '#9b937f'],
+            // Darkened to clear WCAG AA on every surface (#269).
+            ['--muted-foreground', '#6b6355'],
             ['--border', '#e3dfd5'],
         ])('maps %s to the warm value %s', (property, value) => {
             expect(tokenValue(':root', property)).toBe(value);
@@ -49,7 +50,8 @@ describe('"The Desk" design foundation', () => {
             ['--card', '#1e1b15'],
             ['--foreground', '#f3efe4'],
             ['--primary', '#f3efe4'],
-            ['--muted-foreground', '#8b8370'],
+            // Lightened to clear WCAG AA on the dark muted surface (#269).
+            ['--muted-foreground', '#9d947e'],
             ['--border', '#2e2a21'],
         ])('maps %s to the warm value %s', (property, value) => {
             expect(tokenValue('.dark', property)).toBe(value);
@@ -67,7 +69,7 @@ describe('"The Desk" design foundation', () => {
                 'rgba(201, 163, 92, 0.14)',
             );
             expect(tokenValue(':root', '--brass-fill-foreground')).toBe(
-                '#7d6023',
+                '#6a521e',
             );
         });
 
