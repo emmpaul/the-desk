@@ -19,6 +19,7 @@ import type { useMessageStream } from '@/composables/useMessageStream';
 import { optimisticMessage } from '@/composables/useMessageStream';
 import { useTranslations } from '@/composables/useTranslations';
 import { planForward } from '@/lib/forwardPlacement';
+import type { Outbox } from '@/lib/outbox';
 import { toggleReaction } from '@/lib/reactions';
 import type { Channel, Mention, Message } from '@/types';
 import type { ForwardTarget } from '@/types/forward';
@@ -49,13 +50,25 @@ export interface MessageActionsOptions {
     scrollToBottom: () => void;
     /** Drop a pending draft save (a send/schedule clears the draft server-side). */
     cancelDraft: () => void;
+    /**
+     * Immediately clear the saved draft. A queued (offline) send never reaches the
+     * store endpoint that normally clears it, so without this a refresh would
+     * repopulate the composer with the already-queued text.
+     */
+    clearDraft: () => void;
     /** Clear the composer's reply quote. */
     cancelReply: () => void;
+    /** Whether the realtime socket is up; a send while offline queues instead. */
+    isOnline: () => boolean;
+    /** The offline queue holding channel sends until the connection recovers. */
+    outbox: Outbox;
 }
 
 export interface MessageActions {
     /** Send a message, optimistically, rolling the row back on error. */
     send: (body: string, mentions: Mention[]) => void;
+    /** Post every queued send, in order, then drop each from the queue. */
+    flushOutbox: () => void;
     /** Save an edit, optimistically, rolling the patch back on error. */
     editMessage: (message: Message, body: string) => void;
     /** Delete a message, optimistically, rolling the tombstone back on error. */
@@ -125,14 +138,47 @@ export function useMessageActions(
         options.threadStream.applyPatch(message);
     }
 
+    /**
+     * Fire the store request for one channel send, rolling the optimistic row
+     * back and toasting on failure. Shared by an immediate {@see send} and by
+     * {@see flushOutbox} so a queued message posts on exactly the same contract.
+     */
+    function postMessage(item: {
+        clientUuid: string;
+        body: string;
+        replyToId: string | null;
+    }): void {
+        router.post(
+            storeMessage({
+                team: options.teamSlug(),
+                channel: options.channel().slug,
+            }).url,
+            {
+                body: item.body,
+                client_uuid: item.clientUuid,
+                reply_to_id: item.replyToId,
+            },
+            {
+                preserveScroll: true,
+                onError: () => {
+                    // The optimistic row failed to persist; roll it back and notify.
+                    options.mainStream.removePending(item.clientUuid);
+                    toast.error(
+                        t('Your message failed to send. Please try again.'),
+                    );
+                },
+            },
+        );
+    }
+
     function send(body: string, mentions: Mention[]): void {
         // Sending clears the draft server-side, so drop any debounced save still
         // in flight; otherwise it would re-persist the just-sent text.
         options.cancelDraft();
 
-        const channel = options.channel();
         const clientUuid = crypto.randomUUID();
         const target = options.replyTarget.value;
+        const replyToId = target?.id ?? null;
 
         // The optimistic row mirrors the parent quote so the reference renders
         // immediately; the server echo replaces it, keyed on the same client uuid.
@@ -149,21 +195,27 @@ export function useMessageActions(
         options.cancelReply();
         nextTick(() => options.scrollToBottom());
 
-        router.post(
-            storeMessage({ team: options.teamSlug(), channel: channel.slug })
-                .url,
-            { body, client_uuid: clientUuid, reply_to_id: target?.id ?? null },
-            {
-                preserveScroll: true,
-                onError: () => {
-                    // The optimistic row failed to persist; roll it back and notify.
-                    options.mainStream.removePending(clientUuid);
-                    toast.error(
-                        t('Your message failed to send. Please try again.'),
-                    );
-                },
-            },
-        );
+        if (options.isOnline()) {
+            postMessage({ clientUuid, body, replyToId });
+
+            return;
+        }
+
+        // Offline: hold the send locally (the row shows as queued) and flush it
+        // when the connection recovers, rather than failing it outright. Clear the
+        // saved draft now, since the store endpoint that normally does so won't be
+        // reached until flush — otherwise a refresh would repopulate the composer.
+        options.outbox.enqueue({ clientUuid, body, replyToId });
+        options.clearDraft();
+    }
+
+    function flushOutbox(): void {
+        // Snapshot first: `postMessage` never mutates the queue, but draining as
+        // we go keeps the queued-row markers clearing in send order.
+        for (const item of [...options.outbox.items.value]) {
+            options.outbox.remove(item.clientUuid);
+            postMessage(item);
+        }
     }
 
     function editMessage(message: Message, body: string): void {
@@ -516,6 +568,7 @@ export function useMessageActions(
 
     return {
         send,
+        flushOutbox,
         editMessage,
         deleteMessage,
         reactToMessage,

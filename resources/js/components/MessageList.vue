@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import {
     AlarmClock,
+    Clock,
     CornerUpLeft,
     Forward,
     MessageSquareText,
@@ -54,6 +55,9 @@ const props = defineProps<{
     // right member profile.
     teamSlug: string;
     pendingUuids?: string[];
+    // Client uuids of the viewer's own sends held in the offline outbox; each
+    // renders a "Queued — will send on reconnect" marker until it flushes.
+    queuedUuids?: string[];
     currentUserId: string;
     canModerate?: boolean;
     // Whether the viewer may add/remove reactions (member of a non-archived
@@ -247,6 +251,12 @@ const pending = computed(() => new Set(props.pendingUuids ?? []));
 
 function isPending(message: Message): boolean {
     return pending.value.has(message.clientUuid);
+}
+
+const queued = computed(() => new Set(props.queuedUuids ?? []));
+
+function isQueued(message: Message): boolean {
+    return queued.value.has(message.clientUuid);
 }
 
 function isOwn(message: Message): boolean {
@@ -610,6 +620,15 @@ function confirmDelete(): void {
                                 >{{ $t('(edited)') }}</span
                             >
                         </p>
+
+                        <span
+                            v-if="isQueued(message)"
+                            data-test="message-queued"
+                            class="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground select-none"
+                        >
+                            <Clock class="size-3" />
+                            {{ $t('Queued — will send on reconnect') }}
+                        </span>
 
                         <MessageForward
                             v-if="
