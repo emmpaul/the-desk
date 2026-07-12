@@ -36,7 +36,7 @@ const siteLabel = computed(
         />
         <div class="px-[15px] py-[13px]">
             <p
-                class="truncate text-[10px] font-semibold tracking-[0.08em] text-muted-foreground/70 uppercase"
+                class="truncate text-[10px] font-semibold tracking-[0.08em] text-muted-foreground uppercase"
             >
                 {{ siteLabel }}
             </p>

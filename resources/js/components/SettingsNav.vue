@@ -104,7 +104,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 
         <SidebarGroup class="pt-2">
             <div
-                class="flex h-7 items-center px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground/70 uppercase"
+                class="flex h-7 items-center px-2 text-[10.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase"
             >
                 {{ $t('Settings') }}
             </div>

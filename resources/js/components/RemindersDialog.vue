@@ -131,7 +131,7 @@ function openReminder(reminder: MessageReminder): void {
                 >
                     <section v-if="group.items.length > 0" class="space-y-2">
                         <h3
-                            class="px-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/70 uppercase"
+                            class="px-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase"
                         >
                             {{ group.label }}
                         </h3>

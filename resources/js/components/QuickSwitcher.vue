@@ -179,7 +179,7 @@ function openReminders(): void {
                     @select="selectChannel(channel)"
                 >
                     <span
-                        class="shrink-0 font-semibold text-muted-foreground/70 group-data-[highlighted]:text-brass"
+                        class="shrink-0 font-semibold text-muted-foreground group-data-[highlighted]:text-brass"
                         aria-hidden="true"
                         >#</span
                     >
@@ -258,12 +258,12 @@ function openReminders(): void {
                             <span class="font-semibold text-foreground">{{
                                 result.message.user.name
                             }}</span>
-                            <span class="text-muted-foreground/70"
-                                ><span class="text-muted-foreground/50">#</span
+                            <span class="text-muted-foreground"
+                                ><span class="text-muted-foreground">#</span
                                 >{{ result.channelName }}</span
                             >
                             <span
-                                class="ml-auto shrink-0 text-[10px] text-muted-foreground/60"
+                                class="ml-auto shrink-0 text-[10px] text-muted-foreground"
                                 >{{
                                     formatTimestamp(result.message.createdAt)
                                 }}</span
