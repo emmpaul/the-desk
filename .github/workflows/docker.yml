@@ -4,17 +4,30 @@ on:
   push:
     branches:
       - develop
-      - main
       - master
-      - workos
     tags:
       - 'v*'
+  # On PRs the image is only build-validated (never published), and an app-code
+  # change that breaks the in-image `npm run build` is already caught by tests.yml.
+  # So only rebuild on a PR when something that affects whether the image *builds*
+  # changes — the Dockerfile, its config, or the dependency manifests.
   pull_request:
     branches:
       - develop
-      - main
       - master
-      - workos
+    paths:
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'docker-compose*.yml'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docker.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
