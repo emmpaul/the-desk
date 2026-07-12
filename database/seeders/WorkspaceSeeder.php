@@ -320,7 +320,12 @@ class WorkspaceSeeder extends Seeder
                 $createdAt = $date->copy()->addHours($index);
 
                 $rows[] = [
-                    'id' => (string) Str::uuid(),
+                    // Derive a UUIDv7 from this row's back-dated `created_at` so the
+                    // id encodes the historical timestamp, not "now". The `id DESC`
+                    // timeline then reads chronologically and these old rows sort
+                    // below every later, real message — a random UUIDv4 (or a
+                    // now-stamped v7) would bury real messages beneath the backlog.
+                    'id' => (string) Str::uuid7($createdAt),
                     'channel_id' => $channel->id,
                     'user_id' => $authorIds[($day + $index) % count($authorIds)],
                     'client_uuid' => (string) Str::uuid(),

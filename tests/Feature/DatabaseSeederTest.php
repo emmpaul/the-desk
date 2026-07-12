@@ -89,6 +89,25 @@ test('it backfills a busy channel to make pagination meaningful', function () {
     expect($busiest->messages_count)->toBeGreaterThanOrEqual(50);
 });
 
+test('backfilled messages carry time-ordered ids so a newly sent message sorts newest', function () {
+    $busiest = Channel::withCount('messages')->orderByDesc('messages_count')->firstOrFail();
+
+    // The timeline orders by `id DESC` and relies on ids being time-ordered
+    // (UUIDv7). Seeded ids must therefore be v7 and rank in `created_at` order,
+    // exactly like real, app-created messages — so walking the timeline newest
+    // id first yields non-increasing timestamps.
+    $timeline = $busiest->messages()->orderByDesc('id')->pluck('created_at')->map->getTimestamp()->all();
+    $chronological = collect($timeline)->sortDesc()->values()->all();
+
+    expect($timeline)->toBe($chronological);
+
+    // A message sent after seeding must land at the very top of `id DESC` — the
+    // newest row — rather than buried beneath a backlog of random-id seed rows.
+    $sent = Message::factory()->for($busiest)->for($this->demo)->create();
+
+    expect($busiest->messages()->orderByDesc('id')->value('id'))->toBe($sent->id);
+});
+
 test('it seeds edited, soft-deleted and mention-bearing messages', function () {
     expect(Message::whereNotNull('edited_at')->exists())->toBeTrue()
         ->and(Message::onlyTrashed()->exists())->toBeTrue()
