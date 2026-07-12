@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router } from '@inertiajs/vue3';
-import { ChevronDown, Crown, Mail, UserPlus, X } from '@lucide/vue';
+import { ChevronDown, Crown, Mail, Send, UserPlus, X } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import CancelInvitationModal from '@/components/CancelInvitationModal.vue';
 import DeleteTeamModal from '@/components/DeleteTeamModal.vue';
@@ -33,6 +33,7 @@ import { edit, index, update } from '@/routes/teams';
 import { index as analyticsIndex } from '@/routes/teams/analytics';
 import { index as auditIndex } from '@/routes/teams/audit';
 import { index as emojisIndex } from '@/routes/teams/emojis';
+import { resend as resendInvitationRoute } from '@/routes/teams/invitations';
 import {
     show as showMember,
     update as updateMember,
@@ -103,6 +104,12 @@ const confirmRemoveMember = (member: TeamMember) => {
 const confirmCancelInvitation = (invitation: TeamInvitation) => {
     invitationToCancel.value = invitation;
     cancelInvitationDialogOpen.value = true;
+};
+
+const resendInvitation = (invitation: TeamInvitation) => {
+    router.visit(resendInvitationRoute([props.team.slug, invitation.code]), {
+        preserveScroll: true,
+    });
 };
 
 const confirmTransferOwnership = (member: TeamMember) => {
@@ -333,23 +340,45 @@ const confirmTransferOwnership = (member: TeamMember) => {
                         </div>
                     </div>
 
-                    <TooltipProvider v-if="permissions.canCancelInvitation">
-                        <Tooltip>
-                            <TooltipTrigger as-child>
-                                <Button
-                                    data-test="invitation-cancel-button"
-                                    variant="ghost"
-                                    size="sm"
-                                    @click="confirmCancelInvitation(invitation)"
-                                >
-                                    <X class="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{{ $t('Cancel invitation') }}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <div class="flex items-center gap-1">
+                        <TooltipProvider v-if="permissions.canCreateInvitation">
+                            <Tooltip>
+                                <TooltipTrigger as-child>
+                                    <Button
+                                        data-test="invitation-resend-button"
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="resendInvitation(invitation)"
+                                    >
+                                        <Send class="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{{ $t('Resend') }}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+
+                        <TooltipProvider v-if="permissions.canCancelInvitation">
+                            <Tooltip>
+                                <TooltipTrigger as-child>
+                                    <Button
+                                        data-test="invitation-cancel-button"
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="
+                                            confirmCancelInvitation(invitation)
+                                        "
+                                    >
+                                        <X class="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{{ $t('Cancel invitation') }}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
                 </div>
             </div>
         </div>
