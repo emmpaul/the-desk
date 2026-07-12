@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.0](https://github.com/emmpaul/the-desk/compare/v0.5.1...v0.6.0) (2026-07-12)
+
+
+### Features
+
+* **auth:** EMAIL_VERIFICATION_ENABLED flag to require email confirmation ([#202](https://github.com/emmpaul/the-desk/issues/202)) ([#255](https://github.com/emmpaul/the-desk/issues/255)) ([34af35e](https://github.com/emmpaul/the-desk/commit/34af35e1976d59cc2f10951926ccada8b25796a3))
+* **channels:** virtualized message timeline ([#42](https://github.com/emmpaul/the-desk/issues/42)) ([#264](https://github.com/emmpaul/the-desk/issues/264)) ([4b5e42c](https://github.com/emmpaul/the-desk/commit/4b5e42cf2abe03b25518d0dd56ffdd82abe9fb44))
+* **messaging:** message reminders ("remind me about this") ([#33](https://github.com/emmpaul/the-desk/issues/33)) ([#236](https://github.com/emmpaul/the-desk/issues/236)) ([334207e](https://github.com/emmpaul/the-desk/commit/334207efc05a7d92478986498cf5273d5935fa7f))
+* **realtime:** offline/reconnect resilience for the message stream ([#55](https://github.com/emmpaul/the-desk/issues/55)) ([#244](https://github.com/emmpaul/the-desk/issues/244)) ([f636005](https://github.com/emmpaul/the-desk/commit/f636005c7507290f4cf65d66023c33b1a9a7d716))
+* **skills:** add design-to-issue skill ([#233](https://github.com/emmpaul/the-desk/issues/233)) ([0f6274e](https://github.com/emmpaul/the-desk/commit/0f6274e70841984b624bec9e7eabdbf6ebdca904))
+* **teams:** workspace custom emoji ([#38](https://github.com/emmpaul/the-desk/issues/38)) ([#251](https://github.com/emmpaul/the-desk/issues/251)) ([fdd0875](https://github.com/emmpaul/the-desk/commit/fdd087533c0182890b7c397f5623c6e394c5129a))
+
+
+### Bug Fixes
+
+* **channels:** secure-context-safe UUID helper for message sends ([#226](https://github.com/emmpaul/the-desk/issues/226)) ([#259](https://github.com/emmpaul/the-desk/issues/259)) ([99a4f45](https://github.com/emmpaul/the-desk/commit/99a4f45897e477096db49dcba5a16e53314eba63))
+* **composer:** focus textarea when clicking anywhere in the input card ([#169](https://github.com/emmpaul/the-desk/issues/169)) ([#241](https://github.com/emmpaul/the-desk/issues/241)) ([d2572a4](https://github.com/emmpaul/the-desk/commit/d2572a463a9dcbb9c3a522843f7a6f13a959ee9e))
+* **messaging:** scope [@mention](https://github.com/mention) autocomplete to DM participants ([#216](https://github.com/emmpaul/the-desk/issues/216)) ([#240](https://github.com/emmpaul/the-desk/issues/240)) ([44d3868](https://github.com/emmpaul/the-desk/commit/44d38686b5a6807043fdfd358b17d8ffde4e7460))
+* **navigation:** populate the sidebar on the message search page ([#243](https://github.com/emmpaul/the-desk/issues/243)) ([#245](https://github.com/emmpaul/the-desk/issues/245)) ([96402c4](https://github.com/emmpaul/the-desk/commit/96402c43e8801a41387376a52442488a56df072e))
+* **seeder:** use time-ordered UUIDv7 message ids in channel backfill ([#247](https://github.com/emmpaul/the-desk/issues/247)) ([0fcb0fe](https://github.com/emmpaul/the-desk/commit/0fcb0fea32229c942643f56cfb90f0f85a532339))
+
+
+### Code Refactoring
+
+* **channels:** decompose Show.vue into composables and components ([#238](https://github.com/emmpaul/the-desk/issues/238)) ([da71b5a](https://github.com/emmpaul/the-desk/commit/da71b5a5af93948282e9c7051821ca26abe83d3d))
+
 ## [0.5.1](https://github.com/emmpaul/the-desk/compare/v0.5.0...v0.5.1) (2026-07-11)
 
 
