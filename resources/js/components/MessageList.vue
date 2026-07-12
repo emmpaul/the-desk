@@ -502,7 +502,7 @@ function confirmDelete(): void {
                     />
                     <span
                         aria-hidden="true"
-                        class="font-serif text-[13px] text-brass-border italic"
+                        class="font-serif text-[13px] text-brass-fill-foreground italic"
                     >
                         {{ $t('new') }}
                     </span>

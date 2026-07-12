@@ -160,4 +160,36 @@ describe('theme contrast (WCAG AA)', () => {
             contrast(hexToRgb(dark['brass-fill-foreground']), pill),
         ).toBeGreaterThanOrEqual(AA_TEXT);
     });
+
+    // The unread "new" divider text (MessageList) also paints --brass-fill-foreground,
+    // but as opaque text straight on the channel surface — `--card` on desktop,
+    // `--background` on the mobile full-bleed pane. It replaced --brass-border,
+    // which measured 2.94:1 (#278); lock the surfaces it renders on so the brass
+    // debt can't creep back. The channel axe audit can't guard it: to stay scoped
+    // to #268 it seeds a *read* message, so the divider never renders there.
+    const dividerSurfaces = ['card', 'background'] as const;
+
+    it.each(dividerSurfaces)(
+        'light unread-divider text (--brass-fill-foreground) meets AA on --%s',
+        (surface) => {
+            expect(
+                contrast(
+                    hexToRgb(light['brass-fill-foreground']),
+                    hexToRgb(light[surface]),
+                ),
+            ).toBeGreaterThanOrEqual(AA_TEXT);
+        },
+    );
+
+    it.each(dividerSurfaces)(
+        'dark unread-divider text (--brass-fill-foreground) meets AA on --%s',
+        (surface) => {
+            expect(
+                contrast(
+                    hexToRgb(dark['brass-fill-foreground']),
+                    hexToRgb(dark[surface]),
+                ),
+            ).toBeGreaterThanOrEqual(AA_TEXT);
+        },
+    );
 });

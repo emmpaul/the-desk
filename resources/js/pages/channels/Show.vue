@@ -810,7 +810,7 @@ function archive(): void {
                             v-if="showJumpToUnread"
                             type="button"
                             data-test="jump-to-unread"
-                            class="absolute top-2.5 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1 text-[12px] font-semibold text-white shadow-md hover:bg-rose-600"
+                            class="absolute top-2.5 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-rose-600 px-3 py-1 text-[12px] font-semibold text-white shadow-md hover:bg-rose-700"
                             @click="scrollToUnread"
                         >
                             <ArrowUp class="size-3.5" />
