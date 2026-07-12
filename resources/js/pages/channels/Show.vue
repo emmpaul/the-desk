@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
 import { echo } from '@laravel/echo-vue';
-import { ArrowUp, CalendarClock, ChevronDown } from '@lucide/vue';
+import { ArrowUp, CalendarClock, ChevronDown, WifiOff } from '@lucide/vue';
 import {
     computed,
     nextTick,
@@ -37,9 +37,13 @@ import {
 import { useChannelDraft } from '@/composables/useChannelDraft';
 import { useChannelPreferences } from '@/composables/useChannelPreferences';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
+import { useConnectionState } from '@/composables/useConnectionState';
 import { useDebouncedPost } from '@/composables/useDebouncedPost';
 import { useMessageActions } from '@/composables/useMessageActions';
-import { useMessageStream } from '@/composables/useMessageStream';
+import {
+    optimisticMessage,
+    useMessageStream,
+} from '@/composables/useMessageStream';
 import { useScrollPin } from '@/composables/useScrollPin';
 import { useTeamPresence } from '@/composables/useTeamPresence';
 import { useThreadPanel } from '@/composables/useThreadPanel';
@@ -48,6 +52,7 @@ import { useTranslations } from '@/composables/useTranslations';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
 import type { TypingUser } from '@/composables/useTypingIndicator';
 import { useUnreadDivider } from '@/composables/useUnreadDivider';
+import { createOutbox } from '@/lib/outbox';
 import type {
     Channel,
     ChannelReader,
@@ -418,11 +423,41 @@ function submitForward(payload: { target: ForwardTarget; note: string }): void {
 // navigation, reloads and other devices. This composable owns the debounce, the
 // channel-switch flush, and the flush-on-unmount; a send clears the draft
 // server-side, so only manual edits flow through `onDraftChange`.
-const { onDraftChange, cancel: cancelDraft } = useChannelDraft({
+const {
+    onDraftChange,
+    cancel: cancelDraft,
+    clear: clearDraft,
+} = useChannelDraft({
     channelId: () => props.channel.id,
     teamSlug: () => props.team.slug,
     channelSlug: () => props.channel.slug,
 });
+
+// The realtime connection cue (reconnecting / back-online pill) and the offline
+// outbox: sends made while the socket is down queue here and flush on recovery.
+// The outbox persists per channel, so a refresh while offline keeps the queue.
+const connection = useConnectionState();
+const outbox = createOutbox({ storageKey: `outbox:${props.channel.id}` });
+
+// A queue rehydrated from a previous session has no optimistic rows yet; re-add
+// them so the queued sends still render in the timeline after a refresh. The
+// reply quote isn't persisted, so a rehydrated row shows its body without it.
+for (const item of outbox.items.value) {
+    mainStream.addPending(
+        optimisticMessage({
+            clientUuid: item.clientUuid,
+            body: item.body,
+            author: currentUser.value,
+            mentions: [],
+        }),
+    );
+}
+
+// Client uuids currently held in the outbox, so the timeline can mark each queued
+// row until it flushes.
+const queuedUuids = computed(() =>
+    outbox.items.value.map((item) => item.clientUuid),
+);
 
 // The channel's optimistic-mutation engine: send/edit/delete/react/forward,
 // thread replies, scheduling, and reminders all follow the same optimistic-apply
@@ -431,6 +466,8 @@ const actions = useMessageActions({
     teamSlug: () => props.team.slug,
     channel: () => props.channel,
     currentUser: () => currentUser.value,
+    isOnline: () => connection.isOnline.value,
+    outbox,
     mainStream,
     threadStream,
     activeThreadRootId,
@@ -438,11 +475,13 @@ const actions = useMessageActions({
     isNearBottom,
     scrollToBottom,
     cancelDraft,
+    clearDraft,
     cancelReply,
 });
 
 const {
     send,
+    flushOutbox,
     editMessage,
     deleteMessage,
     reactToMessage,
@@ -452,6 +491,49 @@ const {
     cancelScheduled,
     setReminder,
 } = actions;
+
+// Discard the whole offline queue: drop the optimistic rows and clear the outbox.
+function discardQueue(): void {
+    for (const item of outbox.items.value) {
+        mainStream.removePending(item.clientUuid);
+    }
+
+    outbox.clear();
+}
+
+// Whenever the socket connects, flush any queued sends — including a queue
+// rehydrated on load, which connects for the first time rather than reconnecting.
+// Only on a genuine reconnect do we also backfill messages that landed while the
+// socket was down (the stream dedupes by client uuid, so re-fetching the latest
+// page adds no gaps or dupes) and confirm the flush with a toast.
+connection.onConnected(({ isReconnect }) => {
+    const flushed = outbox.count.value;
+
+    flushOutbox();
+
+    if (!isReconnect) {
+        return;
+    }
+
+    router.reload({ only: ['messages'] });
+
+    if (flushed > 0) {
+        toast.success(
+            flushed === 1
+                ? t("Reconnected — 1 queued message sent, you're caught up.")
+                : t(
+                      "Reconnected — :count queued messages sent, you're caught up.",
+                      { count: flushed },
+                  ),
+        );
+    }
+});
+
+// If we mount already connected with a rehydrated queue — the socket was up
+// before this page (re)loaded, so no connect event will fire — flush it now.
+if (connection.isOnline.value && outbox.count.value > 0) {
+    flushOutbox();
+}
 
 // The viewer's stored timezone, driving the schedule picker's presets and the
 // list's "sends at" labels so a scheduled time always reads in their own zone.
@@ -529,6 +611,7 @@ function archive(): void {
                 :muted="muted"
                 :notification-level="notificationLevel"
                 :notification-status="notificationStatus"
+                :connection-pill="connection.pill.value"
                 @toggle-star="toggleStar"
                 @notification-level-change="onNotificationLevelChange"
                 @mute-change="onMuteChange"
@@ -572,6 +655,7 @@ function archive(): void {
                                 :messages="displayMessages"
                                 :team-slug="props.team.slug"
                                 :pending-uuids="pendingUuids"
+                                :queued-uuids="queuedUuids"
                                 :current-user-id="currentUser.id"
                                 :can-moderate="canModerate"
                                 :can-react="props.canReact"
@@ -661,6 +745,39 @@ function archive(): void {
                 </div>
 
                 <template v-else>
+                    <!-- Offline queue banner: the socket is down and the viewer's
+                         sends are being held locally; they flush automatically on
+                         reconnect, or can be discarded here. -->
+                    <div
+                        v-if="
+                            !connection.isOnline.value && outbox.count.value > 0
+                        "
+                        data-test="offline-queue-banner"
+                        class="mx-5 mb-1 flex shrink-0 items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-500"
+                    >
+                        <WifiOff class="size-3.5 shrink-0" />
+                        <span class="min-w-0">
+                            {{
+                                outbox.count.value === 1
+                                    ? $t(
+                                          "You're offline. 1 message is queued and will send automatically.",
+                                      )
+                                    : $t(
+                                          "You're offline. :count messages are queued and will send automatically.",
+                                          { count: outbox.count.value },
+                                      )
+                            }}
+                        </span>
+                        <button
+                            type="button"
+                            data-test="discard-queue"
+                            class="ml-auto shrink-0 font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+                            @click="discardQueue"
+                        >
+                            {{ $t('Discard queue') }}
+                        </button>
+                    </div>
+
                     <TypingIndicator
                         :names="typingNames"
                         class="mx-5 shrink-0"

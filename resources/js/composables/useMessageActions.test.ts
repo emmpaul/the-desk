@@ -20,6 +20,8 @@ vi.mock('vue-sonner', () => ({
 import { useMessageActions } from '@/composables/useMessageActions';
 import type { MessageActions } from '@/composables/useMessageActions';
 import { useMessageStream } from '@/composables/useMessageStream';
+import { createOutbox } from '@/lib/outbox';
+import type { Outbox } from '@/lib/outbox';
 import type { Mention, Message } from '@/types';
 import type { ForwardTarget } from '@/types/forward';
 
@@ -66,10 +68,12 @@ function harness(
         activeThreadRootId?: string | null;
         replyTarget?: Message | null;
         isNearBottom?: boolean;
+        isOnline?: boolean;
     } = {},
 ) {
     const scope = effectScope();
     const cancelDraft = vi.fn();
+    const clearDraft = vi.fn();
     const cancelReply = vi.fn();
     const scrollToBottom = vi.fn();
     const activeThreadRootId: Ref<string | null> = ref(
@@ -80,14 +84,18 @@ function harness(
     let actions!: MessageActions;
     let mainStream!: Stream;
     let threadStream!: Stream;
+    let outbox!: Outbox;
 
     scope.run(() => {
         mainStream = useMessageStream(ref(setup.serverMain ?? []));
         threadStream = useMessageStream(ref(setup.serverThread ?? []));
+        outbox = createOutbox();
         actions = useMessageActions({
             teamSlug: () => 'acme',
             channel: () => channel,
             currentUser: () => me,
+            isOnline: () => setup.isOnline ?? true,
+            outbox,
             mainStream,
             threadStream,
             activeThreadRootId,
@@ -95,6 +103,7 @@ function harness(
             isNearBottom: () => setup.isNearBottom ?? true,
             scrollToBottom,
             cancelDraft,
+            clearDraft,
             cancelReply,
         });
     });
@@ -103,8 +112,10 @@ function harness(
         actions,
         mainStream,
         threadStream,
+        outbox,
         activeThreadRootId,
         cancelDraft,
+        clearDraft,
         cancelReply,
         scrollToBottom,
         unmount: () => scope.stop(),
@@ -181,6 +192,69 @@ describe('useMessageActions', () => {
             optionsOf(post).onError?.();
             expect(h.mainStream.pendingUuids.value).toHaveLength(0);
             expect(toastError).toHaveBeenCalledOnce();
+        });
+
+        it('queues the send while offline instead of posting', () => {
+            const h = harness({
+                isOnline: false,
+                replyTarget: message({ id: 'parent' }),
+            });
+
+            h.actions.send('later', []);
+
+            // The optimistic row still renders, but nothing hits the network.
+            expect(
+                h.mainStream.displayMessages.value.some(
+                    (m) => m.body === 'later',
+                ),
+            ).toBe(true);
+            expect(post).not.toHaveBeenCalled();
+            expect(h.outbox.count.value).toBe(1);
+            expect(h.outbox.items.value[0]).toMatchObject({
+                body: 'later',
+                replyToId: 'parent',
+            });
+            // The saved draft is cleared now, since the store endpoint that
+            // normally clears it isn't reached until the queue flushes.
+            expect(h.clearDraft).toHaveBeenCalledOnce();
+        });
+    });
+
+    describe('flushOutbox', () => {
+        it('posts each queued send in order and empties the queue', () => {
+            const h = harness({ isOnline: false });
+
+            h.actions.send('first', []);
+            h.actions.send('second', []);
+            expect(post).not.toHaveBeenCalled();
+
+            h.actions.flushOutbox();
+
+            expect(post).toHaveBeenCalledTimes(2);
+            expect(payloadOf(post, 0)).toMatchObject({ body: 'first' });
+            expect(payloadOf(post, 1)).toMatchObject({ body: 'second' });
+            expect(h.outbox.count.value).toBe(0);
+        });
+
+        it('rolls a flushed row back and toasts if its post fails', () => {
+            const h = harness({ isOnline: false });
+
+            h.actions.send('doomed', []);
+            h.actions.flushOutbox();
+            expect(h.mainStream.pendingUuids.value).toHaveLength(1);
+
+            optionsOf(post).onError?.();
+
+            expect(h.mainStream.pendingUuids.value).toHaveLength(0);
+            expect(toastError).toHaveBeenCalledOnce();
+        });
+
+        it('is a no-op with an empty queue', () => {
+            const h = harness();
+
+            h.actions.flushOutbox();
+
+            expect(post).not.toHaveBeenCalled();
         });
     });
 

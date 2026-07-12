@@ -23,6 +23,13 @@ export interface ChannelDraft {
     onDraftChange: (body: string) => void;
     /** Drop a pending save without firing it (a send clears the draft server-side). */
     cancel: () => void;
+    /**
+     * Immediately clear the current channel's saved draft (cancelling any pending
+     * save). Used when a send is queued offline: the store endpoint that normally
+     * clears the draft isn't reached, so a refresh would otherwise repopulate the
+     * composer with the already-queued text.
+     */
+    clear: () => void;
 }
 
 /**
@@ -56,9 +63,14 @@ export function useChannelDraft(options: ChannelDraftOptions): ChannelDraft {
         draftPost.schedule({ slug: options.channelSlug(), body });
     }
 
+    function clear(): void {
+        draftPost.cancel();
+        persistDraft(options.channelSlug(), '');
+    }
+
     // Persist the outgoing channel's draft before the switch settles; the pending
     // payload still carries the old channel's slug.
     watch(options.channelId, () => draftPost.flush());
 
-    return { onDraftChange, cancel: draftPost.cancel };
+    return { onDraftChange, cancel: draftPost.cancel, clear };
 }

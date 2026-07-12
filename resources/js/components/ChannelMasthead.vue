@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Archive, EllipsisVertical, Search, Star } from '@lucide/vue';
+import { Archive, Check, EllipsisVertical, Search, Star } from '@lucide/vue';
 import type { AcceptableValue } from 'reka-ui';
 import { computed } from 'vue';
 import { index as searchMessages } from '@/actions/App/Http/Controllers/Channels/SearchController';
@@ -21,6 +21,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import type { ConnectionPill } from '@/composables/useConnectionState';
 import { getInitials } from '@/composables/useInitials';
 import { memberAvatarStack } from '@/lib/memberAvatars';
 import type { NotificationIndicator } from '@/lib/notificationIndicator';
@@ -50,6 +51,9 @@ const props = defineProps<{
     notificationLevel: NotificationLevel;
     // A compact header cue for a non-default notification state, or null.
     notificationStatus: NotificationIndicator | null;
+    // The realtime connection cue: a reconnecting pill, a transient back-online
+    // confirmation, or null when the socket is steadily connected.
+    connectionPill?: ConnectionPill;
 }>();
 
 const emit = defineEmits<{
@@ -161,6 +165,39 @@ const dmParticipantOnline = computed(
         </div>
 
         <div class="flex shrink-0 items-center gap-3 pb-1">
+            <!-- Realtime connection cue: a quiet amber pill while reconnecting,
+                 flipping to a brief green confirmation once the socket recovers.
+                 The app stays fully usable throughout. -->
+            <span
+                v-if="props.connectionPill === 'reconnecting'"
+                data-test="connection-reconnecting"
+                role="status"
+                class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] font-semibold text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-500"
+            >
+                <span
+                    class="size-1.5 animate-pulse rounded-full bg-amber-500"
+                />
+                {{ $t('Reconnecting')
+                }}<span
+                    aria-hidden="true"
+                    class="inline-flex w-2.5 justify-start"
+                    ><span class="animate-pulse [animation-delay:0ms]">.</span
+                    ><span class="animate-pulse [animation-delay:200ms]">.</span
+                    ><span class="animate-pulse [animation-delay:400ms]"
+                        >.</span
+                    ></span
+                >
+            </span>
+            <span
+                v-else-if="props.connectionPill === 'back-online'"
+                data-test="connection-back-online"
+                role="status"
+                class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-500"
+            >
+                <Check class="size-3" />
+                {{ $t('Back online') }}
+            </span>
+
             <span
                 v-if="
                     !props.channel.isDirect &&

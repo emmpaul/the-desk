@@ -99,4 +99,20 @@ describe('useChannelDraft', () => {
         expect(patch).toHaveBeenCalledOnce();
         expect(patch.mock.calls[0][1]).toEqual({ body: 'outlives unmount' });
     });
+
+    it('clears the saved draft immediately, dropping any pending save', () => {
+        const { draft } = withScope(ref('alpha'), ref('id-alpha'));
+
+        draft.onDraftChange('queued offline');
+        draft.clear();
+
+        // The clear fires straight away with an empty body...
+        expect(patch).toHaveBeenCalledOnce();
+        expect(patch.mock.calls[0][1]).toEqual({ body: '' });
+        expect(patchedUrl()).toContain('alpha');
+
+        // ...and the cancelled debounce never re-persists the queued text.
+        vi.advanceTimersByTime(DRAFT_DEBOUNCE_MS);
+        expect(patch).toHaveBeenCalledOnce();
+    });
 });
