@@ -1,4 +1,4 @@
-# Laravel Slack Clone
+# The Desk
 
 A real-time team chat application — workspaces, channels, threads, reactions,
 search, and scheduled messages — built with Laravel 13, Inertia + Vue 3, Laravel
