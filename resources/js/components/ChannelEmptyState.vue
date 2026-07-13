@@ -80,6 +80,7 @@ const { open: openOnboardingTour } = useOnboardingTour();
 
             <div class="mt-7 flex w-full flex-col gap-2.5">
                 <CreateChannelModal :team-slug="props.teamSlug">
+                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke welcome action card -->
                     <button
                         type="button"
                         data-test="welcome-create-channel"
@@ -105,6 +106,7 @@ const { open: openOnboardingTour } = useOnboardingTour();
                     </button>
                 </CreateChannelModal>
 
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke welcome action card -->
                 <button
                     v-if="canInviteToCurrentTeam"
                     type="button"
@@ -132,6 +134,7 @@ const { open: openOnboardingTour } = useOnboardingTour();
                     >
                 </button>
 
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke welcome action card -->
                 <button
                     type="button"
                     data-test="welcome-post-message"
@@ -161,6 +164,7 @@ const { open: openOnboardingTour } = useOnboardingTour();
 
             <p class="mt-5 text-[12.5px] text-muted-foreground">
                 {{ $t('Prefer to explore on your own?') }}
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke inline text-link control -->
                 <button
                     type="button"
                     data-test="welcome-take-tour"

@@ -307,6 +307,7 @@ function channelColor(indexInList: number): string {
                 :aria-label="$t('Time range')"
                 data-test="analytics-range"
             >
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke segmented range option -->
                 <button
                     v-for="option in rangeOptions"
                     :key="option.value"

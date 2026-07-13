@@ -71,6 +71,7 @@ const { shareReadReceipts, updateShareReadReceipts } = useReadReceipts();
             "
         >
             <div class="flex flex-wrap items-center gap-2">
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke segmented chime-sound option (aria-pressed) -->
                 <button
                     v-for="option in chimeSounds"
                     :key="option.value"
@@ -87,6 +88,7 @@ const { shareReadReceipts, updateShareReadReceipts } = useReadReceipts();
                     {{ option.label }}
                 </button>
 
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke inline preview control -->
                 <button
                     type="button"
                     :disabled="selected === 'off'"

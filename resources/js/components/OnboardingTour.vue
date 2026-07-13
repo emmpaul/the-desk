@@ -178,6 +178,7 @@ onBeforeUnmount(() => {
                     />
                 </div>
 
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke control on the branded tour surface -->
                 <button
                     type="button"
                     data-test="onboarding-skip"

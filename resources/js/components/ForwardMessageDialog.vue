@@ -160,6 +160,7 @@ function submit(): void {
                                 v-for="channel in rankedChannels"
                                 :key="channel.id"
                             >
+                                <!-- eslint-disable-next-line local/no-raw-button -- bespoke selectable recipient row (aria-pressed) -->
                                 <button
                                     type="button"
                                     data-test="forward-channel-option"
@@ -195,6 +196,7 @@ function submit(): void {
                         </p>
                         <ul class="space-y-0.5">
                             <li v-for="person in rankedPeople" :key="person.id">
+                                <!-- eslint-disable-next-line local/no-raw-button -- bespoke selectable recipient row (aria-pressed) -->
                                 <button
                                     type="button"
                                     data-test="forward-person-option"

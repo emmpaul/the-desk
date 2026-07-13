@@ -76,6 +76,7 @@ function toggle(emoji: string): void {
             :close-delay="100"
         >
             <HoverCardTrigger as-child>
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke reaction pill (toggle) -->
                 <button
                     type="button"
                     data-test="reaction-pill"
@@ -135,6 +136,7 @@ function toggle(emoji: string): void {
             v-if="props.canReact"
             @select="(emoji) => emit('toggle', emoji)"
         >
+            <!-- eslint-disable-next-line local/no-raw-button -- bespoke add-reaction pill -->
             <button
                 type="button"
                 data-test="add-reaction"

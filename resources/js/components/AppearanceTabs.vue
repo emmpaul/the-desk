@@ -20,6 +20,7 @@ const options = [
       fixed (not the active-theme tokens) — a light swatch always reads light.
     -->
     <div class="grid max-w-2xl grid-cols-3 gap-3">
+        <!-- eslint-disable-next-line local/no-raw-button -- bespoke segmented theme toggle (aria-pressed options) -->
         <button
             v-for="{ value, label } in options"
             :key="value"

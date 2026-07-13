@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { translate } from '@/lib/i18n';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
@@ -98,10 +97,9 @@ defineProps<{
                     type="submit"
                     class="mt-4 w-full rounded-full"
                     :tabindex="4"
-                    :disabled="processing"
+                    :loading="processing"
                     data-test="login-button"
                 >
-                    <Spinner v-if="processing" />
                     {{ $t('Log in') }}
                 </Button>
             </div>

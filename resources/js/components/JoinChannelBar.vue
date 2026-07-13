@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
-import { LoaderCircle, Plus, Users } from '@lucide/vue';
+import { Plus, Users } from '@lucide/vue';
 import { join } from '@/actions/App/Http/Controllers/Channels/ChannelController';
+import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
     teamSlug: string;
@@ -59,25 +60,20 @@ const props = defineProps<{
                     </span>
                 </div>
 
-                <button
+                <Button
                     type="submit"
-                    :disabled="processing"
+                    :loading="processing"
                     data-test="join-channel"
-                    class="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-[13.5px] font-semibold text-brass transition-colors hover:bg-primary/90 disabled:opacity-60 dark:text-primary-foreground"
+                    class="h-10 shrink-0 rounded-full px-5 text-[13.5px] font-semibold text-brass dark:text-primary-foreground"
                 >
-                    <LoaderCircle
-                        v-if="processing"
-                        class="size-3.5 animate-spin"
-                        aria-hidden="true"
-                    />
                     <Plus
-                        v-else
+                        v-if="!processing"
                         class="size-3.5"
                         :stroke-width="2.2"
                         aria-hidden="true"
                     />
                     {{ processing ? $t('Joining…') : $t('Join channel') }}
-                </button>
+                </Button>
             </div>
         </Form>
     </div>

@@ -28,6 +28,7 @@ defineExpose({
             :class="cn('pr-10', props.class)"
             v-bind="$attrs"
         />
+        <!-- eslint-disable-next-line local/no-raw-button -- bespoke show/hide toggle nested inside the input -->
         <button
             type="button"
             @click="showPassword = !showPassword"

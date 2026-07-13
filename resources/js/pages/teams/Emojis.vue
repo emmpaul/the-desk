@@ -256,6 +256,7 @@ function addedAt(iso: string): string {
                 <span class="w-28 shrink-0 text-xs text-muted-foreground">{{
                     addedAt(emoji.createdAt)
                 }}</span>
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke inline remove text-link -->
                 <button
                     v-if="canRemove(emoji)"
                     type="button"

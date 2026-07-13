@@ -258,11 +258,13 @@ const dmParticipantOnline = computed(
                  Search and options controls. -->
             <Tooltip>
                 <TooltipTrigger as-child>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         type="button"
                         data-test="masthead-pins"
                         :aria-label="$t('Pinned messages')"
-                        class="inline-flex items-center gap-1 rounded px-1 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        class="gap-1 px-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                         @click="emit('openPins')"
                     >
                         <Pin
@@ -279,7 +281,7 @@ const dmParticipantOnline = computed(
                             class="text-[12px] font-semibold tabular-nums"
                             >{{ props.pinCount }}</span
                         >
-                    </button>
+                    </Button>
                 </TooltipTrigger>
                 <TooltipContent>{{ $t('Pinned messages') }}</TooltipContent>
             </Tooltip>

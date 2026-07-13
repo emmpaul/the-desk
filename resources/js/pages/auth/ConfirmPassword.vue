@@ -4,7 +4,6 @@ import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { translate } from '@/lib/i18n';
 import { store } from '@/routes/password/confirm';
 
@@ -45,10 +44,9 @@ defineOptions({
             <div class="flex items-center">
                 <Button
                     class="w-full rounded-full"
-                    :disabled="processing"
+                    :loading="processing"
                     data-test="confirm-password-button"
                 >
-                    <Spinner v-if="processing" />
                     {{ $t('Confirm password') }}
                 </Button>
             </div>

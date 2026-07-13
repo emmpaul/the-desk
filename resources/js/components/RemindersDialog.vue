@@ -90,6 +90,7 @@ function openReminder(reminder: MessageReminder): void {
                             })
                         }}
                     </span>
+                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke inline text action -->
                     <button
                         v-if="reminders.length > 0"
                         type="button"
@@ -142,6 +143,7 @@ function openReminder(reminder: MessageReminder): void {
                             :data-reminder="reminder.id"
                             class="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
                         >
+                            <!-- eslint-disable-next-line local/no-raw-button -- bespoke reminder list row -->
                             <button
                                 type="button"
                                 data-test="reminder-open"
@@ -194,6 +196,7 @@ function openReminder(reminder: MessageReminder): void {
                                 <Clock class="size-3" />
                                 {{ whenLabel(reminder.remindAt) }}
                             </span>
+                            <!-- eslint-disable-next-line local/no-raw-button -- bespoke row icon action -->
                             <button
                                 type="button"
                                 data-test="reminder-clear"

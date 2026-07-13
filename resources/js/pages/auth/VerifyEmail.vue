@@ -2,7 +2,6 @@
 import { Form, Head, Link } from '@inertiajs/vue3';
 import AuthStatus from '@/components/AuthStatus.vue';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import { translate } from '@/lib/i18n';
 import { logout } from '@/routes';
 import { send } from '@/routes/verification';
@@ -39,11 +38,10 @@ defineProps<{
         v-slot="{ processing }"
     >
         <Button
-            :disabled="processing"
+            :loading="processing"
             variant="outline"
             class="w-full rounded-full bg-muted hover:bg-accent"
         >
-            <Spinner v-if="processing" />
             {{ $t('Resend verification email') }}
         </Button>
 
