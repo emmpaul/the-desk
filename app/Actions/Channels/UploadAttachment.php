@@ -9,6 +9,8 @@ use App\Models\Attachment;
 use App\Models\Channel;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class UploadAttachment
 {
@@ -31,22 +33,33 @@ class UploadAttachment
         $disk = (string) config('attachments.disk');
         $path = $file->store("attachments/{$channel->id}", $disk);
 
-        [$width, $height] = $this->dimensions($file);
+        try {
+            [$width, $height] = $this->dimensions($file);
 
-        $attachment = Attachment::create([
-            'user_id' => $uploader->id,
-            'channel_id' => $channel->id,
-            'disk' => $disk,
-            'path' => $path,
-            'original_filename' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType() ?? 'application/octet-stream',
-            'size_bytes' => $file->getSize(),
-            'width' => $width,
-            'height' => $height,
-            'status' => AttachmentStatus::Pending,
-        ]);
+            $attachment = Attachment::create([
+                'user_id' => $uploader->id,
+                'channel_id' => $channel->id,
+                'disk' => $disk,
+                'path' => $path,
+                'original_filename' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType() ?? 'application/octet-stream',
+                'size_bytes' => $file->getSize(),
+                'width' => $width,
+                'height' => $height,
+                'status' => AttachmentStatus::Pending,
+            ]);
 
-        $this->processImage->handle($attachment);
+            $this->processImage->handle($attachment);
+        } catch (Throwable $e) {
+            // The blob is stored before the row exists; if registration throws,
+            // no row will point at it and the row-based GC can't reclaim it, so
+            // drop the orphan here before re-raising.
+            if ($path !== false) {
+                Storage::disk($disk)->delete($path);
+            }
+
+            throw $e;
+        }
 
         $attachment->setRelation('channel', $channel->loadMissing('team'));
 

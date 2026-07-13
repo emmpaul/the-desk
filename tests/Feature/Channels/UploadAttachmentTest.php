@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Channels\UploadAttachment;
 use App\Actions\Teams\CreateTeam;
 use App\Enums\AttachmentStatus;
 use App\Enums\TeamRole;
@@ -120,6 +121,26 @@ test('a non-file value is rejected by the file rule', function (): void {
         ->assertInvalid(['file']);
 
     expect(Attachment::count())->toBe(0);
+});
+
+test('a failed registration deletes the orphaned blob', function (): void {
+    [$owner, , $general] = uploadTeam();
+
+    // Force the row insert to fail after the blob has been stored.
+    Attachment::creating(function (): void {
+        throw new RuntimeException('registration failed');
+    });
+
+    expect(fn () => app(UploadAttachment::class)->handle(
+        $general,
+        $owner,
+        UploadedFile::fake()->image('photo.png'),
+    ))->toThrow(RuntimeException::class);
+
+    Attachment::getEventDispatcher()->forget('eloquent.creating: '.Attachment::class);
+
+    expect(Attachment::count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles("attachments/{$general->id}"))->toBe([]);
 });
 
 test('a team member who cannot post to the channel cannot upload', function (): void {

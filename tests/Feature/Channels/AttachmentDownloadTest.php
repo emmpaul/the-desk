@@ -93,6 +93,18 @@ test('an svg is never served inline', function (): void {
     expect($response->headers->get('content-disposition'))->toStartWith('attachment');
 });
 
+test('a download whose blob is missing from disk 404s', function (): void {
+    [$owner, $team, $general] = downloadTeam();
+    $attachment = storedAttachment($general, $owner, UploadedFile::fake()->image('photo.png'));
+    Storage::disk('local')->delete($attachment->path);
+
+    $this->actingAs($owner)->get(route('channels.attachments.download', [
+        'team' => $team->slug,
+        'channel' => $general->slug,
+        'attachment' => $attachment->id,
+    ]))->assertNotFound();
+});
+
 test('a non-member gets a 404, not a 403, to avoid disclosing the file exists', function (): void {
     [$owner, $team] = downloadTeam();
     $private = Channel::factory()->for($team)->private()->create();

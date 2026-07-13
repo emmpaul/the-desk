@@ -99,12 +99,15 @@ class PostMessage
      * Link the sender's pending uploads to the freshly created message.
      *
      * Runs inside the create transaction, so any rejection rolls the message back
-     * with it — the send is all-or-nothing. Each id must be the sender's own
-     * pending upload in this channel; a row already attached to *this* message is
-     * a no-op (a retry that got past the wasRecentlyCreated guard), while a row
+     * with it — the send is all-or-nothing. Only a brand-new message claims: a
+     * retry (or a reused `client_uuid`) resolves to an existing message, so a row
+     * already attached to *it* is a no-op while any *new* id is rejected — a
+     * caller can neither append files to someone else's message via their
+     * `client_uuid` nor bypass the per-message cap by retrying with more ids. Each
+     * claimed id must be the sender's own pending upload in this channel; a row
      * owned by someone else, from another channel, or already claimed by a
-     * different message fails the whole send as a validation error. The rows are
-     * locked so two concurrent sends can't both claim the same pending upload.
+     * different message fails the whole send. The rows are locked so two
+     * concurrent sends can't both claim the same pending upload.
      *
      * @param  list<string>  $attachmentIds
      */
@@ -130,6 +133,16 @@ class PostMessage
         foreach ($attachments as $attachment) {
             if ($attachment->message_id === $message->id) {
                 continue;
+            }
+
+            // Reached an id not already linked to this message. If the message
+            // isn't brand-new, this is a retry (or a reused client_uuid) trying to
+            // claim a fresh file — reject it, so the retry stays idempotent for the
+            // ids it originally sent and nothing new can be grafted on.
+            if (! $message->wasRecentlyCreated) {
+                throw ValidationException::withMessages([
+                    'attachment_ids' => __('One or more attachments are unavailable.'),
+                ]);
             }
 
             $claimable = $attachment->user_id === $author->id

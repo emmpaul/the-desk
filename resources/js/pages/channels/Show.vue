@@ -632,14 +632,19 @@ function onPaneDragEnter(event: DragEvent): void {
 }
 
 function onPaneDragOver(event: DragEvent): void {
-    if (!canDropAttachments() || !dragCarriesFiles(event)) {
+    if (!dragCarriesFiles(event)) {
         return;
     }
 
-    // Preventing default marks the pane a valid drop target (so the browser
-    // doesn't just navigate to the file) and lets us show the copy cursor.
+    // Claim every file drag so the browser never navigates to the dropped file,
+    // even where we won't accept it (archived channel, non-member).
     event.preventDefault();
 
+    if (!canDropAttachments()) {
+        return;
+    }
+
+    // Show the copy cursor only where the drop will actually be staged.
     if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'copy';
     }
@@ -662,11 +667,17 @@ function onPaneDrop(event: DragEvent): void {
     dragDepth = 0;
     isDraggingFiles.value = false;
 
-    if (!canDropAttachments() || !dragCarriesFiles(event)) {
+    if (!dragCarriesFiles(event)) {
         return;
     }
 
+    // Prevent the browser navigating to the dropped file for every file drag,
+    // then only stage the files where the channel actually accepts them.
     event.preventDefault();
+
+    if (!canDropAttachments()) {
+        return;
+    }
 
     const files = Array.from(event.dataTransfer?.files ?? []);
 

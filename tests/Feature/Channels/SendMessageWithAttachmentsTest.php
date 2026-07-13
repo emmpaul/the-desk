@@ -157,6 +157,57 @@ test('resending with the same client uuid re-claims nothing and stays idempotent
         ->and($attachment->status)->toBe(AttachmentStatus::Attached);
 });
 
+test('a reused client uuid cannot append attachments to another member message', function (): void {
+    [$owner, $team, $general] = sendTeam();
+    $other = User::factory()->create();
+    $team->members()->attach($other, ['role' => 'member']);
+
+    // The owner sends first — a message now exists under this client_uuid, whose
+    // value rides the broadcast payload and is therefore observable to members.
+    $clientUuid = (string) Str::uuid7();
+    sendMessage($owner, $team, $general, [
+        'body' => 'My message',
+        'client_uuid' => $clientUuid,
+    ])->assertRedirect();
+
+    // The attacker reuses it, trying to graft their own upload onto that message.
+    $attackerFile = Attachment::factory()->for($other)->for($general)->create();
+    sendMessage($other, $team, $general, [
+        'client_uuid' => $clientUuid,
+        'attachment_ids' => [$attackerFile->id],
+    ])->assertInvalid(['attachment_ids']);
+
+    $message = Message::where('client_uuid', $clientUuid)->sole();
+    expect($message->user_id)->toBe($owner->id)
+        ->and(Attachment::where('message_id', $message->id)->count())->toBe(0)
+        ->and($attackerFile->refresh()->message_id)->toBeNull()
+        ->and($attackerFile->status)->toBe(AttachmentStatus::Pending);
+});
+
+test('a retry cannot append a new attachment to the existing message or bypass the cap', function (): void {
+    [$owner, $team, $general] = sendTeam();
+    $first = Attachment::factory()->for($owner)->for($general)->create();
+    $clientUuid = (string) Str::uuid7();
+
+    sendMessage($owner, $team, $general, [
+        'body' => 'First try',
+        'client_uuid' => $clientUuid,
+        'attachment_ids' => [$first->id],
+    ])->assertRedirect();
+
+    // Same client_uuid, but now with an extra freshly uploaded file appended.
+    $second = Attachment::factory()->for($owner)->for($general)->create();
+    sendMessage($owner, $team, $general, [
+        'body' => 'First try',
+        'client_uuid' => $clientUuid,
+        'attachment_ids' => [$first->id, $second->id],
+    ])->assertInvalid(['attachment_ids']);
+
+    expect($first->refresh()->message_id)->toBe(Message::sole()->id)
+        ->and($second->refresh()->message_id)->toBeNull()
+        ->and($second->status)->toBe(AttachmentStatus::Pending);
+});
+
 test('claiming rejects the whole send when a requested id no longer exists', function (): void {
     [$owner, $team, $general] = sendTeam();
 

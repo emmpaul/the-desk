@@ -3,6 +3,7 @@
 use App\Models\Attachment;
 use App\Models\Channel;
 use App\Models\Message;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -92,6 +93,19 @@ test('force-deleting an attachment removes its thumbnail blob too', function ():
 
     Storage::disk('local')->assertMissing($path);
     Storage::disk('local')->assertMissing($thumb);
+});
+
+test('force-deleting does not propagate a storage failure that would abort a purge loop', function (): void {
+    $attachment = Attachment::factory()->create(['disk' => 'local', 'path' => 'attachments/x/y.png']);
+
+    $disk = Mockery::mock(Filesystem::class);
+    $disk->shouldReceive('delete')->andThrow(new RuntimeException('storage down'));
+    Storage::shouldReceive('disk')->with('local')->andReturn($disk);
+
+    // The blob delete throws, but force-delete completes and removes the row.
+    $attachment->forceDelete();
+
+    $this->assertModelMissing($attachment);
 });
 
 test('soft-deleting an attachment keeps its blob on disk', function (): void {

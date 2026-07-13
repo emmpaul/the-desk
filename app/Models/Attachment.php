@@ -63,11 +63,18 @@ class Attachment extends Model
     protected static function booted(): void
     {
         static::forceDeleted(function (Attachment $attachment): void {
-            $disk = Storage::disk($attachment->disk);
-            $disk->delete($attachment->path);
+            try {
+                $disk = Storage::disk($attachment->disk);
+                $disk->delete($attachment->path);
 
-            if ($attachment->thumb_path !== null) {
-                $disk->delete($attachment->thumb_path);
+                if ($attachment->thumb_path !== null) {
+                    $disk->delete($attachment->thumb_path);
+                }
+            } catch (\Throwable) {
+                // Best-effort cleanup: a storage error here must not propagate out
+                // of forceDelete and abort the caller (the pending-orphan sweep
+                // deletes rows in a loop). The row is already gone; a stranded blob
+                // is reclaimable out of band rather than worth failing the sweep.
             }
         });
     }
