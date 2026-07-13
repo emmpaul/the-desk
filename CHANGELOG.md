@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.0](https://github.com/emmpaul/the-desk/compare/v1.0.0...v1.1.0) (2026-07-13)
+
+
+### Features
+
+* add a FormField module and migrate hand-built field clusters onto it ([#325](https://github.com/emmpaul/the-desk/issues/325)) ([0b10ecb](https://github.com/emmpaul/the-desk/commit/0b10ecbada9740a1f4780d067c01d48a3129ffa5)), closes [#314](https://github.com/emmpaul/the-desk/issues/314)
+* add a loading prop to Button and migrate raw buttons onto it ([#324](https://github.com/emmpaul/the-desk/issues/324)) ([2414322](https://github.com/emmpaul/the-desk/commit/2414322b56f35b05544a1a1452706416adf4c95f))
+* **admin:** reskin team settings page for "The Desk" ([#328](https://github.com/emmpaul/the-desk/issues/328)) ([746a8b8](https://github.com/emmpaul/the-desk/commit/746a8b8f8f3d26bd598372eedad2436ab233ef2d)), closes [#227](https://github.com/emmpaul/the-desk/issues/227)
+* **docs:** marketing landing page + docs under /docs ([#297](https://github.com/emmpaul/the-desk/issues/297)) ([919bf47](https://github.com/emmpaul/the-desk/commit/919bf477b11294e761363e294dbd36eaf6f82aa1))
+* pin messages to a channel with a pins popover ([#321](https://github.com/emmpaul/the-desk/issues/321)) ([721d0bd](https://github.com/emmpaul/the-desk/commit/721d0bd49781b4d78b8513caba0b2cd924592d0f))
+
 ## [1.0.0](https://github.com/emmpaul/the-desk/compare/v0.7.0...v1.0.0) (2026-07-12)
 
 
