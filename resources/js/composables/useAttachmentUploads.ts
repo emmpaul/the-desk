@@ -262,7 +262,9 @@ export function useAttachmentUploads(
     function retry(localId: string): void {
         const row = find(localId);
 
-        if (!row || !sources.has(localId)) {
+        // Only a failed row is retryable — never re-fire an in-flight or already
+        // finished upload.
+        if (!row || row.status !== 'failed' || !sources.has(localId)) {
             return;
         }
 
