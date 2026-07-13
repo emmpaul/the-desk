@@ -1,16 +1,39 @@
-# The Desk
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme-banner-dark.png">
+    <img src=".github/readme-banner-light.png" alt="The Desk — open source, self-hosted team chat" width="800">
+  </picture>
+</p>
 
-A real-time team chat application — workspaces, channels, threads, reactions,
-search, and scheduled messages — built with Laravel 13, Inertia + Vue 3, Laravel
-Reverb (WebSockets), and Meilisearch.
+<p align="center">
+  A calm, fast, <strong>self-hosted team chat</strong> app you run yourself —
+  workspaces, channels, threads, reactions, search, reminders, and scheduled
+  messages. Built with Laravel 13, Inertia + Vue 3, Laravel Reverb (WebSockets),
+  and Meilisearch.
+</p>
+
+<p align="center">
+  <a href="https://the-desk.emmanuelpaul.com">Website</a> ·
+  <a href="https://the-desk.emmanuelpaul.com/docs/">Docs</a> ·
+  <a href="https://the-desk.emmanuelpaul.com/docs/self-hosting/installation/">Install</a> ·
+  <a href="https://the-desk.emmanuelpaul.com/docs/comparison/">vs&nbsp;Slack</a> ·
+  <a href="LICENSE">MIT&nbsp;License</a>
+</p>
+
+## Self-hosting
+
+The Desk ships as a single Docker Compose stack with a prebuilt image — one
+`docker compose up -d` and it's live. Full operator docs (requirements,
+install, reverse proxy & TLS, upgrades) live at
+**[the-desk.emmanuelpaul.com/docs](https://the-desk.emmanuelpaul.com/docs/)**.
 
 ## Development
 
 Local development uses [Laravel Sail](https://laravel.com/docs/sail):
 
 ```bash
-git clone git@github.com:emmpaul/laravel-slack-clone.git
-cd laravel-slack-clone
+git clone git@github.com:emmpaul/the-desk.git
+cd the-desk
 cp .env.example .env
 composer install
 ./vendor/bin/sail up -d
@@ -87,10 +110,10 @@ There are two supported ways to get the app image, both driven by the same
 
 ```bash
 # 1. Clone and check out the latest release tag.
-git clone git@github.com:emmpaul/laravel-slack-clone.git
-cd laravel-slack-clone
+git clone git@github.com:emmpaul/the-desk.git
+cd the-desk
 git fetch --tags
-git checkout v0.1.0                                   # the desired release tag
+git checkout v1.0.0                                   # the desired release tag
 
 # 2. Generate .env with all required secrets filled in.
 #    Creates .env from the template and fills APP_KEY, DB_PASSWORD,
@@ -162,7 +185,7 @@ Your data persists across `down`/`up` in named volumes (`pgsql-data`,
 
 > **MAJOR version upgrades may contain breaking changes.** Before upgrading
 > across a major version, read the [CHANGELOG](CHANGELOG.md) and the
-> corresponding [GitHub Release notes](https://github.com/emmpaul/laravel-slack-clone/releases)
+> corresponding [GitHub Release notes](https://github.com/emmpaul/the-desk/releases)
 > for required manual steps.
 
 ### Using the published image
@@ -178,13 +201,13 @@ it at your `.env` and go:
 # 1. Grab the compose file, env template, and secret generator from a release tag.
 git clone git@github.com:emmpaul/the-desk.git
 cd the-desk
-git fetch --tags && git checkout v0.4.0                # the desired release tag
+git fetch --tags && git checkout v1.0.0                # the desired release tag
 
 # 2. Generate .env secrets, then edit APP_URL, mail, and REVERB_*_PUBLIC (see below).
 ./docker/gen-secrets.sh
 
 # 3. Run the published image instead of building. Pin the version to the tag.
-echo 'APP_IMAGE=ghcr.io/emmpaul/the-desk:0.4.0' >> .env
+echo 'APP_IMAGE=ghcr.io/emmpaul/the-desk:1.0.0' >> .env
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
@@ -217,3 +240,14 @@ Cache, session, and queue all use the **Redis** driver
 always-on and persists to the `redis-data` volume with `appendonly` enabled, so
 queued jobs survive a restart; every app process waits for it to be healthy
 before starting.
+
+## Contributing
+
+Contributions are welcome — bug reports, docs fixes, and pull requests. Please
+read **[CONTRIBUTING.md](CONTRIBUTING.md)** for the development setup, the quality
+gates (100% test coverage, Pint/PHPStan/Rector, and the frontend checks), the
+Conventional Commits convention, and the PR workflow.
+
+## License
+
+The Desk is open source under the [MIT License](LICENSE).
