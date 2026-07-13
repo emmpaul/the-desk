@@ -6,7 +6,6 @@ import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { translate } from '@/lib/i18n';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
@@ -48,10 +47,9 @@ defineProps<{
             <div class="my-6 flex items-center justify-start">
                 <Button
                     class="w-full rounded-full"
-                    :disabled="processing"
+                    :loading="processing"
                     data-test="email-password-reset-link-button"
                 >
-                    <Spinner v-if="processing" />
                     {{ $t('Email password reset link') }}
                 </Button>
             </div>

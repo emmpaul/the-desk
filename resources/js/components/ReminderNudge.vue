@@ -42,6 +42,7 @@ const channelLabel = computed(() =>
             >
                 {{ $t('Reminder · due now') }}
             </span>
+            <!-- eslint-disable-next-line local/no-raw-button -- bespoke dismiss on the branded nudge -->
             <button
                 type="button"
                 data-test="reminder-nudge-close"
@@ -89,6 +90,7 @@ const channelLabel = computed(() =>
         </div>
 
         <div class="flex items-center gap-2.5">
+            <!-- eslint-disable-next-line local/no-raw-button -- bespoke pill on the branded nudge -->
             <button
                 type="button"
                 data-test="reminder-nudge-open"
@@ -97,6 +99,7 @@ const channelLabel = computed(() =>
             >
                 {{ $t('Open message') }}
             </button>
+            <!-- eslint-disable-next-line local/no-raw-button -- bespoke pill on the branded nudge -->
             <button
                 type="button"
                 data-test="reminder-nudge-snooze"
@@ -105,6 +108,7 @@ const channelLabel = computed(() =>
             >
                 {{ $t('Snooze 20 min') }}
             </button>
+            <!-- eslint-disable-next-line local/no-raw-button -- bespoke text action on the branded nudge -->
             <button
                 type="button"
                 data-test="reminder-nudge-done"

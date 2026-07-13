@@ -4,6 +4,7 @@ import { ChevronDown, X } from '@lucide/vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import MessageComposer from '@/components/MessageComposer.vue';
 import MessageList from '@/components/MessageList.vue';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useScrollPin } from '@/composables/useScrollPin';
 import type { Mention, Message } from '@/types';
@@ -137,15 +138,17 @@ watch(
                     >#{{ props.channelName }}
                 </p>
             </div>
-            <button
+            <Button
+                variant="outline"
+                size="icon-sm"
                 type="button"
                 data-test="thread-close"
                 :aria-label="$t('Close thread')"
-                class="flex size-6.5 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                class="shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                 @click="emit('close')"
             >
-                <X class="size-3.5" />
-            </button>
+                <X />
+            </Button>
         </header>
 
         <div class="relative flex min-h-0 flex-1 flex-col">
@@ -221,6 +224,7 @@ watch(
                 leave-from-class="translate-y-0 opacity-100"
                 leave-to-class="translate-y-1 opacity-0"
             >
+                <!-- eslint-disable-next-line local/no-raw-button -- jump-to-latest pill, deferred to ScrollableMessageList (#316) -->
                 <button
                     v-if="!pinnedToBottom"
                     type="button"

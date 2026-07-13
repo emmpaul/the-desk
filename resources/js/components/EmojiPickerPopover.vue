@@ -98,6 +98,7 @@ function onPickCustom(entry: CustomEmojiEntry): void {
                     <div
                         class="grid max-h-28 grid-cols-7 gap-1 overflow-y-auto"
                     >
+                        <!-- eslint-disable-next-line local/no-raw-button -- bespoke emoji-grid cell -->
                         <button
                             v-for="entry in customEmojis"
                             :key="entry.name"

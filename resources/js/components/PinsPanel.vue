@@ -50,6 +50,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 <template>
     <div>
         <!-- Transparent backdrop: an outside click dismisses the popover. -->
+        <!-- eslint-disable-next-line local/no-raw-button -- full-screen click-catcher backdrop -->
         <button
             type="button"
             data-test="pins-panel-backdrop"
@@ -62,7 +63,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
             role="dialog"
             :aria-label="$t('Pinned messages')"
             data-test="pins-panel"
-            class="absolute top-2 right-6 z-50 w-[392px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-xl"
+            class="absolute top-2 right-6 z-50 w-98 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-xl"
         >
             <!-- Header: brass pin + title, with the count on the right. -->
             <div
@@ -120,6 +121,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                     :key="message.id"
                     class="group/pin relative"
                 >
+                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke pinned-message list row -->
                     <button
                         type="button"
                         data-test="pins-panel-row"
@@ -186,6 +188,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
                     <!-- Unpin: a floating pill revealed on row hover. Any member
                          may unpin (shared toggle); hidden read-only otherwise. -->
+                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke floating unpin pill -->
                     <button
                         v-if="props.canPin"
                         type="button"

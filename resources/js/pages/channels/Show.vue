@@ -881,6 +881,7 @@ function archive(): void {
                         leave-from-class="translate-y-0 opacity-100"
                         leave-to-class="-translate-y-1 opacity-0"
                     >
+                        <!-- eslint-disable-next-line local/no-raw-button -- bespoke jump-to-unread pill -->
                         <button
                             v-if="showJumpToUnread"
                             type="button"
@@ -1015,6 +1016,7 @@ function archive(): void {
                         leave-from-class="translate-y-0 scale-100 opacity-100"
                         leave-to-class="translate-y-3 scale-95 opacity-0"
                     >
+                        <!-- eslint-disable-next-line local/no-raw-button -- jump-to-latest pill, deferred to ScrollableMessageList (#316) -->
                         <button
                             v-if="!pinnedToBottom"
                             type="button"
@@ -1104,6 +1106,7 @@ function archive(): void {
                                       )
                             }}
                         </span>
+                        <!-- eslint-disable-next-line local/no-raw-button -- bespoke inline text action -->
                         <button
                             type="button"
                             data-test="discard-queue"
@@ -1119,6 +1122,7 @@ function archive(): void {
                         class="mx-5 shrink-0"
                     />
 
+                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke scheduled-messages pill -->
                     <button
                         v-if="props.scheduledMessages.length > 0"
                         type="button"

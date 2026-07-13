@@ -135,6 +135,7 @@ function bodyPreview(body: string): string {
                         <div
                             class="mt-2 flex items-center justify-between gap-2"
                         >
+                            <!-- eslint-disable-next-line local/no-raw-button -- bespoke reschedule pill -->
                             <button
                                 type="button"
                                 data-test="scheduled-reschedule"
@@ -188,6 +189,7 @@ function bodyPreview(body: string): string {
                                 {{ whenLabel(scheduled.sendAt) }}
                             </span>
                             <div class="flex items-center gap-1">
+                                <!-- eslint-disable-next-line local/no-raw-button -- bespoke row icon action -->
                                 <button
                                     type="button"
                                     :aria-label="$t('Edit scheduled message')"
@@ -197,6 +199,7 @@ function bodyPreview(body: string): string {
                                 >
                                     <Pencil class="size-4" />
                                 </button>
+                                <!-- eslint-disable-next-line local/no-raw-button -- bespoke row icon action -->
                                 <button
                                     type="button"
                                     :aria-label="$t('Cancel scheduled message')"

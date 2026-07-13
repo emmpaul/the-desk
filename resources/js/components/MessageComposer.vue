@@ -589,6 +589,7 @@ function onKeydown(event: KeyboardEvent): void {
                         :is-deleted="props.replyTarget.isDeleted"
                     />
                 </span>
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke composer chip dismiss -->
                 <button
                     type="button"
                     data-test="reply-preview-dismiss"
@@ -617,6 +618,7 @@ function onKeydown(event: KeyboardEvent): void {
                 <span class="shrink-0 text-[11.5px] text-muted-foreground">
                     {{ $t('Enter to save · Esc to cancel') }}
                 </span>
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke composer chip dismiss -->
                 <button
                     type="button"
                     data-test="composer-editing-dismiss"

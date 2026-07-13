@@ -12,6 +12,7 @@ import {
 import { computed } from 'vue';
 import EmojiPickerPopover from '@/components/EmojiPickerPopover.vue';
 import MessageReminderPopover from '@/components/MessageReminderPopover.vue';
+import { Button } from '@/components/ui/button';
 import {
     Tooltip,
     TooltipContent,
@@ -109,22 +110,17 @@ const showDivider = computed(
             showDelete.value),
 );
 
-// Shared icon-button treatment: a 30×28 hit area holding a size-3.5 glyph,
-// resting muted and lifting to foreground on hover, a legible brass focus ring
-// for keyboard users, and a reserved transparent border so the brass open-state
-// below never shifts the layout (border-box keeps the footprint fixed).
-const iconButtonClass =
-    'inline-flex h-7 w-7.5 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none';
+// The bar's icon buttons ride the `<Button variant="ghost" size="icon-sm">`
+// primitive; these classes only tune what the primitive doesn't own: a muted
+// resting glyph (`ghost` rests transparent), and — for the two popover triggers
+// (react / remind) — an accent-filled "open" state so it reads as active while
+// its menu is attached.
+const iconButtonClass = 'text-muted-foreground';
+const openStateClass = 'bg-accent text-accent-foreground';
 
 // Delete recolors to the destructive token on hover instead of neutral.
 const deleteButtonClass =
-    'inline-flex h-7 w-7.5 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none';
-
-// The persistent "open" state for a button anchoring a popover (react / remind):
-// brass carries the meaning that a menu is attached here, per the design's
-// deliberate brass-only-when-active call.
-const openStateClass =
-    'border-brass-border bg-brass-fill text-brass-fill-foreground';
+    'text-muted-foreground hover:bg-destructive/10 hover:text-destructive';
 </script>
 
 <template>
@@ -148,28 +144,32 @@ const openStateClass =
                 v-slot="{ open }"
                 @select="(emoji) => emit('react', emoji)"
             >
-                <button
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
                     type="button"
                     data-test="message-react"
                     :data-open="open || undefined"
                     :aria-label="$t('Add reaction')"
-                    :class="[iconButtonClass, open ? openStateClass : '']"
+                    :class="open ? openStateClass : iconButtonClass"
                 >
-                    <SmilePlus class="size-3.5" />
-                </button>
+                    <SmilePlus />
+                </Button>
             </EmojiPickerPopover>
 
             <Tooltip v-if="showStartThread">
                 <TooltipTrigger as-child>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         type="button"
                         data-test="message-thread"
                         :aria-label="$t('Reply in thread')"
                         :class="iconButtonClass"
                         @click="emit('openThread')"
                     >
-                        <MessageSquareText class="size-3.5" />
-                    </button>
+                        <MessageSquareText />
+                    </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="6">
                     {{ $t('Reply in thread') }}
@@ -178,15 +178,17 @@ const openStateClass =
 
             <Tooltip v-if="showReply">
                 <TooltipTrigger as-child>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         type="button"
                         data-test="message-reply"
                         :aria-label="$t('Reply to message')"
                         :class="iconButtonClass"
                         @click="emit('reply')"
                     >
-                        <CornerUpLeft class="size-3.5" />
-                    </button>
+                        <CornerUpLeft />
+                    </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="6">
                     {{ $t('Reply to message') }}
@@ -201,15 +203,17 @@ const openStateClass =
 
             <Tooltip v-if="showForward">
                 <TooltipTrigger as-child>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         type="button"
                         data-test="message-forward"
                         :aria-label="$t('Forward message')"
                         :class="iconButtonClass"
                         @click="emit('forward')"
                     >
-                        <Forward class="size-3.5" />
-                    </button>
+                        <Forward />
+                    </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="6">
                     {{ $t('Forward message') }}
@@ -218,7 +222,9 @@ const openStateClass =
 
             <Tooltip v-if="showPin">
                 <TooltipTrigger as-child>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         type="button"
                         data-test="message-pin"
                         :aria-label="
@@ -229,11 +235,8 @@ const openStateClass =
                         :class="iconButtonClass"
                         @click="isPinned ? emit('unpin') : emit('pin')"
                     >
-                        <Pin
-                            class="size-3.5"
-                            :class="isPinned ? 'fill-brass text-brass' : ''"
-                        />
-                    </button>
+                        <Pin :class="isPinned ? 'fill-brass text-brass' : ''" />
+                    </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="6">
                     {{
@@ -251,28 +254,32 @@ const openStateClass =
                 @set="(remindAt) => emit('remind', remindAt)"
                 @custom="emit('remindCustom')"
             >
-                <button
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
                     type="button"
                     data-test="message-remind"
                     :data-open="open || undefined"
                     :aria-label="$t('Remind me about this')"
-                    :class="[iconButtonClass, open ? openStateClass : '']"
+                    :class="open ? openStateClass : iconButtonClass"
                 >
-                    <AlarmClock class="size-3.5" />
-                </button>
+                    <AlarmClock />
+                </Button>
             </MessageReminderPopover>
 
             <Tooltip v-if="showEdit">
                 <TooltipTrigger as-child>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         type="button"
                         data-test="message-edit"
                         :aria-label="$t('Edit message')"
                         :class="iconButtonClass"
                         @click="emit('edit')"
                     >
-                        <Pencil class="size-3.5" />
-                    </button>
+                        <Pencil />
+                    </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="6">
                     {{ $t('Edit message') }}
@@ -281,15 +288,17 @@ const openStateClass =
 
             <Tooltip v-if="showDelete">
                 <TooltipTrigger as-child>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         type="button"
                         data-test="message-delete"
                         :aria-label="$t('Delete message')"
                         :class="deleteButtonClass"
                         @click="emit('delete')"
                     >
-                        <Trash2 class="size-3.5" />
-                    </button>
+                        <Trash2 />
+                    </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="6">
                     {{ $t('Delete message') }}

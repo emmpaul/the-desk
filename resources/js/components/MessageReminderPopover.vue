@@ -91,6 +91,7 @@ function chooseCustom(): void {
                     {{ $t('Remind me about this') }}
                 </div>
                 <div class="flex flex-col">
+                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke reminder menu item -->
                     <button
                         v-for="preset in presets"
                         :key="preset.key"
@@ -108,6 +109,7 @@ function chooseCustom(): void {
                         >
                     </button>
                     <div class="mx-2 my-1.5 h-px bg-border"></div>
+                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke reminder menu item -->
                     <button
                         type="button"
                         data-test="reminder-custom"

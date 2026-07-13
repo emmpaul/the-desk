@@ -185,6 +185,7 @@ function confirm(): void {
             </DialogHeader>
 
             <div class="grid grid-cols-2 gap-2" data-test="schedule-presets">
+                <!-- eslint-disable-next-line local/no-raw-button -- bespoke schedule-preset item -->
                 <button
                     v-for="preset in presets"
                     :key="preset.key"

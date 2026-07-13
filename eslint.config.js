@@ -5,6 +5,7 @@ import importPlugin from 'eslint-plugin-import';
 import vue from 'eslint-plugin-vue';
 import vuejsAccessibility from 'eslint-plugin-vuejs-accessibility';
 import noArbitraryTailwindSpacing from './eslint-rules/no-arbitrary-tailwind-spacing.js';
+import noRawButton from './eslint-rules/no-raw-button.js';
 
 const controlStatements = [
     'if',
@@ -33,6 +34,7 @@ export default defineConfigWithVueTs(
             local: {
                 rules: {
                     'no-arbitrary-tailwind-spacing': noArbitraryTailwindSpacing,
+                    'no-raw-button': noRawButton,
                 },
             },
         },
@@ -71,6 +73,11 @@ export default defineConfigWithVueTs(
             // `warn` (visible, auto-fixable via `npm run lint`) so the gate stays
             // green while the existing occurrences are burned down over time.
             'local/no-arbitrary-tailwind-spacing': 'warn',
+            // Steer shared button styling onto the `<Button>` primitive: raw
+            // `<button>` outside `components/ui/` is an `error`, so CI catches
+            // new stray ones. Genuinely bespoke controls opt out per-occurrence
+            // with `<!-- eslint-disable-next-line local/no-raw-button -- reason -->`.
+            'local/no-raw-button': 'error',
         },
     },
     {

@@ -683,6 +683,7 @@ function confirmDelete(): void {
                                     }}</span>
                                 </div>
 
+                                <!-- eslint-disable-next-line local/no-raw-button -- bespoke quoted-reply preview control -->
                                 <button
                                     v-if="
                                         message.replyTo &&
@@ -738,20 +739,23 @@ function confirmDelete(): void {
                                     <div
                                         class="mt-1 flex items-center gap-2 text-[11.5px] text-muted-foreground"
                                     >
-                                        <button
+                                        <Button
+                                            size="sm"
                                             type="button"
-                                            class="rounded bg-primary px-2 py-1 font-medium text-primary-foreground hover:bg-primary/90"
+                                            class="h-7 px-2"
                                             @click="saveEdit(message)"
                                         >
                                             {{ $t('Save') }}
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
                                             type="button"
-                                            class="rounded border border-border px-2 py-1 font-medium text-foreground hover:bg-muted"
+                                            class="h-7 px-2"
                                             @click="cancelEdit"
                                         >
                                             {{ $t('Cancel') }}
-                                        </button>
+                                        </Button>
                                         <span>{{
                                             $t('Enter to save · Esc to cancel')
                                         }}</span>
@@ -902,6 +906,7 @@ function confirmDelete(): void {
                                     v-if="showThreadSummary(message)"
                                     class="mt-1.5 flex flex-wrap items-center gap-2"
                                 >
+                                    <!-- eslint-disable-next-line local/no-raw-button -- bespoke thread-summary card -->
                                     <button
                                         type="button"
                                         data-test="thread-summary"
