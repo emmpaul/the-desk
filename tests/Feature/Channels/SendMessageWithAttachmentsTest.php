@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Channels\PostMessage;
 use App\Actions\Teams\CreateTeam;
 use App\Enums\AttachmentStatus;
 use App\Events\MessageSent;
@@ -11,6 +12,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Create a team with its owner already a member of #general.
@@ -153,6 +155,23 @@ test('resending with the same client uuid re-claims nothing and stays idempotent
     $message = Message::sole();
     expect($attachment->refresh()->message_id)->toBe($message->id)
         ->and($attachment->status)->toBe(AttachmentStatus::Attached);
+});
+
+test('claiming rejects the whole send when a requested id no longer exists', function (): void {
+    [$owner, $team, $general] = sendTeam();
+
+    // Drive the action directly: the HTTP layer's exists rule 404s a bad id
+    // before it reaches the claim, so this covers the mid-transaction TOCTOU
+    // window (and any direct caller) where a requested row has since vanished.
+    expect(fn () => app(PostMessage::class)->handle(
+        channel: $general,
+        author: $owner,
+        body: 'Ghost file',
+        clientUuid: (string) Str::uuid7(),
+        attachmentIds: [(string) Str::uuid7()],
+    ))->toThrow(ValidationException::class);
+
+    expect(Message::count())->toBe(0);
 });
 
 test('a send cannot claim more attachments than the per-message limit', function (): void {

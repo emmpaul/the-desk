@@ -47,9 +47,10 @@ server {
 	server_name chat.example.com;
 	# ssl_certificate ... ; ssl_certificate_key ... ;
 
-	# Must be >= ATTACHMENT_MAX_SIZE_MB (default 25M) or large uploads are
-	# rejected by nginx before the app sees them.
-	client_max_body_size 25m;
+	# Set to your ATTACHMENT_MAX_SIZE_MB (default 25M) plus a little headroom for
+	# multipart overhead, or large uploads are rejected by nginx before the app
+	# sees them.
+	client_max_body_size 30m;
 
 	location / {
 		proxy_pass http://127.0.0.1:80;
@@ -88,11 +89,12 @@ once the service is reachable.
 
 Message attachments are capped by [`ATTACHMENT_MAX_SIZE_MB`](/docs/reference/environment-variables/#attachments)
 (default 25 MB), but that limit only applies once the request reaches the app. Your proxy — and
-PHP itself — reject an oversized body first, so raise their limits to at least the same size:
+PHP itself — reject an oversized body first, so raise their limits to your configured cap plus a
+little headroom for multipart encoding overhead:
 
-- **nginx:** `client_max_body_size 25m;` (shown above).
+- **nginx:** `client_max_body_size` (shown above) — set it to your cap plus headroom.
 - **Caddy / Traefik:** no request-body cap by default, so nothing to change unless you added one.
-- **PHP:** `upload_max_filesize` and `post_max_size` must both be ≥ the cap.
+- **PHP:** `upload_max_filesize` and `post_max_size` must both comfortably exceed the cap.
 
 ## Verifying
 

@@ -1,9 +1,21 @@
 <?php
 
 use App\Models\Attachment;
+use App\Models\Channel;
 use App\Models\Message;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+
+test('the url accessor resolves the authorized download route', function (): void {
+    $channel = Channel::factory()->create();
+    $attachment = Attachment::factory()->for($channel)->create();
+
+    expect($attachment->url)->toBe(route('channels.attachments.download', [
+        'team' => $channel->team->slug,
+        'channel' => $channel->slug,
+        'attachment' => $attachment->id,
+    ]));
+});
 
 test('an attachment resolves its uploader, channel, and claiming message', function (): void {
     $message = Message::factory()->create();

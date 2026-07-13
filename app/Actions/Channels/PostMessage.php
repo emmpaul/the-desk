@@ -116,6 +116,17 @@ class PostMessage
 
         $attachments = Attachment::whereIn('id', $attachmentIds)->lockForUpdate()->get();
 
+        // Every requested id must still resolve to a row. The request layer's
+        // `exists` rule checks this at validation time, but a row can vanish in
+        // the window before the claim (a GC sweep, a force-delete) — and a direct
+        // caller skips that layer entirely — so a missing id fails the whole send
+        // rather than silently attaching fewer files than asked for.
+        if ($attachments->count() !== count(array_unique($attachmentIds))) {
+            throw ValidationException::withMessages([
+                'attachment_ids' => __('One or more attachments are unavailable.'),
+            ]);
+        }
+
         foreach ($attachments as $attachment) {
             if ($attachment->message_id === $message->id) {
                 continue;

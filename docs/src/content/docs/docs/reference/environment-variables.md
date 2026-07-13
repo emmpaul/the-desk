@@ -103,11 +103,14 @@ Files and images members attach to messages.
 | `ATTACHMENT_MAX_SIZE_MB`       | `25`    | Largest single file a member can upload, in megabytes.                |
 | `ATTACHMENT_MAX_PER_MESSAGE`   | `10`    | Most files that can ride a single message.                            |
 | `ATTACHMENT_PENDING_TTL_HOURS` | `24`    | How long an uploaded-but-never-sent file is kept before it is swept.  |
+| `ATTACHMENT_DISK`              | `local` | Private disk files are stored on. Point at a configured S3 disk for bucket storage. |
 
 :::caution[Raising the size limit needs matching server limits]
 `ATTACHMENT_MAX_SIZE_MB` only controls the app's own validation, which runs **after** the whole
-file has been received. To actually accept larger uploads you must also raise, to at least the same
-size:
+file has been received. To actually accept larger uploads you must also raise these — and give them a
+little headroom above the cap, since multipart form encoding adds overhead on
+top of the raw file (this matters most for `post_max_size`, which bounds the
+whole request body, not just the file):
 
 - PHP's `upload_max_filesize` **and** `post_max_size`, and
 - any reverse-proxy body-size limit in front of the app (for nginx, `client_max_body_size`).
