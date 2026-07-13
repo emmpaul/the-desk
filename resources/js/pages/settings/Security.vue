@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import LogOutOtherDevicesDialog from '@/components/LogOutOtherDevicesDialog.vue';
 import ManageSessions from '@/components/ManageSessions.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
@@ -9,7 +9,6 @@ import SecurityActivity from '@/components/SecurityActivity.vue';
 import SettingsPane from '@/components/SettingsPane.vue';
 import SettingsPaneSection from '@/components/SettingsPaneSection.vue';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { translate } from '@/lib/i18n';
 import { edit } from '@/routes/security';
 import type { ActiveSession, SecurityActivityEvent } from '@/types';
@@ -67,47 +66,49 @@ defineOptions({
                 class="space-y-6"
                 v-slot="{ errors, processing, recentlySuccessful }"
             >
-                <div class="grid gap-2">
-                    <Label for="current_password">{{
-                        $t('Current password')
-                    }}</Label>
+                <FormField
+                    id="current_password"
+                    :label="$t('Current password')"
+                    :error="errors.current_password"
+                    v-slot="{ id }"
+                >
                     <PasswordInput
-                        id="current_password"
+                        :id="id"
                         name="current_password"
-                        class="mt-1 block w-full"
                         autocomplete="current-password"
                         :placeholder="$t('Current password')"
                     />
-                    <InputError :message="errors.current_password" />
-                </div>
+                </FormField>
 
-                <div class="grid gap-2">
-                    <Label for="password">{{ $t('New password') }}</Label>
+                <FormField
+                    id="password"
+                    :label="$t('New password')"
+                    :error="errors.password"
+                    v-slot="{ id }"
+                >
                     <PasswordInput
-                        id="password"
+                        :id="id"
                         name="password"
-                        class="mt-1 block w-full"
                         autocomplete="new-password"
                         :placeholder="$t('New password')"
                         :passwordrules="props.passwordRules"
                     />
-                    <InputError :message="errors.password" />
-                </div>
+                </FormField>
 
-                <div class="grid gap-2">
-                    <Label for="password_confirmation">{{
-                        $t('Confirm password')
-                    }}</Label>
+                <FormField
+                    id="password_confirmation"
+                    :label="$t('Confirm password')"
+                    :error="errors.password_confirmation"
+                    v-slot="{ id }"
+                >
                     <PasswordInput
-                        id="password_confirmation"
+                        :id="id"
                         name="password_confirmation"
-                        class="mt-1 block w-full"
                         autocomplete="new-password"
                         :placeholder="$t('Confirm password')"
                         :passwordrules="props.passwordRules"
                     />
-                    <InputError :message="errors.password_confirmation" />
-                </div>
+                </FormField>
 
                 <div class="flex items-center gap-4">
                     <Button

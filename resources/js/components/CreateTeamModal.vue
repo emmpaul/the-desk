@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,7 +14,6 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { store } from '@/routes/teams';
 
 const open = ref(false);
@@ -51,17 +50,20 @@ function handleOpenChange(value: boolean) {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div class="grid gap-2">
-                    <Label for="name">{{ $t('Team name') }}</Label>
+                <FormField
+                    id="name"
+                    :label="$t('Team name')"
+                    :error="errors.name"
+                    v-slot="{ id }"
+                >
                     <Input
-                        id="name"
+                        :id="id"
                         name="name"
                         data-test="create-team-name"
                         :placeholder="$t('My team')"
                         required
                     />
-                    <InputError :message="errors.name" />
-                </div>
+                </FormField>
 
                 <DialogFooter class="gap-2">
                     <DialogClose as-child>

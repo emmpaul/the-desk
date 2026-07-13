@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import FormField from '@/components/FormField.vue';
 import SettingsSection from '@/components/SettingsSection.vue';
-import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -55,11 +55,18 @@ function onSelect(value: unknown): void {
             $t('Choose the language used across your workspace interface.')
         "
     >
-        <div class="grid gap-2">
-            <Label for="locale">{{ $t('Display language') }}</Label>
-
+        <FormField
+            id="locale"
+            :label="$t('Display language')"
+            :hint="
+                $t(
+                    'Dates, times, and numbers are formatted to match your selected language.',
+                )
+            "
+            v-slot="{ id }"
+        >
             <Select :model-value="selected" @update:model-value="onSelect">
-                <SelectTrigger id="locale" class="w-full">
+                <SelectTrigger :id="id" class="w-full">
                     <SelectValue :placeholder="$t('Select a language')" />
                 </SelectTrigger>
                 <SelectContent>
@@ -72,14 +79,6 @@ function onSelect(value: unknown): void {
                     </SelectItem>
                 </SelectContent>
             </Select>
-
-            <p class="text-sm text-muted-foreground">
-                {{
-                    $t(
-                        'Dates, times, and numbers are formatted to match your selected language.',
-                    )
-                }}
-            </p>
-        </div>
+        </FormField>
     </SettingsSection>
 </template>

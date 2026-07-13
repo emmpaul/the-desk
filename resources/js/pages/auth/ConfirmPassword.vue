@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { translate } from '@/lib/i18n';
 import { store } from '@/routes/password/confirm';
 
@@ -27,19 +26,20 @@ defineOptions({
         v-slot="{ errors, processing }"
     >
         <div class="space-y-6">
-            <div class="grid gap-2">
-                <Label for="password">{{ $t('Password') }}</Label>
+            <FormField
+                id="password"
+                :label="$t('Password')"
+                :error="errors.password"
+                v-slot="{ id }"
+            >
                 <PasswordInput
-                    id="password"
+                    :id="id"
                     name="password"
-                    class="mt-1 block w-full"
                     required
                     autocomplete="current-password"
                     autofocus
                 />
-
-                <InputError :message="errors.password" />
-            </div>
+            </FormField>
 
             <div class="flex items-center">
                 <Button

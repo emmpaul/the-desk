@@ -3,11 +3,10 @@ import { Form, Head, usePage } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import SettingsSection from '@/components/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -64,75 +63,85 @@ function onTimezoneSelect(value: unknown): void {
             class="space-y-6"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
-            <div class="grid gap-2">
-                <Label for="name">{{ $t('Name') }}</Label>
+            <FormField
+                id="name"
+                :label="$t('Name')"
+                :error="errors.name"
+                v-slot="{ id }"
+            >
                 <Input
-                    id="name"
-                    class="mt-1 block w-full"
+                    :id="id"
                     name="name"
                     :default-value="user.name"
                     required
                     autocomplete="name"
                     :placeholder="$t('Full name')"
                 />
-                <InputError class="mt-2" :message="errors.name" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="email">{{ $t('Email address') }}</Label>
+            <FormField
+                id="email"
+                :label="$t('Email address')"
+                :error="errors.email"
+                v-slot="{ id }"
+            >
                 <Input
-                    id="email"
+                    :id="id"
                     type="email"
-                    class="mt-1 block w-full"
                     name="email"
                     :default-value="user.email"
                     required
                     autocomplete="username"
                     :placeholder="$t('Email address')"
                 />
-                <InputError class="mt-2" :message="errors.email" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="pronouns">{{ $t('Pronouns') }}</Label>
+            <FormField
+                id="pronouns"
+                :label="$t('Pronouns')"
+                :error="errors.pronouns"
+                v-slot="{ id }"
+            >
                 <Input
-                    id="pronouns"
-                    class="mt-1 block w-full"
+                    :id="id"
                     name="pronouns"
                     :default-value="user.pronouns ?? ''"
                     maxlength="50"
                     :placeholder="$t('e.g. she/her, they/them')"
                 />
-                <InputError class="mt-2" :message="errors.pronouns" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="title">{{ $t('Job title') }}</Label>
+            <FormField
+                id="title"
+                :label="$t('Job title')"
+                :error="errors.title"
+                v-slot="{ id }"
+            >
                 <Input
-                    id="title"
-                    class="mt-1 block w-full"
+                    :id="id"
                     name="title"
                     :default-value="user.title ?? ''"
                     maxlength="100"
                     :placeholder="$t('e.g. Product Designer')"
                 />
-                <InputError class="mt-2" :message="errors.title" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="phone">{{ $t('Phone') }}</Label>
+            <FormField
+                id="phone"
+                :label="$t('Phone')"
+                :error="errors.phone"
+                v-slot="{ id }"
+            >
                 <Input
-                    id="phone"
+                    :id="id"
                     type="tel"
-                    class="mt-1 block w-full"
                     name="phone"
                     :default-value="user.phone ?? ''"
                     maxlength="30"
                     autocomplete="tel"
                     :placeholder="$t('e.g. +1 555 123 4567')"
                 />
-                <InputError class="mt-2" :message="errors.phone" />
-            </div>
+            </FormField>
 
             <div
                 v-if="
@@ -197,17 +206,12 @@ function onTimezoneSelect(value: unknown): void {
             )
         "
     >
-        <div class="grid gap-2">
-            <Label for="timezone">{{ $t('Timezone') }}</Label>
+        <FormField id="timezone" :label="$t('Timezone')" v-slot="{ id }">
             <Select
                 :model-value="timezone ?? undefined"
                 @update:model-value="onTimezoneSelect"
             >
-                <SelectTrigger
-                    id="timezone"
-                    class="w-full"
-                    data-test="timezone"
-                >
+                <SelectTrigger :id="id" class="w-full" data-test="timezone">
                     <SelectValue :placeholder="$t('Select a timezone')" />
                 </SelectTrigger>
                 <SelectContent>
@@ -220,6 +224,6 @@ function onTimezoneSelect(value: unknown): void {
                     </SelectItem>
                 </SelectContent>
             </Select>
-        </div>
+        </FormField>
     </SettingsSection>
 </template>

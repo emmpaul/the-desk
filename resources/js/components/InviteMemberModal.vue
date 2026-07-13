@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -13,7 +13,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -82,27 +81,34 @@ function handleOpenChange(value: boolean) {
                 </DialogHeader>
 
                 <div class="grid gap-4">
-                    <div class="grid gap-2">
-                        <Label for="email">{{ $t('Email address') }}</Label>
+                    <FormField
+                        id="email"
+                        :label="$t('Email address')"
+                        :error="errors.email"
+                        v-slot="{ id }"
+                    >
                         <Input
-                            id="email"
+                            :id="id"
                             name="email"
                             data-test="invite-email"
                             type="email"
                             :placeholder="$t('colleague@example.com')"
                             required
                         />
-                        <InputError :message="errors.email" />
-                    </div>
+                    </FormField>
 
-                    <div class="grid gap-2">
-                        <Label for="role">{{ $t('Role') }}</Label>
+                    <FormField
+                        id="role"
+                        :label="$t('Role')"
+                        :error="errors.role"
+                        v-slot="{ id }"
+                    >
                         <Select
                             v-model="inviteRole"
                             name="role"
                             data-test="invite-role"
                         >
-                            <SelectTrigger class="w-full">
+                            <SelectTrigger :id="id" class="w-full">
                                 <SelectValue
                                     :placeholder="$t('Select a role')"
                                 />
@@ -117,8 +123,7 @@ function handleOpenChange(value: boolean) {
                                 </SelectItem>
                             </SelectContent>
                         </Select>
-                        <InputError :message="errors.role" />
-                    </div>
+                    </FormField>
                 </div>
 
                 <DialogFooter class="gap-2">

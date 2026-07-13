@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -13,7 +13,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { destroy } from '@/routes/teams';
 import type { Team } from '@/types';
 
@@ -67,22 +66,23 @@ const handleOpenChange = (nextOpen: boolean) => {
                 </DialogHeader>
 
                 <div class="space-y-4 py-4">
-                    <div class="grid gap-2">
-                        <Label for="confirmation-name">
+                    <FormField id="confirmation-name" :error="errors.name">
+                        <template #label>
                             {{ $t('Type') }}
                             <strong>"{{ props.team.name }}"</strong>
                             {{ $t('to confirm') }}
-                        </Label>
-                        <Input
-                            id="confirmation-name"
-                            name="name"
-                            data-test="delete-team-name"
-                            v-model="confirmationName"
-                            :placeholder="$t('Enter team name')"
-                            autocomplete="off"
-                        />
-                        <InputError :message="errors.name" />
-                    </div>
+                        </template>
+                        <template #default="{ id }">
+                            <Input
+                                :id="id"
+                                name="name"
+                                data-test="delete-team-name"
+                                v-model="confirmationName"
+                                :placeholder="$t('Enter team name')"
+                                autocomplete="off"
+                            />
+                        </template>
+                    </FormField>
                 </div>
 
                 <DialogFooter class="gap-2">

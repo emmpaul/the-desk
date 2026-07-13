@@ -3,7 +3,7 @@ import { Form } from '@inertiajs/vue3';
 import { Monitor, Smartphone } from '@lucide/vue';
 import { useTemplateRef } from 'vue';
 import SessionController from '@/actions/App/Http/Controllers/Settings/SessionController';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { useTimezone } from '@/composables/useTimezone';
 import { formatDateTime } from '@/lib/datetime';
 import type { ActiveSession } from '@/types';
@@ -128,18 +127,20 @@ function lastActive(iso: string): string {
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div class="grid gap-2">
-                            <Label for="revoke_password" class="sr-only">
-                                {{ $t('Password') }}
-                            </Label>
+                        <FormField
+                            id="revoke_password"
+                            :label="$t('Password')"
+                            label-class="sr-only"
+                            :error="errors.password"
+                            v-slot="{ id }"
+                        >
                             <PasswordInput
-                                id="revoke_password"
+                                :id="id"
                                 name="password"
                                 ref="revokeInput"
                                 :placeholder="$t('Password')"
                             />
-                            <InputError :message="errors.password" />
-                        </div>
+                        </FormField>
 
                         <DialogFooter class="gap-2">
                             <DialogClose as-child>
