@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TeamInvitationAlert from '@/components/TeamInvitationAlert.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { translate } from '@/lib/i18n';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
@@ -44,10 +43,14 @@ defineOptions({
             class="flex flex-col gap-6"
         >
             <div class="grid gap-6">
-                <div class="grid gap-2">
-                    <Label for="name">{{ $t('Name') }}</Label>
+                <FormField
+                    id="name"
+                    :label="$t('Name')"
+                    :error="errors.name"
+                    v-slot="{ id }"
+                >
                     <Input
-                        id="name"
+                        :id="id"
                         type="text"
                         required
                         autofocus
@@ -56,13 +59,16 @@ defineOptions({
                         name="name"
                         :placeholder="$t('Full name')"
                     />
-                    <InputError :message="errors.name" />
-                </div>
+                </FormField>
 
-                <div class="grid gap-2">
-                    <Label for="email">{{ $t('Email address') }}</Label>
+                <FormField
+                    id="email"
+                    :label="$t('Email address')"
+                    :error="errors.email"
+                    v-slot="{ id }"
+                >
                     <Input
-                        id="email"
+                        :id="id"
                         type="email"
                         required
                         :tabindex="2"
@@ -70,13 +76,16 @@ defineOptions({
                         name="email"
                         placeholder="email@example.com"
                     />
-                    <InputError :message="errors.email" />
-                </div>
+                </FormField>
 
-                <div class="grid gap-2">
-                    <Label for="password">{{ $t('Password') }}</Label>
+                <FormField
+                    id="password"
+                    :label="$t('Password')"
+                    :error="errors.password"
+                    v-slot="{ id }"
+                >
                     <PasswordInput
-                        id="password"
+                        :id="id"
                         required
                         :tabindex="3"
                         autocomplete="new-password"
@@ -84,15 +93,16 @@ defineOptions({
                         :placeholder="$t('Password')"
                         :passwordrules="passwordRules"
                     />
-                    <InputError :message="errors.password" />
-                </div>
+                </FormField>
 
-                <div class="grid gap-2">
-                    <Label for="password_confirmation">{{
-                        $t('Confirm password')
-                    }}</Label>
+                <FormField
+                    id="password_confirmation"
+                    :label="$t('Confirm password')"
+                    :error="errors.password_confirmation"
+                    v-slot="{ id }"
+                >
                     <PasswordInput
-                        id="password_confirmation"
+                        :id="id"
                         required
                         :tabindex="4"
                         autocomplete="new-password"
@@ -100,8 +110,7 @@ defineOptions({
                         :placeholder="$t('Confirm password')"
                         :passwordrules="passwordRules"
                     />
-                    <InputError :message="errors.password_confirmation" />
-                </div>
+                </FormField>
 
                 <Button
                     type="submit"

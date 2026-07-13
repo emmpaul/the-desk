@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
 import AuthStatus from '@/components/AuthStatus.vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { translate } from '@/lib/i18n';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
@@ -31,18 +30,21 @@ defineProps<{
 
     <div class="space-y-6">
         <Form v-bind="email.form()" v-slot="{ errors, processing }">
-            <div class="grid gap-2">
-                <Label for="email">{{ $t('Email address') }}</Label>
+            <FormField
+                id="email"
+                :label="$t('Email address')"
+                :error="errors.email"
+                v-slot="{ id }"
+            >
                 <Input
-                    id="email"
+                    :id="id"
                     type="email"
                     name="email"
                     autocomplete="off"
                     autofocus
                     placeholder="email@example.com"
                 />
-                <InputError :message="errors.email" />
-            </div>
+            </FormField>
 
             <div class="my-6 flex items-center justify-start">
                 <Button

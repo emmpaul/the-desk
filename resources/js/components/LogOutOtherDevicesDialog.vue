@@ -2,7 +2,7 @@
 import { Form } from '@inertiajs/vue3';
 import { computed, useTemplateRef } from 'vue';
 import SessionController from '@/actions/App/Http/Controllers/Settings/SessionController';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +15,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import type { ActiveSession } from '@/types';
 
 type Props = {
@@ -66,18 +65,20 @@ const hasOtherSessions = computed(() =>
                     </DialogDescription>
                 </DialogHeader>
 
-                <div class="grid gap-2">
-                    <Label for="revoke_others_password" class="sr-only">
-                        {{ $t('Password') }}
-                    </Label>
+                <FormField
+                    id="revoke_others_password"
+                    :label="$t('Password')"
+                    label-class="sr-only"
+                    :error="errors.password"
+                    v-slot="{ id }"
+                >
                     <PasswordInput
-                        id="revoke_others_password"
+                        :id="id"
                         name="password"
                         ref="revokeOthersInput"
                         :placeholder="$t('Password')"
                     />
-                    <InputError :message="errors.password" />
-                </div>
+                </FormField>
 
                 <DialogFooter class="gap-2">
                     <DialogClose as-child>

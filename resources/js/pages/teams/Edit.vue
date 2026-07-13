@@ -4,8 +4,8 @@ import { ChevronDown, Crown, Mail, Send, UserPlus, X } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import CancelInvitationModal from '@/components/CancelInvitationModal.vue';
 import DeleteTeamModal from '@/components/DeleteTeamModal.vue';
+import FormField from '@/components/FormField.vue';
 import Heading from '@/components/Heading.vue';
-import InputError from '@/components/InputError.vue';
 import InviteMemberModal from '@/components/InviteMemberModal.vue';
 import RemoveMemberModal from '@/components/RemoveMemberModal.vue';
 import TransferOwnershipModal from '@/components/TransferOwnershipModal.vue';
@@ -19,7 +19,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Tooltip,
     TooltipContent,
@@ -137,17 +136,20 @@ const confirmTransferOwnership = (member: TeamMember) => {
                 class="space-y-6"
                 v-slot="{ errors, processing }"
             >
-                <div class="grid gap-2">
-                    <Label for="name">{{ $t('Team name') }}</Label>
+                <FormField
+                    id="name"
+                    :label="$t('Team name')"
+                    :error="errors.name"
+                    v-slot="{ id }"
+                >
                     <Input
-                        id="name"
+                        :id="id"
                         name="name"
                         data-test="team-name-input"
                         :default-value="team.name"
                         required
                     />
-                    <InputError :message="errors.name" />
-                </div>
+                </FormField>
 
                 <div class="flex items-center gap-4">
                     <Button

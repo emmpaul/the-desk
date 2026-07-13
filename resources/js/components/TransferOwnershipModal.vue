@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import { ref, useTemplateRef } from 'vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +13,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { transferOwnership } from '@/routes/teams/members';
 import type { Team, TeamMember } from '@/types';
 
@@ -74,19 +73,21 @@ const handleOpenChange = (nextOpen: boolean) => {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div class="grid gap-2">
-                    <Label for="transfer-password" class="sr-only">
-                        {{ $t('Password') }}
-                    </Label>
+                <FormField
+                    id="transfer-password"
+                    :label="$t('Password')"
+                    label-class="sr-only"
+                    :error="errors.password"
+                    v-slot="{ id }"
+                >
                     <PasswordInput
-                        id="transfer-password"
+                        :id="id"
                         name="password"
                         ref="passwordInput"
                         data-test="transfer-ownership-password"
                         :placeholder="$t('Password')"
                     />
-                    <InputError :message="errors.password" />
-                </div>
+                </FormField>
 
                 <DialogFooter class="gap-2">
                     <DialogClose as-child>

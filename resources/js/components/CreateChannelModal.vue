@@ -2,7 +2,7 @@
 import { Form } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { store } from '@/actions/App/Http/Controllers/Channels/ChannelController';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -15,7 +15,6 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -63,8 +62,12 @@ function handleOpenChange(value: boolean) {
                 </DialogHeader>
 
                 <div class="grid gap-4">
-                    <div class="grid gap-2">
-                        <Label for="name">{{ $t('Name') }}</Label>
+                    <FormField
+                        id="name"
+                        :label="$t('Name')"
+                        :error="errors.name"
+                        v-slot="{ id }"
+                    >
                         <div class="relative">
                             <span
                                 aria-hidden="true"
@@ -72,7 +75,7 @@ function handleOpenChange(value: boolean) {
                                 >#</span
                             >
                             <Input
-                                id="name"
+                                :id="id"
                                 name="name"
                                 data-test="create-channel-name"
                                 :placeholder="$t('marketing')"
@@ -80,17 +83,20 @@ function handleOpenChange(value: boolean) {
                                 required
                             />
                         </div>
-                        <InputError :message="errors.name" />
-                    </div>
+                    </FormField>
 
-                    <div class="grid gap-2">
-                        <Label for="visibility">{{ $t('Visibility') }}</Label>
+                    <FormField
+                        id="visibility"
+                        :label="$t('Visibility')"
+                        :error="errors.visibility"
+                        v-slot="{ id }"
+                    >
                         <Select
                             v-model="visibility"
                             name="visibility"
                             data-test="create-channel-visibility"
                         >
-                            <SelectTrigger class="w-full">
+                            <SelectTrigger :id="id" class="w-full">
                                 <SelectValue
                                     :placeholder="$t('Select visibility')"
                                 />
@@ -104,19 +110,21 @@ function handleOpenChange(value: boolean) {
                                 }}</SelectItem>
                             </SelectContent>
                         </Select>
-                        <InputError :message="errors.visibility" />
-                    </div>
+                    </FormField>
 
-                    <div class="grid gap-2">
-                        <Label for="topic">{{ $t('Topic (optional)') }}</Label>
+                    <FormField
+                        id="topic"
+                        :label="$t('Topic (optional)')"
+                        :error="errors.topic"
+                        v-slot="{ id }"
+                    >
                         <Input
-                            id="topic"
+                            :id="id"
                             name="topic"
                             data-test="create-channel-topic"
                             :placeholder="$t('What\'s this channel about?')"
                         />
-                        <InputError :message="errors.topic" />
-                    </div>
+                    </FormField>
                 </div>
 
                 <DialogFooter class="gap-2">

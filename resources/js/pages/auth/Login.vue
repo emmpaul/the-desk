@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
 import AuthStatus from '@/components/AuthStatus.vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TeamInvitationAlert from '@/components/TeamInvitationAlert.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -48,10 +48,14 @@ defineProps<{
             class="flex flex-col gap-6"
         >
             <div class="grid gap-6">
-                <div class="grid gap-2">
-                    <Label for="email">{{ $t('Email address') }}</Label>
+                <FormField
+                    id="email"
+                    :label="$t('Email address')"
+                    :error="errors.email"
+                    v-slot="{ id }"
+                >
                     <Input
-                        id="email"
+                        :id="id"
                         type="email"
                         name="email"
                         required
@@ -60,12 +64,14 @@ defineProps<{
                         autocomplete="email"
                         placeholder="email@example.com"
                     />
-                    <InputError :message="errors.email" />
-                </div>
+                </FormField>
 
-                <div class="grid gap-2">
-                    <div class="flex items-center justify-between">
-                        <Label for="password">{{ $t('Password') }}</Label>
+                <FormField
+                    id="password"
+                    :label="$t('Password')"
+                    :error="errors.password"
+                >
+                    <template #labelAction>
                         <TextLink
                             v-if="canResetPassword"
                             :href="request()"
@@ -74,17 +80,18 @@ defineProps<{
                         >
                             {{ $t('Forgot password?') }}
                         </TextLink>
-                    </div>
-                    <PasswordInput
-                        id="password"
-                        name="password"
-                        required
-                        :tabindex="2"
-                        autocomplete="current-password"
-                        :placeholder="$t('Password')"
-                    />
-                    <InputError :message="errors.password" />
-                </div>
+                    </template>
+                    <template #default="{ id }">
+                        <PasswordInput
+                            :id="id"
+                            name="password"
+                            required
+                            :tabindex="2"
+                            autocomplete="current-password"
+                            :placeholder="$t('Password')"
+                        />
+                    </template>
+                </FormField>
 
                 <div class="flex items-center justify-between">
                     <Label for="remember" class="flex items-center space-x-3">
