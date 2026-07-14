@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { InfiniteScroll } from '@inertiajs/vue3';
-import { ChevronDown, X } from '@lucide/vue';
+import { X } from '@lucide/vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import MessageComposer from '@/components/MessageComposer.vue';
 import MessageList from '@/components/MessageList.vue';
+import ScrollableMessageList from '@/components/ScrollableMessageList.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useScrollPin } from '@/composables/useScrollPin';
@@ -58,6 +59,11 @@ const showSkeleton = computed(() => props.loading || !hasRoot.value);
 // pinned-to-newest flag, the "N new replies" count while scrolled up, and the
 // smooth jump back to the bottom.
 const scrollContainer = ref<HTMLElement | null>(null);
+// `ScrollableMessageList` owns the scroll element; this points our ref at it so
+// `useScrollPin` binds to the very same node.
+const setScrollContainer = (el: HTMLElement | null): void => {
+    scrollContainer.value = el;
+};
 const {
     pinnedToBottom,
     newMessageCount,
@@ -151,115 +157,67 @@ watch(
             </Button>
         </header>
 
-        <div class="relative flex min-h-0 flex-1 flex-col">
-            <div
-                ref="scrollContainer"
-                class="scrollbar-thin min-h-0 flex-1 scrollbar-thumb-border scrollbar-track-transparent overflow-y-auto overscroll-contain"
-                @scroll.passive="onScroll"
-            >
-                <div v-if="showSkeleton" class="space-y-4 p-5">
-                    <div class="flex gap-3">
-                        <Skeleton class="size-9 rounded-[10px]" />
-                        <div class="flex-1 space-y-2">
-                            <Skeleton class="h-3 w-24" />
-                            <Skeleton class="h-3 w-3/4" />
-                        </div>
-                    </div>
-                    <div class="flex gap-3">
-                        <Skeleton class="size-9 rounded-[10px]" />
-                        <div class="flex-1 space-y-2">
-                            <Skeleton class="h-3 w-20" />
-                            <Skeleton class="h-3 w-1/2" />
-                        </div>
+        <ScrollableMessageList
+            variant="thread"
+            :register-container="setScrollContainer"
+            :pinned-to-bottom="pinnedToBottom"
+            :new-message-count="newMessageCount"
+            @scroll="onScroll"
+            @jump="scrollToBottom(true)"
+        >
+            <div v-if="showSkeleton" class="space-y-4 p-5">
+                <div class="flex gap-3">
+                    <Skeleton class="size-9 rounded-[10px]" />
+                    <div class="flex-1 space-y-2">
+                        <Skeleton class="h-3 w-24" />
+                        <Skeleton class="h-3 w-3/4" />
                     </div>
                 </div>
-
-                <!-- Older replies page in on scroll-up; keyed by root so switching
-                     threads mounts a fresh, bottom-anchored list. `preserve-url`
-                     keeps the cursor out of the URL, matching the main timeline. -->
-                <InfiniteScroll
-                    v-else
-                    :key="props.rootId"
-                    data="threadReplies"
-                    reverse
-                    preserve-url
-                >
-                    <MessageList
-                        :messages="props.messages"
-                        :team-slug="props.teamSlug"
-                        :pending-uuids="props.pendingUuids"
-                        :current-user-id="props.currentUserId"
-                        :can-moderate="props.canModerate"
-                        :can-react="props.canReact"
-                        :can-pin="props.canPin"
-                        :online-ids="props.onlineIds"
-                        :editing-message-id="editingMessageId"
-                        in-thread
-                        @edit="(message, body) => emit('edit', message, body)"
-                        @delete="(message) => emit('delete', message)"
-                        @forward="(message) => emit('forward', message)"
-                        @react="
-                            (message, emoji) => emit('react', message, emoji)
-                        "
-                        @pin="(message) => emit('pin', message)"
-                        @unpin="(message) => emit('unpin', message)"
-                        @remind="
-                            (message, remindAt) =>
-                                emit('remind', message, remindAt)
-                        "
-                        @remind-custom="
-                            (message) => emit('remindCustom', message)
-                        "
-                        @jump="(id) => emit('jump', id)"
-                        @mention="mentionInThread"
-                    />
-                </InfiniteScroll>
+                <div class="flex gap-3">
+                    <Skeleton class="size-9 rounded-[10px]" />
+                    <div class="flex-1 space-y-2">
+                        <Skeleton class="h-3 w-20" />
+                        <Skeleton class="h-3 w-1/2" />
+                    </div>
+                </div>
             </div>
 
-            <Transition
-                enter-active-class="transition duration-150 ease-out"
-                enter-from-class="translate-y-1 opacity-0"
-                enter-to-class="translate-y-0 opacity-100"
-                leave-active-class="transition duration-100 ease-in"
-                leave-from-class="translate-y-0 opacity-100"
-                leave-to-class="translate-y-1 opacity-0"
+            <!-- Older replies page in on scroll-up; keyed by root so switching
+                 threads mounts a fresh, bottom-anchored list. `preserve-url`
+                 keeps the cursor out of the URL, matching the main timeline. -->
+            <InfiniteScroll
+                v-else
+                :key="props.rootId"
+                data="threadReplies"
+                reverse
+                preserve-url
             >
-                <!-- eslint-disable-next-line local/no-raw-button -- jump-to-latest pill, deferred to ScrollableMessageList (#316) -->
-                <button
-                    v-if="!pinnedToBottom"
-                    type="button"
-                    data-test="jump-to-latest-thread"
-                    :data-new-count="newMessageCount"
-                    :aria-label="
-                        newMessageCount > 0
-                            ? $t(':count new replies, jump to latest', {
-                                  count: newMessageCount,
-                              })
-                            : $t('Jump to latest reply')
+                <MessageList
+                    :messages="props.messages"
+                    :team-slug="props.teamSlug"
+                    :pending-uuids="props.pendingUuids"
+                    :current-user-id="props.currentUserId"
+                    :can-moderate="props.canModerate"
+                    :can-react="props.canReact"
+                    :can-pin="props.canPin"
+                    :online-ids="props.onlineIds"
+                    :editing-message-id="editingMessageId"
+                    in-thread
+                    @edit="(message, body) => emit('edit', message, body)"
+                    @delete="(message) => emit('delete', message)"
+                    @forward="(message) => emit('forward', message)"
+                    @react="(message, emoji) => emit('react', message, emoji)"
+                    @pin="(message) => emit('pin', message)"
+                    @unpin="(message) => emit('unpin', message)"
+                    @remind="
+                        (message, remindAt) => emit('remind', message, remindAt)
                     "
-                    class="absolute right-4 bottom-4 z-10 inline-flex items-center gap-1.5 rounded-full shadow-md transition-colors"
-                    :class="
-                        newMessageCount > 0
-                            ? 'bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground hover:opacity-90'
-                            : 'size-9 justify-center bg-card text-muted-foreground ring-1 ring-border hover:bg-muted hover:text-foreground'
-                    "
-                    @click="scrollToBottom(true)"
-                >
-                    <ChevronDown class="size-4 shrink-0" />
-                    <span v-if="newMessageCount > 0">
-                        {{
-                            newMessageCount === 1
-                                ? $t(':count new reply', {
-                                      count: newMessageCount,
-                                  })
-                                : $t(':count new replies', {
-                                      count: newMessageCount,
-                                  })
-                        }}
-                    </span>
-                </button>
-            </Transition>
-        </div>
+                    @remind-custom="(message) => emit('remindCustom', message)"
+                    @jump="(id) => emit('jump', id)"
+                    @mention="mentionInThread"
+                />
+            </InfiniteScroll>
+        </ScrollableMessageList>
 
         <MessageComposer
             v-if="hasRoot && !props.readOnly"
