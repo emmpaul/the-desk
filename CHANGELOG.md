@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.0](https://github.com/emmpaul/the-desk/compare/v1.3.0...v1.4.0) (2026-07-14)
+
+
+### Features
+
+* add LDAP/AD authentication and directory sync ([c8c377e](https://github.com/emmpaul/the-desk/commit/c8c377e98499e82925519bef3a86221dc79e7373))
+* add SCIM 2.0 directory provisioning and deprovisioning ([52ba9f1](https://github.com/emmpaul/the-desk/commit/52ba9f1678951a38fcfefba008f1ab2a2e441ae8))
+* add SSO foundation with OIDC login and JIT provisioning ([748f24e](https://github.com/emmpaul/the-desk/commit/748f24e51566596ab76d490ad2196036f1e3f276))
+
 ## [1.3.0](https://github.com/emmpaul/the-desk/compare/v1.2.2...v1.3.0) (2026-07-14)
 
 
