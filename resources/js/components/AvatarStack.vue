@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/composables/useInitials';
 import { memberAvatarStack } from '@/lib/memberAvatars';
 import type { StackMember } from '@/lib/memberAvatars';
@@ -7,8 +8,9 @@ import type { StackMember } from '@/lib/memberAvatars';
 const props = withDefaults(
     defineProps<{
         /**
-         * People to stack. The first `max` render as overlapping initials
-         * avatars; the rest collapse into a trailing "+N" chip.
+         * People to stack. The first `max` render as overlapping avatars (their
+         * image, or initials when they have none); the rest collapse into a
+         * trailing "+N" chip.
          */
         members: StackMember[];
         max?: number;
@@ -25,9 +27,9 @@ const props = withDefaults(
 
 const stack = computed(() => memberAvatarStack(props.members, props.max));
 
-// Per-size geometry. Fills are always opaque (`bg-muted`, never a translucent
-// tint) so the overlap of two avatars never stacks two semi-transparent layers
-// into a darker crescent where they intersect.
+// Per-size geometry. Avatar images and the `bg-muted` initials fallback are both
+// opaque, so overlapping avatars never stack two semi-transparent layers into a
+// darker crescent where they intersect.
 const SIZES = {
     sm: {
         box: 'size-4.5 -ml-1.5 first:ml-0',
@@ -46,13 +48,24 @@ const dims = computed(() => SIZES[props.size]);
 
 <template>
     <span class="flex shrink-0" aria-hidden="true">
-        <span
+        <Avatar
             v-for="member in stack.visible"
             :key="member.id"
-            class="flex items-center justify-center rounded-full bg-muted font-semibold text-primary ring-2 select-none"
-            :class="[dims.box, dims.text, ringClass]"
-            >{{ getInitials(member.name) }}</span
+            class="ring-2 select-none"
+            :class="[dims.box, ringClass]"
         >
+            <AvatarImage
+                v-if="member.avatar"
+                :src="member.avatar"
+                :alt="member.name"
+            />
+            <AvatarFallback
+                class="font-semibold text-primary"
+                :class="dims.text"
+            >
+                {{ getInitials(member.name) }}
+            </AvatarFallback>
+        </Avatar>
         <span
             v-if="stack.overflow > 0"
             class="flex items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground ring-2 select-none"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import {
     Archive,
     Check,
@@ -96,6 +96,20 @@ const mastheadAvatars = computed(() =>
     memberAvatarStack(props.members, MAX_MASTHEAD_AVATARS),
 );
 
+const page = usePage();
+
+// The other participant of a 1:1 DM, whose avatar the masthead shows.
+const dmParticipant = computed(() => props.channel.dmParticipants?.[0] ?? null);
+
+// The avatar image for the 1:1 masthead: the other participant's, or — in a
+// self-DM, which has no other participant — the viewer's own. Null (so the
+// initials fallback shows) when that person has no avatar.
+const dmAvatar = computed(() =>
+    dmParticipant.value
+        ? (dmParticipant.value.avatar ?? null)
+        : (page.props.auth.user.avatar ?? null),
+);
+
 // A 1:1 DM renders viewer-relative: the other participant's presence dot follows
 // the team roster. A DM is a fixed set, so the "who's in the channel" facepile is
 // meaningless and hidden.
@@ -140,11 +154,18 @@ const groupParticipantCount = computed(
                     data-test="masthead-dm-avatar"
                     class="relative inline-flex size-7 shrink-0"
                 >
-                    <span
-                        class="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary select-none"
-                        aria-hidden="true"
-                        >{{ getInitials(props.channel.name) }}</span
-                    >
+                    <Avatar class="size-7" aria-hidden="true">
+                        <AvatarImage
+                            v-if="dmAvatar"
+                            :src="dmAvatar"
+                            :alt="props.title"
+                        />
+                        <AvatarFallback
+                            class="text-[11px] font-semibold text-primary"
+                        >
+                            {{ getInitials(props.channel.name) }}
+                        </AvatarFallback>
+                    </Avatar>
                     <span
                         :data-online="dmParticipantOnline"
                         :aria-label="

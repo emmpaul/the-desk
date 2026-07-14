@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { X } from '@lucide/vue';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
 import { show } from '@/actions/App/Http/Controllers/Channels/ChannelController';
 import { store as hideDirectMessage } from '@/actions/App/Http/Controllers/Channels/HideDirectMessageController';
 import AvatarStack from '@/components/AvatarStack.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import {
@@ -36,6 +37,22 @@ const { t } = useTranslations();
 const MAX_ROW_AVATARS = 3;
 
 const isGroup = computed(() => props.channel.isGroupDirect);
+
+const page = usePage();
+
+// The other participant of a 1:1 DM, whose avatar the row shows.
+const soloParticipant = computed(
+    () => props.channel.dmParticipants?.[0] ?? null,
+);
+
+// The avatar image for a 1:1 row: the other participant's, or — in a self-DM,
+// which has no other participant — the viewer's own. Null (so the initials
+// fallback shows) when that person has no avatar.
+const soloAvatar = computed(() =>
+    soloParticipant.value
+        ? (soloParticipant.value.avatar ?? null)
+        : (page.props.auth.user.avatar ?? null),
+);
 
 // The viewer-relative name. A 1:1 name comes pre-resolved on the channel (the
 // other participant, self-DM localized to "You"); a group joins its
@@ -117,19 +134,20 @@ function hide(): void {
                     "
                 />
                 <span v-else class="relative size-4.5 shrink-0">
-                    <!-- On the active row the button fills with the brass
-                         primary, so the avatar switches to a light-on-dark
-                         treatment to stay legible instead of washing out. -->
-                    <span
-                        class="flex size-4.5 items-center justify-center rounded-full text-[8px] font-semibold select-none"
-                        :class="
-                            isActive
-                                ? 'bg-sidebar-primary-foreground/25 text-sidebar-primary-foreground'
-                                : 'bg-primary/10 text-primary'
-                        "
-                        aria-hidden="true"
-                        >{{ getInitials(channel.name) }}</span
-                    >
+                    <!-- The other participant's avatar (their initials when they
+                         have none), keyed for presence by the dot below. -->
+                    <Avatar class="size-4.5" aria-hidden="true">
+                        <AvatarImage
+                            v-if="soloAvatar"
+                            :src="soloAvatar"
+                            :alt="displayName"
+                        />
+                        <AvatarFallback
+                            class="text-[8px] font-semibold text-primary"
+                        >
+                            {{ getInitials(channel.name) }}
+                        </AvatarFallback>
+                    </Avatar>
                     <span
                         data-test="dm-presence-dot"
                         :data-online="online"
