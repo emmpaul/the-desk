@@ -20,8 +20,20 @@ export const NEAR_BOTTOM_THRESHOLD = 120;
  * The composable never attaches its own listeners: the consumer binds `onScroll`
  * to the container's `@scroll` event, keeping this lifecycle-free and unit
  * testable.
+ *
+ * A consumer with a windowed timeline passes `scrollToLatest`: on such a list a
+ * one-shot `scrollTo(scrollHeight)` settles short because `scrollHeight` is only
+ * an estimate at click time (off-screen rows aren't measured yet), so the
+ * consumer supplies a virtualizer-driven scroll that re-targets the real bottom
+ * as rows measure (#347). Without it, the native `scrollHeight` snap is used —
+ * correct for a fully rendered list like the thread panel.
  */
-export function useScrollPin(container: Ref<HTMLElement | null>) {
+export function useScrollPin(
+    container: Ref<HTMLElement | null>,
+    options: {
+        scrollToLatest?: (smooth: boolean) => void;
+    } = {},
+) {
     // Whether the view is currently anchored to the newest message. Optimistic
     // on mount (reverse InfiniteScroll lands at the bottom) until the first
     // scroll event corrects it.
@@ -54,13 +66,17 @@ export function useScrollPin(container: Ref<HTMLElement | null>) {
      * automatic pin on a live append passes it falsy for an instant snap.
      */
     function scrollToBottom(smooth = false): void {
-        const el = container.value;
+        if (options.scrollToLatest) {
+            options.scrollToLatest(smooth);
+        } else {
+            const el = container.value;
 
-        if (el) {
-            el.scrollTo({
-                top: el.scrollHeight,
-                behavior: smooth ? 'smooth' : 'auto',
-            });
+            if (el) {
+                el.scrollTo({
+                    top: el.scrollHeight,
+                    behavior: smooth ? 'smooth' : 'auto',
+                });
+            }
         }
 
         pinnedToBottom.value = true;

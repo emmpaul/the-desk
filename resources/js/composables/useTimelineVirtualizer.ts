@@ -79,6 +79,17 @@ export function useTimelineVirtualizer(options: {
         virtualizer.value.scrollToIndex(index, { align });
     }
 
+    /**
+     * Scroll to the newest row. Delegates to the virtualizer's own end-scroll,
+     * which re-targets the true bottom as off-screen rows are measured — the
+     * reliable primitive for a windowed list, where a one-shot
+     * `scrollTo(scrollHeight)` settles short because `scrollHeight` is only an
+     * estimate at click time (#347). `smooth` animates a user-initiated jump.
+     */
+    function scrollToEnd(behavior: ScrollBehavior = 'auto'): void {
+        virtualizer.value.scrollToEnd({ behavior });
+    }
+
     // Fetch older history as the reader approaches the top of what's loaded. The
     // guard folds in "more remain" and "not already loading" so a burst of range
     // updates during a fast scroll can't stack duplicate requests.
@@ -102,6 +113,7 @@ export function useTimelineVirtualizer(options: {
         isScrolling,
         range,
         scrollToIndex,
+        scrollToEnd,
         // Passed as a template `:ref` on each windowed row so the virtualizer can
         // measure its true height (reading the row's `data-index`). Vue types a
         // function ref's argument as element-or-component; the rows are plain

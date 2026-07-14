@@ -289,6 +289,7 @@ const {
     isScrolling,
     range,
     scrollToIndex,
+    scrollToEnd,
     measureRow,
 } = useTimelineVirtualizer({
     scrollElement: computed(() => props.scrollElement ?? null),
@@ -373,9 +374,30 @@ watch(
     },
 );
 
+/**
+ * Scroll to the newest message. When windowed, drive the virtualizer so it
+ * re-targets the real bottom as off-screen rows measure (a native
+ * `scrollTo(scrollHeight)` settles short on an estimated spacer, #347); when the
+ * list is rendered flat (the thread panel), `scrollHeight` is already exact, so
+ * scroll the container directly.
+ */
+function scrollToLatest(behavior: ScrollBehavior = 'auto'): void {
+    if (virtualizeActive.value) {
+        scrollToEnd(behavior);
+
+        return;
+    }
+
+    props.scrollElement?.scrollTo({
+        top: props.scrollElement.scrollHeight,
+        behavior,
+    });
+}
+
 // Let the parent bring an off-screen row (a jump target, the unread boundary)
 // into the window: with windowing the element may not exist to `scrollIntoView`.
-defineExpose({ scrollToIndex });
+// `scrollToLatest` drives the reliable jump-to-present for the windowed timeline.
+defineExpose({ scrollToIndex, scrollToLatest });
 
 const pending = computed(() => new Set(props.pendingUuids ?? []));
 
