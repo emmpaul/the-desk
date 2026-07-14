@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { Clock, Pin } from '@lucide/vue';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import LinkPreview from '@/components/LinkPreview.vue';
 import MessageActions from '@/components/MessageActions.vue';
 import MessageAttachments from '@/components/MessageAttachments.vue';
@@ -27,6 +27,7 @@ import {
 import UserHoverCard from '@/components/UserHoverCard.vue';
 import { useCustomEmojis } from '@/composables/useCustomEmojis';
 import { useInitials } from '@/composables/useInitials';
+import { NEAR_BOTTOM_THRESHOLD } from '@/composables/useScrollPin';
 import { useTimelineVirtualizer } from '@/composables/useTimelineVirtualizer';
 import { useTranslations } from '@/composables/useTranslations';
 import { formatDayLabel, formatTimeOfDay } from '@/lib/datetime';
@@ -283,12 +284,23 @@ const virtualizeActive = computed(
     () => props.virtualize === true && isMounted.value,
 );
 
+// True while a deliberate jump-to-present is in flight. The scrub skeletons swap
+// full message content for a fixed 56px placeholder, so measuring them mid-jump
+// feeds the virtualizer short heights; when rows then swap to their taller real
+// content the list grows and the animation is left stranded above the newest
+// message — the "it stops when the skeleton loads" symptom (#347). While this is
+// set, skeletons are suppressed so every row entering the window measures its
+// real height, and the virtualizer's upward size-change anchoring is disabled so
+// a row measured above the viewport can't drift us up as we settle on the bottom.
+const jumpingToBottom = ref(false);
+
 const {
     virtualRows,
     totalSize,
     isScrolling,
     range,
     scrollToIndex,
+    scrollToEnd,
     measureRow,
 } = useTimelineVirtualizer({
     scrollElement: computed(() => props.scrollElement ?? null),
@@ -298,6 +310,9 @@ const {
     hasOlder: () => props.hasOlder?.() ?? false,
     isLoadingOlder: () => props.isLoadingOlder?.() ?? false,
     loadOlder: () => emit('loadOlder'),
+    // Suppress upward anchor adjustments while jumping to the bottom: there we
+    // want to stay glued to the newest message, not compensate an upper row.
+    isPinning: () => jumpingToBottom.value,
 });
 
 /** One rendered row: a render item plus its absolute offset when windowed. */
@@ -331,6 +346,23 @@ const renderRows = computed<RenderRow[]>(() => {
 // for rows it hasn't paused on, and they materialize the instant it settles.
 const settledKeys = ref<Set<string>>(new Set());
 
+/**
+ * Whether the container sits within the pinned threshold of the real bottom.
+ * A missing element counts as pinned, mirroring `useScrollPin`.
+ */
+function isAtBottom(): boolean {
+    const el = props.scrollElement;
+
+    if (!el) {
+        return true;
+    }
+
+    return (
+        el.scrollHeight - el.scrollTop - el.clientHeight <=
+        NEAR_BOTTOM_THRESHOLD
+    );
+}
+
 watch(isScrolling, (scrolling) => {
     if (scrolling) {
         return;
@@ -345,13 +377,93 @@ watch(isScrolling, (scrolling) => {
     }
 });
 
+// A windowed jump can't know the true bottom up front: `scrollToEnd` aims at the
+// bottom the virtualizer can see now, but each row measured as the animation
+// passes it grows the list, so the target keeps moving. `finalizeJump` follows
+// the animation to the bottom, then briefly glues the view there frame by frame
+// so late measurements settle without a visible bounce.
+const JUMP_GLUE_FRAMES = 12;
+const JUMP_MAX_FRAMES = 180;
+let jumpRaf: number | null = null;
+
+/**
+ * Drive an in-flight jump-to-present all the way to the newest message.
+ *
+ * Phase one follows the scroll: while the virtualizer reports it's still
+ * scrolling the (possibly smooth) animation is running, so leave it be; only
+ * once it has stopped short — stalled on a skeleton-height estimate rather than
+ * the real bottom — snap the residual gap. Gating on the scrolling flag means an
+ * explicit `smooth` jump keeps animating instead of being force-converted to an
+ * instant snap. Once the bottom is reached, phase two pins `scrollTop` to the
+ * end for a handful of frames so a row measured late (taller or shorter than its
+ * estimate) can't drift the view up or leave it short: each correction lands
+ * before paint, so the settle is invisible rather than a bounce (#347). Bounded
+ * by a frame budget so a list that never settles can't spin forever.
+ */
+function finalizeJump(): void {
+    if (jumpRaf !== null) {
+        cancelAnimationFrame(jumpRaf);
+    }
+
+    let reachedBottom = false;
+    let glueFrames = 0;
+    let frames = 0;
+
+    const step = (): void => {
+        const el = props.scrollElement;
+
+        if (!el || !jumpingToBottom.value || frames >= JUMP_MAX_FRAMES) {
+            jumpingToBottom.value = false;
+            jumpRaf = null;
+
+            return;
+        }
+
+        frames += 1;
+
+        if (!reachedBottom) {
+            if (isAtBottom()) {
+                reachedBottom = true;
+            } else if (!isScrolling.value) {
+                // The scroll stopped short of the newest message; snap the gap
+                // and let the newly measured rows re-target.
+                scrollToEnd('auto');
+            }
+        } else {
+            // Glue to the bottom so late row measurements settle invisibly.
+            el.scrollTop = el.scrollHeight;
+            glueFrames += 1;
+
+            if (glueFrames >= JUMP_GLUE_FRAMES) {
+                jumpingToBottom.value = false;
+                jumpRaf = null;
+
+                return;
+            }
+        }
+
+        jumpRaf = requestAnimationFrame(step);
+    };
+
+    jumpRaf = requestAnimationFrame(step);
+}
+
+onUnmounted(() => {
+    if (jumpRaf !== null) {
+        cancelAnimationFrame(jumpRaf);
+    }
+});
+
 /**
  * Whether a windowed group row should show its skeleton placeholder rather than
- * its full content: only mid-scrub, and only before the row has settled.
+ * its full content: only mid-scrub, never during a jump-to-present (measuring
+ * the placeholder height would strand the jump short), and only before the row
+ * has settled.
  */
 function showsSkeleton(item: TimelineItem): boolean {
     return (
         virtualizeActive.value &&
+        !jumpingToBottom.value &&
         item.type === 'group' &&
         shouldRenderSkeleton(isScrolling.value, settledKeys.value.has(item.key))
     );
@@ -373,9 +485,35 @@ watch(
     },
 );
 
+/**
+ * Scroll to the newest message. When windowed, drive the virtualizer so it
+ * re-targets the real bottom as off-screen rows measure (a native
+ * `scrollTo(scrollHeight)` settles short on an estimated spacer, #347); when the
+ * list is rendered flat (the thread panel), `scrollHeight` is already exact, so
+ * scroll the container directly.
+ */
+function scrollToLatest(behavior: ScrollBehavior = 'auto'): void {
+    if (virtualizeActive.value) {
+        // Suppress scrub skeletons for the whole jump so their fixed placeholder
+        // height can't strand the scroll short of the newest message (#347), then
+        // let `finalizeJump` watch the animation to the true bottom and release.
+        jumpingToBottom.value = true;
+        scrollToEnd(behavior);
+        finalizeJump();
+
+        return;
+    }
+
+    props.scrollElement?.scrollTo({
+        top: props.scrollElement.scrollHeight,
+        behavior,
+    });
+}
+
 // Let the parent bring an off-screen row (a jump target, the unread boundary)
 // into the window: with windowing the element may not exist to `scrollIntoView`.
-defineExpose({ scrollToIndex });
+// `scrollToLatest` drives the reliable jump-to-present for the windowed timeline.
+defineExpose({ scrollToIndex, scrollToLatest });
 
 const pending = computed(() => new Set(props.pendingUuids ?? []));
 

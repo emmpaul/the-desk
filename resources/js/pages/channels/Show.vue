@@ -198,6 +198,7 @@ const messageListRef = ref<{
         index: number,
         align?: 'auto' | 'start' | 'center' | 'end',
     ) => void;
+    scrollToLatest: (behavior?: ScrollBehavior) => void;
 } | null>(null);
 
 const infiniteScrollRef = ref<{
@@ -254,7 +255,13 @@ const {
     notifyAppended,
     onScroll,
     reset: resetScrollPin,
-} = useScrollPin(scrollContainer);
+} = useScrollPin(scrollContainer, {
+    // The timeline is windowed, so a native `scrollTo(scrollHeight)` lands short
+    // of the present; drive the jump through the virtualizer, which re-targets
+    // the true bottom as off-screen rows measure (#347).
+    scrollToLatest: (smooth) =>
+        messageListRef.value?.scrollToLatest(smooth ? 'smooth' : 'auto'),
+});
 
 // `Inertia::scroll` delivers messages newest-first; reverse for display.
 const serverMessages = computed<Message[]>(() =>
@@ -1046,6 +1053,7 @@ function archive(): void {
                          itself can't be a `role="log"` since its rows unmount. -->
                     <div
                         ref="scrollContainer"
+                        data-test="message-history"
                         tabindex="0"
                         role="region"
                         :aria-label="$t('Message history')"

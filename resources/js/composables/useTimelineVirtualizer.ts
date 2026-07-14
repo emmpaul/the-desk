@@ -41,6 +41,11 @@ export function useTimelineVirtualizer(options: {
     hasOlder: () => boolean;
     isLoadingOlder: () => boolean;
     loadOlder: () => void;
+    // True while the consumer is deliberately pinning the view to the newest
+    // message (a jump-to-present). Upward size-change anchoring is suppressed
+    // during it so a row measured above the viewport can't drift the view up
+    // while we settle on the bottom.
+    isPinning?: () => boolean;
 }) {
     const virtualizer = useVirtualizer(
         computed(() => ({
@@ -50,8 +55,11 @@ export function useTimelineVirtualizer(options: {
             overscan: OVERSCAN,
             // Keep the viewport visually stable when a row above it is measured
             // (its real height replaces the estimate): shift the scroll offset
-            // so history doesn't jump under a reader scrolled into the past.
+            // so history doesn't jump under a reader scrolled into the past. Off
+            // while pinning to the bottom, where we want to follow the newest
+            // message rather than anchor an upper row.
             shouldAdjustScrollPositionOnItemSizeChange: (item: VirtualItem) =>
+                !(options.isPinning?.() ?? false) &&
                 item.start < (options.scrollElement.value?.scrollTop ?? 0),
         })),
     );
@@ -79,6 +87,17 @@ export function useTimelineVirtualizer(options: {
         virtualizer.value.scrollToIndex(index, { align });
     }
 
+    /**
+     * Scroll to the newest row. Delegates to the virtualizer's own end-scroll,
+     * which re-targets the true bottom as off-screen rows are measured — the
+     * reliable primitive for a windowed list, where a one-shot
+     * `scrollTo(scrollHeight)` settles short because `scrollHeight` is only an
+     * estimate at click time (#347). `smooth` animates a user-initiated jump.
+     */
+    function scrollToEnd(behavior: ScrollBehavior = 'auto'): void {
+        virtualizer.value.scrollToEnd({ behavior });
+    }
+
     // Fetch older history as the reader approaches the top of what's loaded. The
     // guard folds in "more remain" and "not already loading" so a burst of range
     // updates during a fast scroll can't stack duplicate requests.
@@ -102,6 +121,7 @@ export function useTimelineVirtualizer(options: {
         isScrolling,
         range,
         scrollToIndex,
+        scrollToEnd,
         // Passed as a template `:ref` on each windowed row so the virtualizer can
         // measure its true height (reading the row's `data-index`). Vue types a
         // function ref's argument as element-or-component; the rows are plain

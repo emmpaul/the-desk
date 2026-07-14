@@ -107,6 +107,48 @@ describe('useScrollPin', () => {
         expect(pinnedToBottom.value).toBe(true);
     });
 
+    it('routes an explicit jump through the injected scroller instead of scrollHeight, and clears the count', () => {
+        const el = fakeElement({
+            scrollHeight: 1000,
+            clientHeight: 100,
+            scrollTop: 0,
+        });
+        const scrollToLatest = vi.fn();
+        const {
+            newMessageCount,
+            pinnedToBottom,
+            notifyAppended,
+            scrollToBottom,
+        } = useScrollPin(ref(el), { scrollToLatest });
+
+        notifyAppended(false);
+        expect(newMessageCount.value).toBe(1);
+
+        scrollToBottom(true);
+
+        // The virtualizer-aware scroller runs; the unreliable scrollHeight snap does not.
+        expect(scrollToLatest).toHaveBeenCalledWith(true);
+        expect(el.scrollTo).not.toHaveBeenCalled();
+        expect(newMessageCount.value).toBe(0);
+        expect(pinnedToBottom.value).toBe(true);
+    });
+
+    it('drives the injected scroller instantly when a live append follows the reader down', async () => {
+        const el = fakeElement({
+            scrollHeight: 1000,
+            clientHeight: 100,
+            scrollTop: 900,
+        });
+        const scrollToLatest = vi.fn();
+        const { notifyAppended } = useScrollPin(ref(el), { scrollToLatest });
+
+        notifyAppended(true);
+        await nextTick();
+
+        expect(scrollToLatest).toHaveBeenCalledWith(false);
+        expect(el.scrollTo).not.toHaveBeenCalled();
+    });
+
     it('re-pins and clears the count once the reader scrolls back to the bottom', () => {
         const el = fakeElement({
             scrollHeight: 1000,
