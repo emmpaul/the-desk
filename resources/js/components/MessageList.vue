@@ -263,7 +263,9 @@ function systemNoticeText(message: Message): string {
             : t(':name left the channel', { name });
     }
 
-    return t(':name joined the channel', { name });
+    return props.isDirect
+        ? t(':name joined the conversation', { name })
+        : t(':name joined the channel', { name });
 }
 
 // The grouped, divider-interleaved render list. The grouping and boundary logic

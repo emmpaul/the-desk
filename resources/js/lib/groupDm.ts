@@ -1,3 +1,4 @@
+import { translate } from '@/lib/i18n';
 import type { Channel, DmParticipant } from '@/types/channels';
 
 /**
@@ -32,7 +33,10 @@ export function groupDmSidebarName(
     const shown = names.slice(0, maxNames - 1);
     const overflow = names.length - shown.length;
 
-    return `${shown.join(', ')}, +${overflow}`;
+    return translate(':shown, +:overflow', {
+        shown: shown.join(', '),
+        overflow: overflow.toString(),
+    });
 }
 
 /**
@@ -53,7 +57,7 @@ export function groupDmMastheadName(participants: DmParticipant[]): string {
     const head = names.slice(0, -1);
     const tail = names[names.length - 1];
 
-    return `${head.join(', ')} & ${tail}`;
+    return translate(':head & :tail', { head: head.join(', '), tail });
 }
 
 /**
