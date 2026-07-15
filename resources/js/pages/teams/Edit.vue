@@ -6,6 +6,7 @@ import {
     ChevronDown,
     ChevronRight,
     Crown,
+    Download,
     Mail,
     ScrollText,
     Send,
@@ -43,6 +44,7 @@ import { translate } from '@/lib/i18n';
 import { edit, index, update } from '@/routes/teams';
 import { index as analyticsIndex } from '@/routes/teams/analytics';
 import { index as auditIndex } from '@/routes/teams/audit';
+import { index as auditExportsIndex } from '@/routes/teams/audit-exports';
 import { index as emojisIndex } from '@/routes/teams/emojis';
 import { resend as resendInvitationRoute } from '@/routes/teams/invitations';
 import {
@@ -595,6 +597,29 @@ const confirmTransferOwnership = (member: TeamMember) => {
                         </div>
                         <div class="truncate text-xs text-muted-foreground">
                             {{ $t('Sign-ins and credential changes') }}
+                        </div>
+                    </div>
+                    <ChevronRight
+                        class="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                    />
+                </Link>
+
+                <Link
+                    v-if="
+                        permissions.canViewAudit ||
+                        permissions.canViewSecurityLog
+                    "
+                    :href="auditExportsIndex(team.slug)"
+                    data-test="view-audit-exports-link"
+                    class="flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-brass-border"
+                >
+                    <Download class="h-4 w-4 shrink-0 text-brass" />
+                    <div class="min-w-0">
+                        <div class="text-sm font-semibold">
+                            {{ $t('Exports') }}
+                        </div>
+                        <div class="truncate text-xs text-muted-foreground">
+                            {{ $t('Export the audit and security logs') }}
                         </div>
                     </div>
                     <ChevronRight
