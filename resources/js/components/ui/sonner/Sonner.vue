@@ -6,7 +6,12 @@ import { cn } from "@/lib/utils"
 
 import 'vue-sonner/style.css';
 
-const props = defineProps<ToasterProps>()
+// Default toasts to top-center so they never cover the bottom-anchored message
+// composer (send button, attachment/emoji actions, scheduled-message chip). Any
+// usage can still override `position` explicitly.
+const props = withDefaults(defineProps<ToasterProps>(), {
+  position: "top-center",
+})
 </script>
 
 <template>
