@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
  * @property string $id
@@ -66,7 +67,7 @@ use Illuminate\Support\Str;
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasTeams, HasUuids, Notifiable;
+    use HasFactory, HasTeams, HasUuids, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * Determine if the user has verified their email address.

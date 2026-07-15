@@ -160,6 +160,20 @@ return [
         (env('REGISTRATION_ENABLED', true) && ! $ssoEnforced) ? Features::registration() : null,
         Features::resetPasswords(),
         Features::emailVerification(),
+        // Two-factor authentication is registered unconditionally so the Fortify
+        // 2FA routes always exist and Wayfinder keeps emitting their route
+        // modules — a feature that defaults *off* would otherwise drop those
+        // routes and break the frontend build (unlike REGISTRATION_ENABLED, which
+        // gets away with conditional registration only because it defaults on).
+        // Availability is instead gated at runtime by `two_factor_enabled` below,
+        // mirroring how `email_verification_enabled` toggles behaviour without
+        // touching route registration. `confirm` requires a TOTP code to activate
+        // enrolment; `confirmPassword` requires a fresh password confirmation
+        // before any 2FA change.
+        Features::twoFactorAuthentication([
+            'confirm' => true,
+            'confirmPassword' => true,
+        ]),
     ]),
 
     /*
@@ -178,5 +192,23 @@ return [
     */
 
     'email_verification_enabled' => env('EMAIL_VERIFICATION_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Two-Factor Authentication Availability
+    |--------------------------------------------------------------------------
+    |
+    | A deploy-time flag letting self-hosters offer TOTP two-factor sign-in.
+    | It defaults to off, preserving today's behaviour for the hosted demo and
+    | existing deployments. The Fortify 2FA feature (and its routes) stay
+    | registered either way so the frontend build is stable; only whether the
+    | Security settings page surfaces 2FA management is toggled — the
+    | SecurityController reads this flag and hides the 2FA affordances when it is
+    | off. Under SSO enforcement the identity provider owns MFA, so the app-native
+    | option hides regardless of this flag.
+    |
+    */
+
+    'two_factor_enabled' => env('TWO_FACTOR_AUTH_ENABLED', false),
 
 ];

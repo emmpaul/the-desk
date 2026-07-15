@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Data\SecurityEventData;
 use App\Data\SessionData;
+use App\Data\TwoFactorStateData;
 use App\Enums\SecurityEventType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
@@ -15,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Fortify\Features;
 
 class SecurityController extends Controller
 {
@@ -32,9 +34,30 @@ class SecurityController extends Controller
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
             'sessions' => $this->activeSessions($request, $registry),
             'securityEvents' => $this->recentSecurityEvents($request),
+            'canManageTwoFactor' => $this->canManageTwoFactor(),
         ];
 
+        if ($this->canManageTwoFactor()) {
+            $props['twoFactorEnabled'] = $request->user()->hasEnabledTwoFactorAuthentication();
+            $props['requiresConfirmation'] = Features::optionEnabled(
+                Features::twoFactorAuthentication(),
+                'confirm',
+            );
+            $props['twoFactor'] = TwoFactorStateData::fromUser($request->user());
+        }
+
         return Inertia::render('settings/Security', $props);
+    }
+
+    /**
+     * Whether the app-native two-factor settings should be offered.
+     *
+     * Gated by the deploy-time toggle, and suppressed under SSO enforcement where
+     * the identity provider owns MFA and local passwords are unusable.
+     */
+    private function canManageTwoFactor(): bool
+    {
+        return (bool) config('fortify.two_factor_enabled') && ! config('sso.enforced');
     }
 
     /**

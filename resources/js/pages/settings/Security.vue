@@ -8,6 +8,7 @@ import PasswordInput from '@/components/PasswordInput.vue';
 import SecurityActivity from '@/components/SecurityActivity.vue';
 import SettingsPane from '@/components/SettingsPane.vue';
 import SettingsPaneSection from '@/components/SettingsPaneSection.vue';
+import TwoFactorAuthentication from '@/components/TwoFactorAuthentication.vue';
 import { Button } from '@/components/ui/button';
 import { translate } from '@/lib/i18n';
 import { edit } from '@/routes/security';
@@ -17,6 +18,8 @@ type Props = {
     passwordRules: string;
     sessions: ActiveSession[];
     securityEvents: SecurityActivityEvent[];
+    canManageTwoFactor: boolean;
+    twoFactor?: App.Data.TwoFactorStateData | null;
 };
 
 const props = defineProps<Props>();
@@ -133,6 +136,18 @@ defineOptions({
                     </Transition>
                 </div>
             </Form>
+        </SettingsPaneSection>
+
+        <SettingsPaneSection
+            v-if="props.canManageTwoFactor"
+            :title="$t('Two-factor authentication')"
+            :description="
+                $t(
+                    'Add a one-time code from an authenticator app to your sign-in',
+                )
+            "
+        >
+            <TwoFactorAuthentication :state="props.twoFactor ?? null" />
         </SettingsPaneSection>
 
         <SettingsPaneSection
