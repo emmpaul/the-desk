@@ -258,6 +258,8 @@ function confirm(): void {
                          meridiem, mirroring the mockup's pill switch. -->
                     <div
                         data-test="schedule-period"
+                        role="group"
+                        :aria-label="$t('AM or PM')"
                         class="ml-auto flex items-center rounded-full bg-muted p-0.5"
                     >
                         <Button
