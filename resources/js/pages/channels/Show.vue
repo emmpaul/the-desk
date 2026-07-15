@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
 import { echo } from '@laravel/echo-vue';
-import {
-    ArrowUp,
-    CalendarClock,
-    ChevronDown,
-    Upload,
-    WifiOff,
-} from '@lucide/vue';
+import { ArrowUp, CalendarClock, Upload, WifiOff } from '@lucide/vue';
 import {
     computed,
     nextTick,
@@ -32,6 +26,7 @@ import MessageList from '@/components/MessageList.vue';
 import PinsPanel from '@/components/PinsPanel.vue';
 import ScheduledMessagesDialog from '@/components/ScheduledMessagesDialog.vue';
 import ScheduleMessageDialog from '@/components/ScheduleMessageDialog.vue';
+import ScrollableMessageList from '@/components/ScrollableMessageList.vue';
 import ThreadPanel from '@/components/ThreadPanel.vue';
 import TypingIndicator from '@/components/TypingIndicator.vue';
 import { Button } from '@/components/ui/button';
@@ -211,6 +206,12 @@ const canModerate = computed(() =>
 );
 
 const scrollContainer = ref<HTMLElement | null>(null);
+// `ScrollableMessageList` owns the scroll element; this points our ref at it so
+// `useScrollPin`, `useUnreadDivider`, and the virtualized `MessageList` all bind
+// to the very same node.
+const setScrollContainer = (el: HTMLElement | null): void => {
+    scrollContainer.value = el;
+};
 
 // The windowed timeline exposes `scrollToIndex` so off-screen jump targets can be
 // brought into view; Inertia's `<InfiniteScroll>` (driven manually) exposes the
@@ -1075,17 +1076,18 @@ function archive(): void {
 
                     <!-- The message history is a focusable, labelled region so
                          keyboard users can Tab to it and arrow-scroll (which
-                         remounts virtualized rows). `role="region"` gives the
-                         `aria-label` a role that supports naming; the timeline
-                         itself can't be a `role="log"` since its rows unmount. -->
-                    <div
-                        ref="scrollContainer"
-                        data-test="message-history"
-                        tabindex="0"
-                        role="region"
-                        :aria-label="$t('Message history')"
-                        class="scrollbar-thin min-h-0 flex-1 scrollbar-thumb-border scrollbar-track-transparent overflow-y-auto overscroll-contain focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
-                        @scroll.passive="onScroll"
+                         remounts virtualized rows). `ScrollableMessageList`
+                         renders the region + the jump-to-latest pill; the
+                         timeline itself can't be a `role="log"` since its rows
+                         unmount, so `role="region"` names it instead. -->
+                    <ScrollableMessageList
+                        variant="channel"
+                        :region-label="$t('Message history')"
+                        :register-container="setScrollContainer"
+                        :pinned-to-bottom="pinnedToBottom"
+                        :new-message-count="newMessageCount"
+                        @scroll="onScroll"
+                        @jump="scrollToBottom(true)"
                     >
                         <Transition
                             enter-active-class="transition duration-150 ease-out"
@@ -1166,56 +1168,7 @@ function archive(): void {
                             :team-slug="props.team.slug"
                             @focus-composer="focusComposer"
                         />
-                    </div>
-
-                    <Transition
-                        enter-active-class="transition duration-200 ease-out"
-                        enter-from-class="translate-y-3 scale-95 opacity-0"
-                        enter-to-class="translate-y-0 scale-100 opacity-100"
-                        leave-active-class="transition duration-150 ease-in"
-                        leave-from-class="translate-y-0 scale-100 opacity-100"
-                        leave-to-class="translate-y-3 scale-95 opacity-0"
-                    >
-                        <!-- eslint-disable-next-line local/no-raw-button -- jump-to-latest pill, deferred to ScrollableMessageList (#316) -->
-                        <button
-                            v-if="!pinnedToBottom"
-                            type="button"
-                            data-test="jump-to-latest"
-                            :data-new-count="newMessageCount"
-                            :aria-label="
-                                newMessageCount > 0
-                                    ? $t(
-                                          ':count new messages, jump to latest',
-                                          { count: newMessageCount },
-                                      )
-                                    : $t('Jump to latest message')
-                            "
-                            class="absolute right-4 bottom-4 z-10 inline-flex h-9.5 items-center gap-2 rounded-full px-4.5 text-[12.5px] font-semibold shadow-lg transition-colors hover:opacity-90"
-                            :class="
-                                newMessageCount > 0
-                                    ? 'bg-brass text-brass-foreground'
-                                    : 'bg-foreground text-background'
-                            "
-                            @click="scrollToBottom(true)"
-                        >
-                            <span v-if="newMessageCount > 0">
-                                {{
-                                    newMessageCount === 1
-                                        ? $t(':count new message', {
-                                              count: newMessageCount,
-                                          })
-                                        : $t(':count new messages', {
-                                              count: newMessageCount,
-                                          })
-                                }}
-                            </span>
-                            <span v-else>{{ $t('Jump to present') }}</span>
-                            <ChevronDown
-                                class="size-3.25 shrink-0"
-                                :class="newMessageCount > 0 ? '' : 'text-brass'"
-                            />
-                        </button>
-                    </Transition>
+                    </ScrollableMessageList>
                 </div>
 
                 <div

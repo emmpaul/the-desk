@@ -102,8 +102,12 @@ built; build them once, then reuse.
   channel all share it). One tested reconcile/teardown lifecycle.
 - **`useDebouncedPost`** — the debounced, focus-gated, auto-teardown router POST
   used by mark-read, mark-thread-read, and draft persistence.
-- **`ScrollableMessageList`** _(planned)_ — the scroll container + `useScrollPin` +
-  "jump to latest / N new" pill, shared by the channel view and the thread panel.
+- **`ScrollableMessageList`** — the shared scroll container + "jump to latest / N
+  new" pill for the channel view and the thread panel. The pin decision core stays
+  in `useScrollPin` (each consumer owns how appends reach it and wires the pin
+  outputs into its own realtime/unread machinery); the module owns the duplicated
+  markup, taking pin state as props and handing the scroll element back through a
+  `register-container` function ref so the consumer's `useScrollPin` binds the same node.
 - **`ConfirmDialog`** — one confirmation-dialog module the
   leave/remove/cancel/delete/transfer modals are thin call-sites of. A small
   interface (`submit: { visit } | { form }`, `#trigger`/`#description`/`#body`
