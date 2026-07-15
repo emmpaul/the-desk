@@ -108,8 +108,11 @@ built; build them once, then reuse.
   outputs into its own realtime/unread machinery); the module owns the duplicated
   markup, taking pin state as props and handing the scroll element back through a
   `register-container` function ref so the consumer's `useScrollPin` binds the same node.
-- **`ConfirmDialog`** _(planned)_ — one confirmation-dialog module the
-  leave/remove/cancel/delete/transfer/archive modals become thin call-sites of.
+- **`ConfirmDialog`** — one confirmation-dialog module the
+  leave/remove/cancel/delete/transfer modals are thin call-sites of. A small
+  interface (`submit: { visit } | { form }`, `#trigger`/`#description`/`#body`
+  slots) hides the shared skeleton, the pending/disable wiring, close-on-success,
+  focus-on-error, and clean-form-on-reopen.
 
 ---
 
