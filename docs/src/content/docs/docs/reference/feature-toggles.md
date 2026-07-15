@@ -46,6 +46,31 @@ their next request — they'll be prompted to verify. The verify routes are alwa
 registered, so flipping the flag takes effect immediately with no data migration.
 :::
 
+## Two-factor authentication
+
+| Variable                  | Default | Effect                                                       |
+| ------------------------- | ------- | ------------------------------------------------------------ |
+| `TWO_FACTOR_AUTH_ENABLED` | `false` | Let users add TOTP two-factor authentication to their account. |
+
+A single deploy-time flag for self-hosters. It defaults to **off**, keeping
+password-only sign-in.
+
+Set `TWO_FACTOR_AUTH_ENABLED=true` to surface two-factor authentication under
+**Settings → Security**. Each user can then enrol an authenticator app (a
+time-based one-time code, or TOTP) and save single-use recovery codes; at the
+next sign-in they're challenged for a code. Enrolment is **per-user and opt-in** —
+turning the flag on offers the option but never forces anyone to enrol.
+
+The toggle takes effect immediately with no data migration: the underlying routes
+are always registered, so flipping the flag only changes whether the option is
+offered.
+
+:::note
+This flag has **no effect under [SSO-only mode](#sso-only-mode)**. When
+`AUTH_SSO_ONLY` routes everyone through an identity provider, that provider owns
+multi-factor authentication, so the app-native option stays hidden.
+:::
+
 ## SSO-only mode
 
 | Variable        | Default | Effect                                                                 |

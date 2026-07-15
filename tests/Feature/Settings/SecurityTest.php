@@ -3,15 +3,9 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Fortify\Features;
 
-test('security page is displayed', function (): void {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-    ]);
+test('security page is displayed with two factor management when enabled', function (): void {
+    config(['fortify.two_factor_enabled' => true]);
 
     $user = User::factory()->create();
 
@@ -25,26 +19,20 @@ test('security page is displayed', function (): void {
         );
 });
 
-test('security page requires password confirmation when enabled', function (): void {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
+test('two factor management requires password confirmation', function (): void {
+    config(['fortify.two_factor_enabled' => true]);
 
     $user = User::factory()->create();
 
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-    ]);
-
-    $response = $this->actingAs($user)
-        ->get(route('security.edit'));
-
-    $response->assertRedirect(route('password.confirm'));
+    // The management endpoints carry Fortify's password.confirm middleware, so a
+    // session without a fresh confirmation is bounced to the confirm screen.
+    $this->actingAs($user)
+        ->post(route('two-factor.enable'))
+        ->assertRedirect(route('password.confirm'));
 });
 
-test('security page renders without two factor when feature is disabled', function (): void {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    config(['fortify.features' => []]);
+test('security page renders without two factor when the toggle is off', function (): void {
+    config(['fortify.two_factor_enabled' => false]);
 
     $user = User::factory()->create();
 
