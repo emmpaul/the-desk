@@ -1,3 +1,4 @@
+export * from './auditExport';
 export * from './auth';
 export * from './channels';
 export * from './chimes';

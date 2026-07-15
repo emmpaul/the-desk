@@ -120,6 +120,16 @@ class Team extends Model
     }
 
     /**
+     * Get the audit-log and security-event exports requested for this workspace.
+     *
+     * @return HasMany<AuditExport, $this>
+     */
+    public function auditExports(): HasMany
+    {
+        return $this->hasMany(AuditExport::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

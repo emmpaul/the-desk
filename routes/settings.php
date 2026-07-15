@@ -14,6 +14,7 @@ use App\Http\Controllers\Settings\SessionController;
 use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Teams\AnalyticsController;
 use App\Http\Controllers\Teams\AuditController;
+use App\Http\Controllers\Teams\AuditExportController;
 use App\Http\Controllers\Teams\CustomEmojiController;
 use App\Http\Controllers\Teams\SecurityLogController;
 use App\Http\Controllers\Teams\TeamController;
@@ -77,6 +78,11 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::get('settings/teams/{team}/audit', [AuditController::class, 'index'])->name('teams.audit.index');
 
         Route::get('settings/teams/{team}/security-log', [SecurityLogController::class, 'index'])->name('teams.security-log.index');
+
+        Route::get('settings/teams/{team}/exports', [AuditExportController::class, 'index'])->name('teams.audit-exports.index');
+        Route::post('settings/teams/{team}/exports', [AuditExportController::class, 'store'])->name('teams.audit-exports.store');
+        Route::get('settings/teams/{team}/exports/{auditExport}/download', [AuditExportController::class, 'download'])
+            ->name('teams.audit-exports.download');
 
         Route::get('settings/teams/{team}/analytics', [AnalyticsController::class, 'index'])->name('teams.analytics.index');
 

@@ -36,11 +36,12 @@ criterion in the context of your whole system.
 | **RBAC and least privilege** | Three team roles (Owner, Admin, Member) enforced by server-side policies on every action. Members hold no management permissions by default. Team deletion and ownership transfer are Owner-only and cannot be delegated. | CC6.3 | A.5.15, A.5.18, A.8.2, A.8.3 |
 | **Audit logging and tamper-evidence** | A team-scoped admin audit log records rename, role change, member removal, ownership transfer, channel lifecycle, message deletion, and emoji revocation. It is append-only: the application rejects any attempt to edit or delete an entry. Admins and Owners view it read-only in the app. | CC7.2, CC7.3 | A.8.15, A.8.16 |
 | **Account-activity log** | Each user sees their own recent security events (sign-in, sign-out, password change, and password reset), with IP address, user agent, and a new-device flag, so they can spot unfamiliar access. | CC7.2 | A.8.15, A.8.16 |
+| **Audit evidence export** | Admins and Owners can export either the workspace audit log or the security-event log as a CSV or JSON file, optionally scoped to a date range, for an assessment period. The file is built in the background, emailed to the requester, and downloadable by any current team admin for 7 days. See [Audit-log exports](#audit-log-exports). | CC7.2, CC7.3 | A.8.15, A.8.16 |
 | **Session management and revocation** | Session cookies are HTTP-only and `SameSite=Lax`, and are marked `Secure` when `SESSION_SECURE_COOKIE=true`. Users see every active session and can revoke a single device or sign out all other devices; a revoked session is force-signed-out on its next request. | CC6.1 | A.5.15, A.8.5 |
 | **Provisioning and deprovisioning (SSO / SCIM)** | SSO logins just-in-time provision accounts. SCIM 2.0 lets your IdP push lifecycle changes: removing someone from the directory deactivates their account here, revoking access and ending all their sessions immediately, while retaining history. Reactivation is a later `active: true`. | CC6.1, CC6.2, CC6.3 | A.5.16, A.5.18 |
 | **Data export (portability)** | A user can request a self-service export of their own data: a ZIP of JSON files (profile, teams, messages, and their security events), delivered by email and downloadable for 7 days. | (Privacy) P5 | A.5.34, A.8.11 |
 | **Account deletion and erasure** | Deleting an account removes the user record and reassigns their authored messages to a shared "Deleted User" tombstone, so conversations stay coherent while personal attribution is removed. The user's personal teams are deleted. | (Privacy) P4 | A.8.10, A.5.34 |
-| **Retention windows** | Uploaded-but-unsent attachments are swept after `ATTACHMENT_PENDING_TTL_HOURS` (default 24). Data-export archives are downloadable for a fixed 7-day window. Long-term retention of the audit and activity logs is an operator decision (see the note below). | (Privacy) P4 | A.8.10, A.5.34 |
+| **Retention windows** | Uploaded-but-unsent attachments are swept after `ATTACHMENT_PENDING_TTL_HOURS` (default 24). Data-export archives and audit-evidence export files are downloadable for a fixed 7-day window, after which a scheduled task deletes both the file and its record. Long-term retention of the audit and activity logs themselves is an operator decision (see the note below). | (Privacy) P4 | A.8.10, A.5.34 |
 | **Encryption and transport posture** | The application encrypts session data and any encrypted attributes with `APP_KEY` (AES-256). Containers speak plain HTTP by design; TLS termination is delegated to your reverse proxy (see operator responsibilities). | CC6.1, CC6.7 | A.8.24, A.5.14 |
 | **Backups** | Durable state is one PostgreSQL database plus the uploaded-files volume; the search index and Redis are derived or transient. Logical dump and restore commands are documented, but taking, testing, and storing backups is an operator responsibility. | A1.2 | A.8.13 |
 
@@ -62,6 +63,42 @@ criterion in the context of your whole system.
 - **The password policy is enforced in production.** The full complexity and
   breach-check rules apply when the app runs in its production environment, which
   is the configuration you audit.
+
+## Audit-log exports
+
+Admins and Owners can export a workspace's audit evidence from **Team settings ›
+Exports**. Each export is one log, in one format, over one period:
+
+- **Log** — either the **workspace audit log** (rename, role change, member
+  removal, ownership transfer, channel lifecycle, message deletion, emoji
+  revocation, and export requests) or the **security-event log** (sign-in,
+  sign-out, password change and reset, two-factor and passkey changes).
+- **Format** — **CSV** for spreadsheets, or **JSON** for the full records with
+  nested properties preserved.
+- **Period** — an optional inclusive date range, interpreted as whole days in the
+  requester's timezone and converted to UTC for the query. Leave it empty to
+  export everything.
+
+The file is generated in the background, the requester is emailed when it is
+ready, and **any current admin or owner** of the team can download it for 7 days.
+All timestamps in the file are UTC ISO-8601 (for example `2026-07-15T14:03:22Z`).
+Only one export can be generating per team at a time. Every export request is
+itself recorded in the audit log, so the act of exporting is auditable.
+
+Files live on the private application disk and are never publicly linked; download
+re-checks the same policy that guards the on-screen log. After 7 days a scheduled
+task deletes both the file and its record.
+
+:::caution[Security-event exports are account-level]
+Security events are recorded against a **user account**, not a team — a person's
+sign-ins are the same events whichever workspace they were acting in. A team's
+security-event export therefore contains the account-level events of the team's
+**current** members for the chosen period, which can include activity from before
+they joined this team or from while they were acting in another team. This matches
+the on-screen security log exactly; there is no team boundary in the underlying
+data to scope it tighter. Removing a member immediately drops their events from
+both the view and future exports.
+:::
 
 ## Operator responsibilities
 

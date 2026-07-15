@@ -19,6 +19,7 @@ enum AuditAction: string
     case ChannelMemberRemoved = 'channel_member_removed';
     case MessageDeleted = 'message_deleted';
     case EmojiRevoked = 'emoji_revoked';
+    case AuditExported = 'audit_exported';
 
     /**
      * Get the short human-readable label used in the action filter and headers.
@@ -36,6 +37,7 @@ enum AuditAction: string
             self::ChannelMemberRemoved => __('Channel member removed'),
             self::MessageDeleted => __('Message deleted'),
             self::EmojiRevoked => __('Custom emoji revoked'),
+            self::AuditExported => __('Log exported'),
         };
     }
 
@@ -59,6 +61,7 @@ enum AuditAction: string
             self::ChannelMemberRemoved => sprintf(__('Removed %s from #%s'), $this->text($context, 'member_name'), $this->text($context, 'channel_name')),
             self::MessageDeleted => sprintf(__('Deleted a message from %s in #%s'), $this->text($context, 'author_name'), $this->text($context, 'channel_name')),
             self::EmojiRevoked => sprintf(__('Revoked the :%s: custom emoji'), $this->text($context, 'emoji_name')),
+            self::AuditExported => sprintf(__('Exported %s as %s (%s)'), $this->text($context, 'log'), $this->text($context, 'format'), $this->text($context, 'range')),
         };
     }
 
