@@ -9,6 +9,7 @@ use App\Data\MessageSearchResultData;
 use App\Enums\SearchScope;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Channels\SearchMessagesRequest;
+use App\Models\Channel;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -50,6 +51,11 @@ class SearchController extends Controller
                 'scope' => $criteria->scope->value,
             ],
             'results' => $this->results($request->user(), $team, $criteria, $searchMessages),
+            // The union of the user's channels across teams feeds the channel
+            // facet in cross-team mode. Lazily evaluated, so the scoped partial
+            // reloads (which only refresh results/query/filters) never recompute
+            // it; the initial full load carries it, ready for a scope switch.
+            'workspaceChannels' => fn (): array => $this->crossTeamChannels($request->user()),
         ]);
     }
 
@@ -87,6 +93,29 @@ class SearchController extends Controller
             before: $request->date('before')?->endOfDay(),
             scope: SearchScope::tryFrom((string) $request->validated('scope')) ?? SearchScope::default(),
         );
+    }
+
+    /**
+     * The union of the user's channels across every team, for the channel facet
+     * in cross-team ("All workspaces") mode. Each carries its owning team so the
+     * picker can disambiguate same-named channels between workspaces.
+     *
+     * @return array<int, array{id: string, name: string, slug: string, teamName: string, teamSlug: string}>
+     */
+    private function crossTeamChannels(User $user): array
+    {
+        return $user->channels()
+            ->with('team:id,name,slug')
+            ->orderBy('channels.name')
+            ->get()
+            ->map(fn (Channel $channel): array => [
+                'id' => $channel->id,
+                'name' => $channel->name,
+                'slug' => $channel->slug,
+                'teamName' => $channel->team->name,
+                'teamSlug' => $channel->team->slug,
+            ])
+            ->all();
     }
 
     /**

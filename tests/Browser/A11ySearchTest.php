@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Actions\Channels\JoinChannel;
+use App\Actions\Teams\CreateTeam;
+use App\Enums\TeamRole;
+use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
 
@@ -61,6 +65,54 @@ test('the search page highlights matches, groups them by date, and has no seriou
     $page->wait(0.5)
         ->assertPresent('[data-test="search-result"] mark')
         ->assertNoAccessibilityIssues();
+});
+
+test('a member of a single team never sees the workspace scope control', function (): void {
+    // A fresh user belongs only to their own personal team, so the scope control
+    // — which widens search across teams — has nothing to widen to and stays hidden.
+    $solo = User::factory()->create();
+
+    signInThroughBrowser($solo)
+        ->click('@masthead-search')
+        ->assertPathContains('/search')
+        ->assertMissing('[data-test="scope-control"]');
+});
+
+test('a multi-team member can widen the search to all workspaces and see cross-team tags', function (): void {
+    ['owner' => $alice, 'member' => $bob, 'channel' => $general] = browserTeamWithChannel();
+
+    Message::factory()->create([
+        'channel_id' => $general->id,
+        'user_id' => $bob->id,
+        'body' => 'the quokka danced in acme today',
+    ]);
+
+    // Alice also belongs to a second team with its own matching message.
+    $beta = app(CreateTeam::class)->handle(User::factory()->create(), 'Beta');
+    $betaGeneral = Channel::where('team_id', $beta->id)
+        ->where('slug', Channel::GENERAL_SLUG)
+        ->firstOrFail();
+    $beta->memberships()->create(['user_id' => $alice->id, 'role' => TeamRole::Member]);
+    app(JoinChannel::class)->handle($betaGeneral, $alice);
+    Message::factory()->create([
+        'channel_id' => $betaGeneral->id,
+        'user_id' => $alice->id,
+        'body' => 'the quokka appeared in beta too',
+    ]);
+
+    signInThroughBrowser($alice)
+        ->click('@masthead-search')
+        ->assertPathContains('/search')
+        ->type('@search-input', 'quokka')
+        ->wait(0.8)
+        // Team scope: only Acme's match, no cross-team tag.
+        ->assertPresent('[data-test="scope-control"]')
+        ->assertMissing('[data-test="result-workspace-tag"]')
+        // Widen to all workspaces: Beta's match joins, tagged with its workspace.
+        ->click('@scope-all')
+        ->wait(0.8)
+        ->assertPresent('[data-test="result-workspace-tag"]')
+        ->assertSee('Beta');
 });
 
 test('the channel facet promotes to a chip and drives the scoped reload', function (): void {

@@ -6,6 +6,7 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -139,4 +140,25 @@ test('an invalid scope is rejected', function (): void {
 
     crossTeamSearch($member, $teamA, ['q' => 'zephyr', 'scope' => 'sideways'])
         ->assertSessionHasErrors('scope');
+});
+
+test('the page exposes the cross-team channel union for the global-mode facet', function (): void {
+    [$member, $teamA, $generalA] = crossTeamWithGeneral('Acme');
+    [, $teamB] = crossTeamWithGeneral('Beta');
+    $generalB = addToTeam($member, $teamB);
+
+    crossTeamSearch($member, $teamA, ['q' => 'zephyr', 'scope' => 'all'])
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('workspaceChannels')
+            ->where(
+                'workspaceChannels',
+                fn (Collection $channels): bool => $channels
+                    ->pluck('id')
+                    ->contains($generalA->id)
+                    && $channels->pluck('id')->contains($generalB->id)
+                    && $channels->contains(
+                        fn (array $channel): bool => $channel['teamSlug'] === $teamB->slug,
+                    )
+            )
+        );
 });

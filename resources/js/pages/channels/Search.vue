@@ -49,40 +49,94 @@ interface AppliedFilters {
     scope: string;
 }
 
+interface WorkspaceChannel {
+    id: string;
+    name: string;
+    slug: string;
+    teamName: string;
+    teamSlug: string;
+}
+
 const props = defineProps<{
     team: TeamData;
     query: string;
     filters: AppliedFilters;
     results: MessageSearchResult[];
+    workspaceChannels: WorkspaceChannel[];
 }>();
 
 const { t } = useTranslations();
 const page = usePage();
 
 // The current team's channels and members feed the facet pickers and the token
-// parser; both are shared props, so the search route already carries them.
+// parser; both are shared props, so the search route already carries them. The
+// teams list decides whether the workspace-scope control shows.
 const channels = computed(() => page.props.channels ?? []);
 const members = computed(() => page.props.teamMembers ?? []);
-const lookup = computed(() => ({
-    members: members.value,
-    channels: channels.value,
-}));
+const teams = computed(() => page.props.teams ?? []);
+const showScopeControl = computed(() => teams.value.length > 1);
 
-const memberById = computed(
-    () => new Map(members.value.map((member) => [member.id, member])),
-);
-const channelById = computed(
-    () => new Map(channels.value.map((channel) => [channel.id, channel])),
-);
-
-// The URL is the state: the input and facets seed from the server-echoed query
-// and filters, and every change writes them back so a shared link reproduces the
-// filtered view.
+// The URL is the state: the input, facets, and scope seed from the server-echoed
+// query and filters, and every change writes them back so a shared link
+// reproduces the filtered view.
 const term = ref(props.query);
 const authorId = ref<string | null>(props.filters.from);
 const channelId = ref<string | null>(props.filters.in);
 const after = ref<string | null>(props.filters.after);
 const before = ref<string | null>(props.filters.before);
+const scope = ref(props.filters.scope);
+
+// In cross-team mode the channel facet lists the union across all the user's
+// teams; otherwise just the current team's channels. Either way, every known
+// channel resolves a chip label, so a shared link's channel id renders its name.
+const channelOptions = computed<
+    Array<{
+        id: string;
+        name: string;
+        slug: string;
+        isPrivate: boolean;
+        teamName: string | null;
+    }>
+>(() =>
+    scope.value === 'all'
+        ? props.workspaceChannels.map((channel) => ({
+              id: channel.id,
+              name: channel.name,
+              slug: channel.slug,
+              isPrivate: false,
+              teamName: channel.teamName,
+          }))
+        : channels.value.map((channel) => ({
+              id: channel.id,
+              name: channel.name,
+              slug: channel.slug,
+              isPrivate: channel.visibility === 'private',
+              teamName: null,
+          })),
+);
+
+const channelById = computed(() => {
+    const map = new Map<string, { name: string }>();
+
+    for (const channel of channels.value) {
+        map.set(channel.id, { name: channel.name });
+    }
+
+    for (const channel of props.workspaceChannels) {
+        map.set(channel.id, { name: channel.name });
+    }
+
+    return map;
+});
+
+const memberById = computed(
+    () => new Map(members.value.map((member) => [member.id, member])),
+);
+
+const lookup = computed(() => ({
+    members: members.value,
+    channels: channelOptions.value,
+}));
 
 function currentFilters(): SearchFilters {
     return {
@@ -96,14 +150,27 @@ function currentFilters(): SearchFilters {
 }
 
 // A single scoped reload that refreshes only the results and the echoed
-// query/filters, preserving the input's focus and the scroll position.
+// query/filters, preserving the input's focus and the scroll position. The
+// default `team` scope stays out of the URL; only `all` is serialized.
 function reload(): void {
-    router.get(search(props.team.slug).url, filtersToParams(currentFilters()), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-        only: ['results', 'query', 'filters'],
-    });
+    router.get(
+        search(props.team.slug).url,
+        filtersToParams(
+            currentFilters(),
+            scope.value === 'all' ? 'all' : undefined,
+        ),
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: ['results', 'query', 'filters'],
+        },
+    );
+}
+
+function setScope(next: string): void {
+    scope.value = next;
+    reload();
 }
 
 // Debounce keystrokes; a facet change (chip/picker) reloads immediately.
@@ -201,7 +268,7 @@ const authorFilter = ref('');
 const filteredChannels = computed(() => {
     const needle = channelFilter.value.trim().toLowerCase();
 
-    return channels.value.filter(
+    return channelOptions.value.filter(
         (channel) =>
             needle === '' || channel.name.toLowerCase().includes(needle),
     );
@@ -314,9 +381,12 @@ function formatTimestamp(iso: string): string {
     return formatDateTime(iso, page.props.auth.user.timezone ?? undefined);
 }
 
+// Each result links into its own team's channel — for a same-team result that is
+// the current team; for a cross-team ("All workspaces") result it targets the
+// message's own workspace, which resolves because ACL guarantees membership.
 function jumpHref(result: MessageSearchResult): string {
     return show(
-        { team: props.team.slug, channel: result.channelSlug },
+        { team: result.teamSlug, channel: result.channelSlug },
         { query: { message: result.message.id } },
     ).url;
 }
@@ -358,6 +428,38 @@ function jumpHref(result: MessageSearchResult): string {
                     data-test="search-input"
                     class="h-9.5 rounded-[10px] bg-muted/40 pl-9"
                 />
+            </div>
+
+            <!-- workspace scope (multi-team users only) -->
+            <div
+                v-if="showScopeControl"
+                class="inline-flex items-center self-start rounded-full bg-muted p-0.5"
+                role="group"
+                :aria-label="$t('Search scope')"
+                data-test="scope-control"
+            >
+                <Button
+                    variant="segmented"
+                    size="none"
+                    type="button"
+                    class="h-7 px-3.5 text-xs font-medium"
+                    :aria-pressed="scope === 'team'"
+                    data-test="scope-team"
+                    @click="setScope('team')"
+                >
+                    {{ props.team.name }}
+                </Button>
+                <Button
+                    variant="segmented"
+                    size="none"
+                    type="button"
+                    class="h-7 px-3.5 text-xs font-medium"
+                    :aria-pressed="scope === 'all'"
+                    data-test="scope-all"
+                    @click="setScope('all')"
+                >
+                    {{ $t('All workspaces') }}
+                </Button>
             </div>
 
             <!-- facet bar -->
@@ -477,17 +579,17 @@ function jumpHref(result: MessageSearchResult): string {
                         />
                         <div class="max-h-56 overflow-y-auto">
                             <Button
-                                variant="unstyled"
-                                size="none"
                                 v-for="channel in filteredChannels"
                                 :key="channel.id"
+                                variant="unstyled"
+                                size="none"
                                 type="button"
                                 class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent"
                                 data-test="facet-channel-option"
                                 @click="setChannel(channel.id)"
                             >
                                 <Lock
-                                    v-if="channel.visibility === 'private'"
+                                    v-if="channel.isPrivate"
                                     class="size-3 shrink-0 text-muted-foreground"
                                     aria-hidden="true"
                                 />
@@ -498,6 +600,11 @@ function jumpHref(result: MessageSearchResult): string {
                                     >#</span
                                 >
                                 <span class="truncate">{{ channel.name }}</span>
+                                <span
+                                    v-if="channel.teamName !== null"
+                                    class="ml-auto shrink-0 text-[10px] text-muted-foreground"
+                                    >{{ channel.teamName }}</span
+                                >
                             </Button>
                         </div>
                     </DropdownMenuContent>
@@ -712,6 +819,13 @@ function jumpHref(result: MessageSearchResult): string {
                                 <span class="text-muted-foreground">
                                     <span class="text-brass">#</span
                                     >{{ result.channelName }}
+                                </span>
+                                <span
+                                    v-if="result.teamSlug !== props.team.slug"
+                                    class="inline-flex items-center gap-1 rounded bg-brass-fill px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.05em] text-brass-fill-foreground uppercase"
+                                    data-test="result-workspace-tag"
+                                >
+                                    {{ result.teamName }}
                                 </span>
                                 <span
                                     class="ml-auto shrink-0 text-[11px] text-muted-foreground"

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Actions\Channels\SyncMentions;
+
 /**
  * Reduces a stored message body to the plain text a reader sees, for search
  * indexing and snippet extraction. Today it unwraps mention tokens — the
@@ -15,7 +17,7 @@ final class MessagePlainText
 {
     /**
      * A mention token: `@[Display Name](user-id)`, the id a 36-char UUID. Mirrors
-     * the composer's token shape used by {@see \App\Actions\Channels\SyncMentions}.
+     * the composer's token shape used by {@see SyncMentions}.
      */
     private const string MENTION = '/@\[([^\]]+)\]\([0-9a-fA-F-]{36}\)/';
 

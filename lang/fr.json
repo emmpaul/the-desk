@@ -895,5 +895,7 @@
   "Clear filters": "Effacer les filtres",
   "Search all channels": "Rechercher dans tous les salons",
   "in thread · 1 reply": "dans un fil · 1 réponse",
-  "in thread · :count replies": "dans un fil · :count réponses"
+  "in thread · :count replies": "dans un fil · :count réponses",
+  "Search scope": "Portée de la recherche",
+  "All workspaces": "Tous les espaces"
 }
