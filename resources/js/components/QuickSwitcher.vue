@@ -23,6 +23,8 @@ import { useTranslations } from '@/composables/useTranslations';
 import { formatDateTime } from '@/lib/datetime';
 import { renderMessageBody } from '@/lib/messageBody';
 import { rankPeople } from '@/lib/peopleDirectory';
+import { filtersToParams, parseSearchQuery } from '@/lib/searchTokens';
+import type { SearchParams } from '@/lib/searchTokens';
 import type { MessageSearchResult } from '@/types';
 import type { Channel } from '@/types/channels';
 import type { PersonRef } from '@/types/people';
@@ -49,6 +51,19 @@ const query = ref('');
 
 const trimmedQuery = computed(() => query.value.trim().replace(/^#+/, ''));
 
+// Parse the raw input into the shared filter model so `from:` / `in:` /
+// `before:` / `after:` tokens drive the same structured search the page uses —
+// the palette just has no visible chip bar. The residual text is the query the
+// results highlight and the channel/people groups keep ranking on.
+const parsedFilters = computed(() =>
+    parseSearchQuery(query.value, {
+        members: props.members,
+        channels: props.channels,
+    }),
+);
+
+const searchText = computed(() => parsedFilters.value.text);
+
 const channelResults = computed(() =>
     rankChannels(props.channels, query.value),
 );
@@ -70,12 +85,30 @@ const {
     search: searchMessages,
     reset: resetMessages,
 } = useMessageSearch(
-    (term) => suggestMessages(props.teamSlug, { query: { q: term } }).url,
+    (params) =>
+        suggestMessages(props.teamSlug, {
+            query: JSON.parse(params) as SearchParams,
+        }).url,
 );
 
-watch(trimmedQuery, (term) => {
-    searchMessages(term);
-});
+// Re-search whenever the structured filters change (a token edit counts, not
+// just text), keyed on the serialized params so an identical filter set is not
+// re-fetched. A query with no residual text can never match, so it clears.
+watch(
+    parsedFilters,
+    (filters) => {
+        // A query with no residual text can never match, so clear rather than
+        // send an empty request (keeps the URL-builder off an empty params key).
+        if (filters.text === '') {
+            resetMessages();
+
+            return;
+        }
+
+        searchMessages(JSON.stringify(filtersToParams(filters)));
+    },
+    { deep: true },
+);
 
 // Reset everything on dismiss so the palette always reopens blank.
 watch(open, (isOpen) => {
@@ -120,7 +153,9 @@ function selectMessage(result: MessageSearchResult): void {
 function seeAllResults(): void {
     open.value = false;
     router.visit(
-        searchPage(props.teamSlug, { query: { q: trimmedQuery.value } }).url,
+        searchPage(props.teamSlug, {
+            query: filtersToParams(parsedFilters.value),
+        }).url,
     );
 }
 
@@ -220,7 +255,7 @@ function openReminders(): void {
                 </CommandItem>
             </CommandGroup>
 
-            <CommandGroup v-if="trimmedQuery !== ''" :heading="$t('Messages')">
+            <CommandGroup v-if="searchText !== ''" :heading="$t('Messages')">
                 <p
                     v-if="isSearchingMessages && messageResults.length === 0"
                     class="px-2 py-2 text-xs text-muted-foreground"
@@ -234,7 +269,7 @@ function openReminders(): void {
                 >
                     {{
                         $t('No messages match “:query”.', {
-                            query: trimmedQuery,
+                            query: searchText,
                         })
                     }}
                 </p>
@@ -293,7 +328,7 @@ function openReminders(): void {
                 >
                     <span class="truncate">{{
                         $t('See all results for “:query”', {
-                            query: trimmedQuery,
+                            query: searchText,
                         })
                     }}</span>
                     <span class="ml-auto shrink-0 not-italic" aria-hidden="true"
