@@ -100,7 +100,7 @@ class SearchController extends Controller
      * in cross-team ("All workspaces") mode. Each carries its owning team so the
      * picker can disambiguate same-named channels between workspaces.
      *
-     * @return array<int, array{id: string, name: string, slug: string, teamName: string, teamSlug: string}>
+     * @return array<int, array{id: string, name: string, slug: string, visibility: string, teamName: string, teamSlug: string}>
      */
     private function crossTeamChannels(User $user): array
     {
@@ -112,6 +112,7 @@ class SearchController extends Controller
                 'id' => $channel->id,
                 'name' => $channel->name,
                 'slug' => $channel->slug,
+                'visibility' => $channel->visibility->value,
                 'teamName' => $channel->team->name,
                 'teamSlug' => $channel->team->slug,
             ])

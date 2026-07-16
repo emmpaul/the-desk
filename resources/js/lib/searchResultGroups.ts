@@ -1,4 +1,4 @@
-import { translate } from '@/lib/i18n';
+import { i18n, translate } from '@/lib/i18n';
 import type { MessageSearchResult } from '@/types';
 
 /**
@@ -80,7 +80,7 @@ function bucketFor(
 
     return {
         key: `month-${date.getFullYear()}-${date.getMonth()}`,
-        label: date.toLocaleDateString(undefined, {
+        label: date.toLocaleDateString(i18n.locale, {
             month: 'long',
             year:
                 date.getFullYear() === now.getFullYear()

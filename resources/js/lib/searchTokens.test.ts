@@ -104,6 +104,19 @@ describe('parseSearchQuery', () => {
         expect(parseSearchQuery('in:engineering', lookup).in).toBe('c-eng');
     });
 
+    it('resolves an in: token by slug in preference to another channel name', () => {
+        const ambiguous: TokenLookup = {
+            members: [],
+            channels: [
+                { id: 'c-named', name: 'design', slug: 'zzz' },
+                { id: 'c-slugged', name: 'other', slug: 'design' },
+            ],
+        };
+
+        // "design" is both a name (c-named) and a slug (c-slugged); slug wins.
+        expect(parseSearchQuery('in:design', ambiguous).in).toBe('c-slugged');
+    });
+
     it('is case-insensitive on token keys', () => {
         expect(parseSearchQuery('FROM:maya', lookup).from).toBe('u-maya');
     });

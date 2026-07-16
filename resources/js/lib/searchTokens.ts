@@ -133,8 +133,9 @@ function applyToken(
 }
 
 /**
- * Resolve `from:value` to a member id: a whole-word match on the display name
- * (so `maya` matches "Maya Chen"), else a full-name match. First match wins.
+ * Resolve `from:value` to a member id by a whole-word match on the display name,
+ * so `maya` matches "Maya Chen" (the token is a single word, so a full-name match
+ * is just the one-word case of this). First match wins.
  */
 function resolveMember(
     value: string,
@@ -142,11 +143,9 @@ function resolveMember(
 ): string | null {
     const needle = value.toLowerCase();
 
-    const match = members.find((member) => {
-        const name = member.name.toLowerCase();
-
-        return name === needle || name.split(/\s+/).includes(needle);
-    });
+    const match = members.find((member) =>
+        member.name.toLowerCase().split(/\s+/).includes(needle),
+    );
 
     return match?.id ?? null;
 }
@@ -161,13 +160,19 @@ function resolveChannel(
 ): string | null {
     const needle = value.replace(/^#+/, '').toLowerCase();
 
-    const match = channels.find(
-        (channel) =>
-            channel.slug.toLowerCase() === needle ||
-            channel.name.toLowerCase() === needle,
+    const bySlug = channels.find(
+        (channel) => channel.slug.toLowerCase() === needle,
     );
 
-    return match?.id ?? null;
+    if (bySlug !== undefined) {
+        return bySlug.id;
+    }
+
+    const byName = channels.find(
+        (channel) => channel.name.toLowerCase() === needle,
+    );
+
+    return byName?.id ?? null;
 }
 
 /**

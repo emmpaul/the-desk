@@ -135,6 +135,39 @@ test('the channel facet promotes to a chip and drives the scoped reload', functi
         ->assertPresent('[data-test="search-result"]');
 });
 
+test('the author facet applies and removes, and a date preset applies', function (): void {
+    ['owner' => $alice] = searchPageWithMatches();
+
+    signInThroughBrowser($alice)
+        ->click('@masthead-search')
+        ->assertPathContains('/search')
+        ->type('@search-input', 'quokka')
+        ->wait(0.8)
+        ->assertPresent('[data-test="search-result"]')
+        // Pick an author: filter to one match, then select it — the applied
+        // facet renders as a chip.
+        ->click('@facet-author-picker')
+        ->wait(0.3)
+        ->type('@facet-author-filter', 'Bob')
+        ->wait(0.3)
+        ->assertPresent('[data-test="facet-author-option"]')
+        ->click('[data-test="facet-author-option"]')
+        ->wait(0.8)
+        ->assertPresent('[data-test="facet-author"]')
+        // Remove it via the chip's control; the picker pill returns.
+        ->click('[data-test="facet-author"] button')
+        ->wait(0.8)
+        ->assertMissing('[data-test="facet-author"]')
+        ->assertPresent('[data-test="facet-author-picker"]')
+        // Apply a date preset: the date facet renders as a chip.
+        ->click('@facet-date-picker')
+        ->wait(0.3)
+        ->assertPresent('[data-test="facet-date-preset-today"]')
+        ->click('[data-test="facet-date-preset-today"]')
+        ->wait(0.8)
+        ->assertPresent('[data-test="facet-date"]');
+});
+
 test('the zero-result state names the active filters and offers both escapes', function (): void {
     ['owner' => $alice] = searchPageWithMatches();
 

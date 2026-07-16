@@ -53,6 +53,7 @@ interface WorkspaceChannel {
     id: string;
     name: string;
     slug: string;
+    visibility: string;
     teamName: string;
     teamSlug: string;
 }
@@ -103,7 +104,7 @@ const channelOptions = computed<
               id: channel.id,
               name: channel.name,
               slug: channel.slug,
-              isPrivate: false,
+              isPrivate: channel.visibility === 'private',
               teamName: channel.teamName,
           }))
         : channels.value.map((channel) => ({
@@ -169,6 +170,16 @@ function reload(): void {
 }
 
 function setScope(next: string): void {
+    // Narrowing back to the current team drops a channel facet that belongs to
+    // another workspace, so the reload isn't filtered by an inapplicable channel.
+    if (
+        next === 'team' &&
+        channelId.value !== null &&
+        !channels.value.some((channel) => channel.id === channelId.value)
+    ) {
+        channelId.value = null;
+    }
+
     scope.value = next;
     reload();
 }
@@ -302,11 +313,12 @@ const datePresets = computed(() => {
 
     return [
         { key: 'today', label: t('Today'), after: today, before: today },
-        { key: '7d', label: t('Last 7 days'), after: daysAgo(7), before: null },
+        // "Last 7 days" spans today plus the six days before it (30 likewise).
+        { key: '7d', label: t('Last 7 days'), after: daysAgo(6), before: null },
         {
             key: '30d',
             label: t('Last 30 days'),
-            after: daysAgo(30),
+            after: daysAgo(29),
             before: null,
         },
         {
@@ -508,6 +520,7 @@ function jumpHref(result: MessageSearchResult): string {
                             v-model="authorFilter"
                             :placeholder="$t('Filter people…')"
                             :aria-label="$t('Filter people')"
+                            data-test="facet-author-filter"
                             class="mb-1 h-8 text-xs"
                             @keydown.stop
                         />
@@ -645,13 +658,13 @@ function jumpHref(result: MessageSearchResult): string {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" class="w-60 p-1.5">
                         <Button
-                            variant="unstyled"
-                            size="none"
                             v-for="preset in datePresets"
                             :key="preset.key"
+                            variant="unstyled"
+                            size="none"
                             type="button"
                             class="flex w-full items-center rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent"
-                            data-test="facet-date-preset"
+                            :data-test="`facet-date-preset-${preset.key}`"
                             @click="setDateRange(preset.after, preset.before)"
                         >
                             {{ preset.label }}

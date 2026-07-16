@@ -97,9 +97,15 @@ const {
 watch(
     parsedFilters,
     (filters) => {
-        searchMessages(
-            filters.text === '' ? '' : JSON.stringify(filtersToParams(filters)),
-        );
+        // A query with no residual text can never match, so clear rather than
+        // send an empty request (keeps the URL-builder off an empty params key).
+        if (filters.text === '') {
+            resetMessages();
+
+            return;
+        }
+
+        searchMessages(JSON.stringify(filtersToParams(filters)));
     },
     { deep: true },
 );
