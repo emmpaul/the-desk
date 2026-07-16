@@ -60,6 +60,9 @@ class DataExportFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'status' => DataExportStatus::Failed,
+            'path' => null,
+            'size_bytes' => null,
+            'expires_at' => null,
         ]);
     }
 }
