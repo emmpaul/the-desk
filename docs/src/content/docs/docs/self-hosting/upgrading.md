@@ -110,6 +110,28 @@ COMPOSE_FILE=docker-compose.prod.yml:docker-compose.build.yml
 Migrations run automatically on start — the `app` container's entrypoint runs
 `php artisan migrate --force`.
 
+## Confirm the running version
+
+A healthy stack proves the containers are alive, not that they are running the
+version you just checked out: the old container answers just as happily as the
+new one. Ask the instance directly:
+
+```bash
+docker compose exec -T app php artisan app:version
+```
+
+It prints the bare version and nothing else, newline-terminated, so you can
+compare it against the tag you checked out or capture it in a script:
+
+```bash
+running=$(docker compose exec -T app php artisan app:version)
+echo "The Desk ${running} is running."
+```
+
+If it still reports the version you upgraded from, the old container is most
+likely still up. Check `docker compose ps`, then re-run the `up -d` step for
+your install path above (`--build` included, if you build from source).
+
 ## Your data persists
 
 Data survives `down`/`up` in named volumes:
