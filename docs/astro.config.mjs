@@ -98,6 +98,7 @@ export default defineConfig({
 						{ label: 'Reverse proxy & TLS', slug: 'docs/self-hosting/reverse-proxy' },
 						{ label: 'First user & workspace', slug: 'docs/self-hosting/first-user' },
 						{ label: 'Upgrading', slug: 'docs/self-hosting/upgrading' },
+						{ label: 'Troubleshooting', slug: 'docs/self-hosting/troubleshooting' },
 					],
 				},
 				{
