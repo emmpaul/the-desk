@@ -224,7 +224,7 @@ and verifies the instance is actually running it (a healthy stack only proves th
 containers are alive; the old one answers just as happily):
 
 ```bash
-./docker/upgrade.sh --target=1.6.1 /srv/backups # x-release-please-version
+./docker/upgrade.sh --target=1.7.0 /srv/backups # x-release-please-version
 ```
 
 If any step fails it stops, leaves the stack untouched for diagnosis, and prints
