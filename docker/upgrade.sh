@@ -36,7 +36,7 @@
 # `docker compose` resolves the right files for both setups.
 set -eu
 
-BACKUP_DIR="."
+BACKUP_DIR=""
 TARGET=""
 TIMEOUT="300"
 PULL="true"
@@ -67,10 +67,22 @@ for arg in "$@"; do
             exit 1
             ;;
         *)
+            # Take at most one, rather than letting a second path silently win
+            # and send the backup somewhere the operator did not mean.
+            if [ -n "$BACKUP_DIR" ]; then
+                echo "Error: unexpected argument '$arg'; only one backup directory is taken." >&2
+                usage >&2
+                exit 1
+            fi
+
             BACKUP_DIR="$arg"
             ;;
     esac
 done
+
+if [ -z "$BACKUP_DIR" ]; then
+    BACKUP_DIR="."
+fi
 
 if ! echo "$TIMEOUT" | grep -Eq '^[1-9][0-9]*$'; then
     echo "Error: --timeout must be a positive integer, got '$TIMEOUT'." >&2
@@ -177,6 +189,20 @@ if [ -z "$DUMP_FILE" ] || [ -z "$STORAGE_FILE" ] || [ ! -f "$DUMP_FILE" ] || [ !
     exit 1
 fi
 
+# The restore command below is this script's whole promise on the failure path,
+# so it has to survive being pasted. Quote a path only when it contains anything
+# the shell would act on, keeping the usual output clean.
+shell_quote() {
+    case "$1" in
+        *[!A-Za-z0-9_/.@%+-]*)
+            printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+            ;;
+        *)
+            printf '%s' "$1"
+            ;;
+    esac
+}
+
 # Every failure from here on has a backup to offer, so they share this exit.
 fail_with_restore() {
     echo >&2
@@ -191,7 +217,7 @@ fail_with_restore() {
     echo "slow boot looks identical to a broken one from here. That call is yours." >&2
     echo >&2
     echo "Your backup is safe. When you have decided, restore it with:" >&2
-    echo "  ./docker/restore.sh $DUMP_FILE $STORAGE_FILE" >&2
+    echo "  ./docker/restore.sh $(shell_quote "$DUMP_FILE") $(shell_quote "$STORAGE_FILE")" >&2
     echo >&2
     echo "(It will refuse the populated database until you add --force, and say so.)" >&2
     exit 1
@@ -223,18 +249,23 @@ echo "Step 3/3: verifying..."
 # directly), so the host port is not a reliable way to ask. This is the same check
 # the compose healthcheck makes, just polled faster than its 30s interval.
 echo "  waiting for /up (timeout ${TIMEOUT}s)..."
-waited=0
+STARTED="$(date +%s)"
+DEADLINE="$((STARTED + TIMEOUT))"
 
-until docker compose exec -T app curl -fsS -o /dev/null http://localhost:8080/up </dev/null 2>/dev/null; do
-    if [ "$waited" -ge "$TIMEOUT" ]; then
+# The deadline is real elapsed time, not a count of sleeps: every probe spawns a
+# `docker compose exec`, which takes long enough that counting intervals would
+# overshoot --timeout badly on a slow host, exactly where the wait matters most.
+# curl gets its own --max-time so a single wedged probe cannot sail past the
+# deadline either.
+until docker compose exec -T app curl -fsS --max-time 5 -o /dev/null http://localhost:8080/up </dev/null 2>/dev/null; do
+    if [ "$(date +%s)" -ge "$DEADLINE" ]; then
         fail_with_restore "the app did not answer /up within ${TIMEOUT}s. It may still be booting (migrations and search:sync run first), or the migration may have failed: check the logs before deciding. --timeout raises the wait."
     fi
 
     sleep "$POLL_INTERVAL"
-    waited=$((waited + POLL_INTERVAL))
 done
 
-echo "  /up answered after ${waited}s"
+echo "  /up answered after $(($(date +%s) - STARTED))s"
 
 # Liveness is not identity: the OLD container answers /up just as happily as the
 # new one, so a stack that came back on the previous image would look like a

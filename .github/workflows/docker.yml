@@ -287,6 +287,9 @@ jobs:
       # was built from, so a successful run proves the identity check agrees.
       - name: Run upgrade.sh
         run: |
+          # pipefail: without it the pipeline reports tee's status, so a failing
+          # upgrade.sh would be masked.
+          set -o pipefail
           mkdir -p backups
           ./docker/upgrade.sh backups --no-pull | tee upgrade.log
           grep -q "Upgraded to $(sed -e 's/#.*//' VERSION | tr -d '[:space:]')" upgrade.log
@@ -304,6 +307,8 @@ jobs:
       # successful upgrade.
       - name: Assert a failed upgrade halts, keeps the stack, and hands back a restore command
         run: |
+          version_before=$(docker compose exec -T app php artisan app:version)
+
           if ./docker/upgrade.sh backups --no-pull --target=9.9.9 >failed.log 2>&1; then
             echo "upgrade.sh should have failed on a version mismatch" >&2
             cat failed.log >&2
@@ -327,8 +332,10 @@ jobs:
           gzip -t "$dump"
           gzip -t "$archive"
 
-          # It must have left the stack alone rather than restoring anything.
-          docker compose exec -T app php artisan app:version
+          # It must have left the stack alone rather than restoring anything:
+          # same version running as before the failed attempt.
+          version_after=$(docker compose exec -T app php artisan app:version)
+          test "$version_after" = "$version_before"
 
       - name: Show stack logs on failure
         if: failure()
