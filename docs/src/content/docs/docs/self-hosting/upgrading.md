@@ -41,8 +41,11 @@ Take both with one command, from the project root:
 ./docker/backup.sh
 ```
 
-It writes a gzipped logical database dump (portable across Postgres versions) and
-an archive of the uploaded files into the current directory, named with the date:
+It writes a gzipped logical database dump (SQL statements rather than a physical
+copy of the data files, which is what makes it portable across Postgres versions
+in the ordinary case, though restoring into a very different major version or a
+host missing an extension can still need work) and an archive of the uploaded
+files into the current directory, named with the date:
 
 ```
 db-backup-YYYY-MM-DD.sql.gz
@@ -93,7 +96,9 @@ Restore is destructive in a way backup is not, so the script:
 - **prints exactly what it will overwrite** and asks you to confirm.
 
 Every check that can refuse runs before anything is stopped or overwritten, so a
-run that bails leaves the instance as it found it.
+run that bails leaves the instance as it found it. The database restore itself
+runs in a single transaction: if it fails part way, it rolls back and leaves the
+database as it was, rather than dropped and half-restored.
 
 Pass `--force` to skip the confirmation for non-interactive use (cron, CI). On a
 populated database `--force` also replaces the existing schema outright, which is

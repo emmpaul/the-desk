@@ -17,8 +17,9 @@
 # Every check that can refuse runs *before* the stack is stopped, so a run that
 # bails leaves the instance exactly as it found it.
 #
-# The stack is left stopped afterwards so you can check things over; bring it
-# back with `docker compose up -d`.
+# Those services are left stopped afterwards so you can check things over (pgsql
+# stays up: it is what we restore into); bring everything back with
+# `docker compose up -d`.
 #
 # No `-f docker-compose.prod.yml` here: .env sets COMPOSE_FILE, so a bare
 # `docker compose` resolves the right files for both the published-image and
@@ -86,6 +87,15 @@ for file in "$DUMP_FILE" "$STORAGE_FILE"; do
         exit 1
     fi
 done
+
+# `gzip -t` only proves the compressed stream is intact; a valid gzip of garbage
+# passes it. The uploads are extracted after storage/app has been cleared, so
+# check the tar structure now rather than discovering it is unreadable with the
+# existing uploads already gone.
+if ! tar tzf "$STORAGE_FILE" >/dev/null 2>&1; then
+    echo "Error: '$STORAGE_FILE' is not a readable tar archive." >&2
+    exit 1
+fi
 
 # Read a key from .env, falling back to the same default the compose file uses.
 # An exported environment variable wins, matching the documented one-liners.
@@ -192,22 +202,29 @@ if [ -n "$RUNNING" ]; then
 fi
 
 # ---- Database ---------------------------------------------------------------
-# Drop and recreate the public schema so the dump lands in the "freshly created,
-# empty database" it expects. A plain pg_dump carries no DROP statements, so
-# without this every CREATE would collide with the existing schema.
-if [ "$TABLE_COUNT" -gt 0 ]; then
-    echo "Replacing the existing schema in '$DB_DATABASE'..."
-    docker compose exec -T pgsql psql -v ON_ERROR_STOP=1 --quiet -U "$DB_USERNAME" -d "$DB_DATABASE" \
-        -c "DROP SCHEMA public CASCADE" -c "CREATE SCHEMA public" </dev/null >/dev/null
-fi
-
 echo "Restoring the database..."
-# ON_ERROR_STOP makes psql exit non-zero on the first failed statement instead
-# of replaying the rest of the dump over a broken schema and reporting success.
-# psql is last in the pipeline, so `set -e` sees its status; the gzip integrity
-# check above already ruled out a truncated producer.
-gunzip -c "$DUMP_FILE" | docker compose exec -T pgsql \
-    psql -v ON_ERROR_STOP=1 --quiet -U "$DB_USERNAME" -d "$DB_DATABASE" >/dev/null
+# Dropping the schema and replaying the dump go to psql as ONE stream under
+# --single-transaction, so a failure rolls the whole thing back and leaves the
+# database exactly as it was. Doing the DROP as its own statement first would
+# mean a dump that fails to replay leaves the operator with neither their old
+# database nor their backup.
+#
+# The schema is dropped and recreated (rather than restoring over what is there)
+# so the dump lands in the "freshly created, empty database" it expects: a plain
+# pg_dump carries no DROP statements, so every CREATE would otherwise collide.
+#
+# ON_ERROR_STOP is what makes psql abort, and therefore roll back, on the first
+# failed statement instead of replaying the rest over a broken schema and
+# exiting 0. psql is last in the pipeline, so `set -e` sees its status.
+{
+    if [ "$TABLE_COUNT" -gt 0 ]; then
+        echo "DROP SCHEMA public CASCADE;"
+        echo "CREATE SCHEMA public;"
+    fi
+
+    gunzip -c "$DUMP_FILE"
+} | docker compose exec -T pgsql \
+    psql --single-transaction -v ON_ERROR_STOP=1 --quiet -U "$DB_USERNAME" -d "$DB_DATABASE" >/dev/null
 
 # ---- Uploaded files ---------------------------------------------------------
 # `run --rm --no-deps`, not `exec`: the app container is stopped by this point
@@ -222,5 +239,10 @@ docker compose run --rm --no-deps -T --entrypoint sh app \
     <"$STORAGE_FILE"
 
 echo
-echo "Restore complete. The stack is stopped; start it with:"
+echo "Restore complete."
+if [ -n "$RUNNING" ]; then
+    # pgsql is deliberately still up: it is what we restored into.
+    echo "Still stopped so you can check things over first: $RUNNING"
+fi
+echo "Bring the stack back with:"
 echo "  docker compose up -d"

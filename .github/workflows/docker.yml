@@ -185,13 +185,26 @@ jobs:
           tar tzf "$archive" | grep -q smoke-marker.txt
 
       # The guardrail that matters most: restore must not quietly replay a dump
-      # over a populated database.
+      # over a populated database. Refusing is only half the requirement, so
+      # change both markers first and assert they survived: a refusal that had
+      # already dropped the schema would still "refuse", and still be a disaster.
       - name: Assert restore refuses a populated database without --force
         run: |
+          docker compose exec -T pgsql psql -U laravel -d laravel \
+            -c "UPDATE smoke_marker SET note = 'state-before-refusal'"
+          docker compose exec -T app \
+            sh -c 'echo state-before-refusal > /app/storage/app/smoke-marker.txt'
+
           if ./docker/restore.sh backups/db-backup-*.sql.gz backups/storage-app-*.tar.gz </dev/null; then
             echo "restore.sh should have refused a non-empty database" >&2
             exit 1
           fi
+
+          note=$(docker compose exec -T pgsql psql -U laravel -d laravel \
+            -tAc "SELECT note FROM smoke_marker" | tr -d '[:space:]')
+          test "$note" = "state-before-refusal"
+          upload=$(docker compose exec -T app cat /app/storage/app/smoke-marker.txt | tr -d '[:space:]')
+          test "$upload" = "state-before-refusal"
 
       - name: Destroy both durable stores
         run: |

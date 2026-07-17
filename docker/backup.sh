@@ -115,9 +115,12 @@ DUMP_FILE="$OUTPUT_DIR/db-backup-$STAMP.sql.gz"
 STORAGE_FILE="$OUTPUT_DIR/storage-app-$STAMP.tar.gz"
 
 # Stage into .partial files next to the final ones (same filesystem, so the
-# rename is atomic) and only rename once the producing command reported success.
-# A failed run therefore never leaves a truncated file that looks like a good
-# backup. The trap clears the staging files on any exit path.
+# rename is atomic) and publish BOTH only once BOTH producers have reported
+# success. A failed run therefore never leaves a truncated file that looks like a
+# good backup, and never leaves a mismatched pair: publishing the dump as soon as
+# it was written would, on a failed same-day retry, pair today's database with
+# last week's uploads while looking complete. The trap clears the staging files
+# on any exit path.
 DUMP_PARTIAL="$OUTPUT_DIR/.db-backup-$STAMP.sql.gz.partial"
 STORAGE_PARTIAL="$OUTPUT_DIR/.storage-app-$STAMP.tar.gz.partial"
 STATUS_FILE="$(mktemp)"
@@ -179,12 +182,9 @@ echo "Backing up to $OUTPUT_DIR:"
 ) | gzip -c >"$DUMP_PARTIAL"
 
 if [ "$(piped_status)" != "0" ]; then
-    echo "Error: pg_dump failed; no database backup written." >&2
+    echo "Error: pg_dump failed; no backup written." >&2
     exit 1
 fi
-
-mv "$DUMP_PARTIAL" "$DUMP_FILE"
-echo "  wrote $DUMP_FILE"
 
 # ---- Uploaded files ---------------------------------------------------------
 # tar compresses on its own (czf), so this needs no gzip stage; the status file
@@ -196,16 +196,31 @@ echo "  wrote $DUMP_FILE"
 ) >"$STORAGE_PARTIAL"
 
 if [ "$(piped_status)" != "0" ]; then
-    echo "Error: archiving storage/app failed; no storage backup written." >&2
+    echo "Error: archiving storage/app failed; no backup written." >&2
     exit 1
 fi
 
+# ---- Publish ----------------------------------------------------------------
+# Both producers succeeded, so the pair can be published together.
+mv "$DUMP_PARTIAL" "$DUMP_FILE"
+echo "  wrote $DUMP_FILE"
 mv "$STORAGE_PARTIAL" "$STORAGE_FILE"
 echo "  wrote $STORAGE_FILE"
 
 # ---- Retention --------------------------------------------------------------
+# Only complete pairs are counted and pruned: a lone dump or archive left by an
+# older/interrupted run must not consume a --keep slot, or it would evict a good
+# pair while contributing nothing restorable itself.
 if [ -n "$KEEP" ]; then
-    stamps="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name 'db-backup-*.sql.gz' | sed -e 's|.*/db-backup-||' -e 's|\.sql\.gz$||' | sort)"
+    stamps="$(
+        find "$OUTPUT_DIR" -maxdepth 1 -type f -name 'db-backup-*.sql.gz' |
+            sed -e 's|.*/db-backup-||' -e 's|\.sql\.gz$||' |
+            while IFS= read -r stamp; do
+                if [ -f "$OUTPUT_DIR/storage-app-$stamp.tar.gz" ]; then
+                    echo "$stamp"
+                fi
+            done | sort
+    )"
 
     if [ -n "$stamps" ]; then
         total="$(printf '%s\n' "$stamps" | wc -l | tr -d '[:space:]')"
