@@ -133,4 +133,5 @@ After wiring up the proxy:
 2. Open the browser dev tools **Network → WS** tab; you should see an open
    WebSocket connection to your Reverb host. If it fails to connect or falls
    back repeatedly, re-check the upgrade headers and the `REVERB_*_PUBLIC`
-   values.
+   values. A persistent **"Reconnecting…"** banner has its own walkthrough in
+   [Troubleshooting](/docs/self-hosting/troubleshooting/#reconnecting-after-login--websocket-wont-connect).

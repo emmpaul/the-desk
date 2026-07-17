@@ -177,3 +177,7 @@ docker compose up -d
 The bare `docker compose` needs no `-f docker-compose.prod.yml` because `.env`
 sets `COMPOSE_FILE`. See
 [the COMPOSE_FILE variable](/docs/self-hosting/installation/#the-compose_file-variable).
+
+If an edit still seems to have no effect, the running containers are serving a
+boot-time config snapshot; add `--force-recreate` or see
+[Troubleshooting → Changed `.env` but nothing changed](/docs/self-hosting/troubleshooting/#changed-env-but-nothing-changed).
