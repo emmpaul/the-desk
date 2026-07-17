@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/emmpaul/the-desk/compare/v1.5.2...v1.6.0) (2026-07-17)
+
+
+### Features
+
+* one-command upgrades and backups for self-hosters ([#479](https://github.com/emmpaul/the-desk/issues/479)) ([af7b050](https://github.com/emmpaul/the-desk/commit/af7b05047cd3828c6e1d332c47a339bfa8857eb2))
+
 ## [1.5.2](https://github.com/emmpaul/the-desk/compare/v1.5.1...v1.5.2) (2026-07-17)
 
 
