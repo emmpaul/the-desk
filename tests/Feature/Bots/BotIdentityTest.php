@@ -7,6 +7,7 @@ use App\Models\Channel;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 
 it('creates a bot with no personal team, no membership pivot, and no password', function (): void {
     $team = Team::factory()->create();
@@ -23,7 +24,16 @@ it('creates a bot with no personal team, no membership pivot, and no password', 
         ->and($bot->personalTeam())->toBeNull();
 });
 
-it('defaults a human user to the human type with the usual personal team', function (): void {
+it('defaults new accounts to the human type at the database level', function (): void {
+    // The migration column default — not the factory's explicit value — is what
+    // keeps every existing account and ordinary registration a human with no
+    // backfill, so assert the default the schema actually carries.
+    $column = collect(Schema::getColumns('users'))->firstWhere('name', 'type');
+
+    expect($column['default'])->toContain(UserType::Human->value);
+});
+
+it('treats a human user as human, with the usual personal team', function (): void {
     $user = User::factory()->create();
 
     expect($user->type)->toBe(UserType::Human)
