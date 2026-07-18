@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Support\IpGeolocator;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Meilisearch\Client;
@@ -34,6 +37,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureRateLimiting();
+    }
+
+    /**
+     * Configure the public API's per-token rate limit at
+     * `INTEGRATIONS_API_RATE_LIMIT` requests/minute.
+     */
+    protected function configureRateLimiting(): void
+    {
+        // Keyed on the presented bearer token (hashed, never stored raw) so each
+        // bot integration is throttled independently at the operator-configured
+        // rate; a hit yields a 429 with a Retry-After header.
+        RateLimiter::for('integrations', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('integrations.api_rate_limit'),
+        )->by(sha1((string) $request->bearerToken())));
     }
 
     /**

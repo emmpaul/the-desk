@@ -26,6 +26,8 @@ enum AuditAction: string
     case InvitationAccepted = 'invitation_accepted';
     case BotCreated = 'bot_created';
     case BotDeleted = 'bot_deleted';
+    case BotTokenCreated = 'bot_token_created';
+    case BotTokenRevoked = 'bot_token_revoked';
 
     /**
      * Get the short human-readable label used in the action filter and headers.
@@ -50,6 +52,8 @@ enum AuditAction: string
             self::InvitationAccepted => __('Invitation accepted'),
             self::BotCreated => __('Bot created'),
             self::BotDeleted => __('Bot deleted'),
+            self::BotTokenCreated => __('API token minted'),
+            self::BotTokenRevoked => __('API token revoked'),
         };
     }
 
@@ -80,6 +84,8 @@ enum AuditAction: string
             self::InvitationAccepted => sprintf(__('Accepted the invitation to %s'), $this->text($context, 'email')),
             self::BotCreated => sprintf(__('Created the %s bot'), $this->text($context, 'bot_name')),
             self::BotDeleted => sprintf(__('Deleted the %s bot'), $this->text($context, 'bot_name')),
+            self::BotTokenCreated => sprintf(__('Minted the “%s” API token for the %s bot'), $this->text($context, 'token_name'), $this->text($context, 'bot_name')),
+            self::BotTokenRevoked => sprintf(__('Revoked the “%s” API token for the %s bot'), $this->text($context, 'token_name'), $this->text($context, 'bot_name')),
         };
     }
 

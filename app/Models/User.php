@@ -34,6 +34,7 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Passkeys\Passkey;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property string $id
@@ -82,7 +83,7 @@ use Laravel\Passkeys\Passkey;
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasTeams, HasUuids, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, HasTeams, HasUuids, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * Determine if the user has verified their email address.

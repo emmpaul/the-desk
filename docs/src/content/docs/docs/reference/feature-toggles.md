@@ -143,6 +143,25 @@ The token is a full provisioning credential — treat it like a password, serve
 SCIM over HTTPS only, and rotate it if it leaks.
 :::
 
+## Integrations platform
+
+The integrations platform lets external systems act inside a workspace as **bot
+users** through a versioned public REST API at `${APP_URL}/api/v1`.
+
+| Variable                      | Default | Effect                                                              |
+| ----------------------------- | ------- | ------------------------------------------------------------------ |
+| `INTEGRATIONS_ENABLED`        | `true`  | Enables bot users and the public REST API. Set `false` to turn the whole surface off — every `/api/v1` route returns **404** and the management UI hides. |
+| `INTEGRATIONS_API_RATE_LIMIT` | `60`    | Maximum requests **per token, per minute**. Exceeding it returns **429** with a `Retry-After` header. |
+
+The platform is **on** by default. A bot authenticates with a hashed
+**Bearer token** minted for it, scoped to fine-grained `resource:action`
+abilities (for example `messages:write`, `channels:read`) — each endpoint
+enforces exactly the scope it needs, and a token acts only within the channels
+its bot belongs to. Set `INTEGRATIONS_ENABLED=false` to disable the feature
+entirely; the routes then behave as if they do not exist.
+
+The toggle takes effect immediately with no data migration.
+
 ## Gravatar avatars
 
 User avatars are derived from [Gravatar](https://gravatar.com) using the MD5 hash
