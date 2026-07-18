@@ -111,10 +111,15 @@ async function loadPage(offset: number, append: boolean): Promise<void> {
             return;
         }
 
-        if (!append) {
-            results.value = [];
+        // An infinite-scroll (append) failure keeps the loaded grid and simply
+        // stops paging; only an initial-load failure shows the full error state.
+        if (append) {
+            nextOffset.value = null;
+
+            return;
         }
 
+        results.value = [];
         errored.value = true;
         nextOffset.value = null;
     } finally {
@@ -259,6 +264,13 @@ onBeforeUnmount(() => {
                 v-model="query"
                 type="search"
                 data-test="gif-search-input"
+                role="combobox"
+                aria-controls="gif-listbox"
+                aria-autocomplete="list"
+                :aria-expanded="results.length > 0"
+                :aria-activedescendant="
+                    activeIndex >= 0 ? `gif-option-${activeIndex}` : undefined
+                "
                 :aria-label="$t('Search GIFs')"
                 :placeholder="$t('Search GIFs')"
                 class="h-8 flex-1 rounded-full bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-brass"
@@ -276,6 +288,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div
+            id="gif-listbox"
             ref="grid"
             role="listbox"
             :aria-label="$t('GIF results')"
@@ -315,6 +328,7 @@ onBeforeUnmount(() => {
                 <!-- eslint-disable-next-line local/no-raw-button -- bespoke GIF-grid cell -->
                 <button
                     v-for="(gif, index) in results"
+                    :id="`gif-option-${index}`"
                     :key="gif.id"
                     type="button"
                     role="option"

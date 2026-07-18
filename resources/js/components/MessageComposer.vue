@@ -415,10 +415,15 @@ const GIF_COMMAND_NAME = 'gif';
 const gifPickerOpen = ref(false);
 const gifPickerQuery = ref('');
 
-// The picker is usable only when configured and when the composer knows its
-// channel (a picked GIF is staged as an attachment on that channel).
+// The picker is usable only when configured, when the composer knows its
+// channel (a picked GIF is staged as an attachment on that channel), and while
+// composing a new message — not editing an existing one (an inline edit saves
+// text only and cannot carry an attachment).
 const gifPickerAvailable = computed(
-    () => Boolean(props.gifPickerEnabled) && attachmentsEnabled.value,
+    () =>
+        Boolean(props.gifPickerEnabled) &&
+        attachmentsEnabled.value &&
+        !editingMessage.value,
 );
 
 /**
@@ -449,10 +454,14 @@ function closeGifPicker(): void {
     nextTick(() => textarea.value?.focus());
 }
 
-/** A picked GIF joins the tray as a remote attachment; the picker then closes. */
+/**
+ * A picked GIF joins the tray as a remote attachment; the picker closes only if
+ * it was accepted, so a full tray keeps the picker open with its toast shown.
+ */
 function onGifSelected(attachment: AttachmentData): void {
-    uploads.addRemote(attachment);
-    closeGifPicker();
+    if (uploads.addRemote(attachment)) {
+        closeGifPicker();
+    }
 }
 
 function selectSlashCommand(command: App.Data.SlashCommandData): void {

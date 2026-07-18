@@ -1,6 +1,8 @@
 <?php
 
+use App\Actions\Channels\CreateGiphyAttachment;
 use App\Actions\Teams\CreateTeam;
+use App\Data\GiphyGifData;
 use App\Enums\AttachmentSource;
 use App\Enums\AttachmentStatus;
 use App\Models\Attachment;
@@ -146,6 +148,37 @@ test('attaching a GIF 404s when Giphy is not configured', function (): void {
     $this->actingAs($owner)
         ->postJson(route('channels.gifs.store', ['team' => $team->slug, 'channel' => $general->slug]), ['id' => 'abc'])
         ->assertNotFound();
+});
+
+test('CreateGiphyAttachment stores a pending remote row with its channel and team loaded', function (): void {
+    [$owner, , $general] = giphyTeam();
+
+    $gif = new GiphyGifData(
+        id: 'abc',
+        url: 'https://media.giphy.com/abc/200.gif',
+        previewUrl: 'https://media.giphy.com/abc/100.gif',
+        width: 360,
+        height: 200,
+        description: 'a dog waving',
+    );
+
+    $attachment = app(CreateGiphyAttachment::class)->handle($general, $owner, $gif);
+
+    expect($attachment->source)->toBe(AttachmentSource::Giphy)
+        ->and($attachment->status)->toBe(AttachmentStatus::Pending)
+        ->and($attachment->user_id)->toBe($owner->id)
+        ->and($attachment->channel_id)->toBe($general->id)
+        ->and($attachment->message_id)->toBeNull()
+        ->and($attachment->disk)->toBeNull()
+        ->and($attachment->path)->toBeNull()
+        ->and($attachment->remote_url)->toBe('https://media.giphy.com/abc/200.gif')
+        ->and($attachment->description)->toBe('a dog waving')
+        ->and($attachment->width)->toBe(360)
+        ->and($attachment->height)->toBe(200)
+        // The channel is returned with its team loaded, so the DTO's url accessor
+        // resolves N+1-free.
+        ->and($attachment->relationLoaded('channel'))->toBeTrue()
+        ->and($attachment->channel->relationLoaded('team'))->toBeTrue();
 });
 
 test('a sent GIF is claimed by its message through the ordinary attachment flow', function (): void {

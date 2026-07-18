@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Data\GiphyGifData;
 use App\Data\GiphySearchData;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -79,9 +80,15 @@ class GiphyClient
      */
     public function resolve(string $id): ?GiphyGifData
     {
-        $response = Http::timeout(self::TIMEOUT_SECONDS)->get(self::BASE_URL.'/'.$id, [
-            'api_key' => (string) config('services.giphy.key'),
-        ]);
+        try {
+            $response = Http::timeout(self::TIMEOUT_SECONDS)->get(self::BASE_URL.'/'.$id, [
+                'api_key' => (string) config('services.giphy.key'),
+            ]);
+        } catch (ConnectionException) {
+            // DNS/connect/timeout failure — degrade like an unknown id rather
+            // than 500 the attach request.
+            return null;
+        }
 
         if (! $response->successful()) {
             return null;
@@ -119,7 +126,13 @@ class GiphyClient
             'lang' => $query === '' ? null : $lang,
         ], fn (mixed $value): bool => $value !== null);
 
-        $response = Http::timeout(self::TIMEOUT_SECONDS)->get($endpoint, $params);
+        try {
+            $response = Http::timeout(self::TIMEOUT_SECONDS)->get($endpoint, $params);
+        } catch (ConnectionException) {
+            // DNS/connect/timeout failure degrades to an empty page, so a Giphy
+            // outage never 500s the picker.
+            return ['results' => [], 'nextOffset' => null];
+        }
 
         if (! $response->successful()) {
             return ['results' => [], 'nextOffset' => null];

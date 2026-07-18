@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\GiphyClient;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -134,6 +135,21 @@ it('degrades to an empty page when Giphy errors', function (): void {
 
     expect($page->results)->toBe([])
         ->and($page->nextOffset)->toBeNull();
+});
+
+it('degrades to an empty page on a connection failure', function (): void {
+    Http::fake(fn () => throw new ConnectionException('timeout'));
+
+    $page = app(GiphyClient::class)->search('cats');
+
+    expect($page->results)->toBe([])
+        ->and($page->nextOffset)->toBeNull();
+});
+
+it('returns null when resolving hits a connection failure', function (): void {
+    Http::fake(fn () => throw new ConnectionException('timeout'));
+
+    expect(app(GiphyClient::class)->resolve('abc'))->toBeNull();
 });
 
 it('re-resolves an opaque id to authoritative media', function (): void {
