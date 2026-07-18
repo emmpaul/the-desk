@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Channels;
 
 use App\Actions\Channels\CreateGiphyAttachment;
 use App\Data\AttachmentData;
+use App\Data\GiphyGifData;
 use App\Data\GiphySearchData;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureGiphyEnabled;
@@ -55,7 +56,7 @@ class GiphyController extends Controller
     {
         $gif = $giphy->resolve($request->validated('id'));
 
-        abort_if($gif === null, 422, __('That GIF is no longer available.'));
+        abort_if(! $gif instanceof GiphyGifData, 422, __('That GIF is no longer available.'));
 
         $attachment = $createGiphyAttachment->handle($channel, $request->user(), $gif);
 

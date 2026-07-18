@@ -78,12 +78,12 @@ test('a blank query returns Giphy trending', function (): void {
         ->assertOk()
         ->assertJsonPath('results.0.id', 'trend');
 
-    Http::assertSent(fn ($request): bool => str_contains($request->url(), '/trending'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request->url(), '/trending'));
 });
 
 test('search 404s when Giphy is not configured', function (): void {
     [$owner, $team, $general] = giphyTeam();
-    config()->set('services.giphy.key', null);
+    config()->set('services.giphy.key');
 
     $this->actingAs($owner)
         ->getJson(route('channels.gifs.search', ['team' => $team->slug, 'channel' => $general->slug]))
@@ -141,7 +141,7 @@ test('picking a GIF Giphy no longer knows is rejected', function (): void {
 
 test('attaching a GIF 404s when Giphy is not configured', function (): void {
     [$owner, $team, $general] = giphyTeam();
-    config()->set('services.giphy.key', null);
+    config()->set('services.giphy.key');
 
     $this->actingAs($owner)
         ->postJson(route('channels.gifs.store', ['team' => $team->slug, 'channel' => $general->slug]), ['id' => 'abc'])

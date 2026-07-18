@@ -34,7 +34,7 @@ test('the gif picker is flagged enabled only when a Giphy key is configured', fu
     $this->get(route('home'))
         ->assertInertia(fn (Assert $page): Assert => $page->where('gifPickerEnabled', true));
 
-    config()->set('services.giphy.key', null);
+    config()->set('services.giphy.key');
 
     $this->get(route('home'))
         ->assertInertia(fn (Assert $page): Assert => $page->where('gifPickerEnabled', false));

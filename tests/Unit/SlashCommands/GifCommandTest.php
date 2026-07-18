@@ -43,7 +43,7 @@ test('the /gif command is registered only when Giphy is configured', function ()
 
     expect($enabled->has('gif'))->toBeTrue();
 
-    config()->set('services.giphy.key', null);
+    config()->set('services.giphy.key');
     $disabled = new SlashCommandRegistry;
     app()->instance(SlashCommandRegistry::class, $disabled);
     (new SlashCommandServiceProvider(app()))->boot();

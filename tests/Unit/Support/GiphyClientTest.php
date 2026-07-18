@@ -30,7 +30,7 @@ function giphyGif(string $id, string $description = 'a cat'): array
 it('reports enabled only when a key is configured', function (): void {
     expect(app(GiphyClient::class)->isEnabled())->toBeTrue();
 
-    config()->set('services.giphy.key', null);
+    config()->set('services.giphy.key');
 
     expect(app(GiphyClient::class)->isEnabled())->toBeFalse();
 });
@@ -54,7 +54,7 @@ it('fetches trending when the query is blank and normalizes the renditions', fun
         ->and($gif->height)->toBe(200)
         ->and($gif->description)->toBe('a happy cat');
 
-    Http::assertSent(fn ($request): bool => str_contains($request->url(), '/trending')
+    Http::assertSent(fn ($request): bool => str_contains((string) $request->url(), '/trending')
         && $request['api_key'] === 'test-key'
         && $request['rating'] === 'g');
 });
@@ -69,7 +69,7 @@ it('searches Giphy with the query and language when a query is given', function 
 
     app(GiphyClient::class)->search('cats', offset: 0, limit: 24, lang: 'fr');
 
-    Http::assertSent(fn ($request): bool => str_contains($request->url(), '/search')
+    Http::assertSent(fn ($request): bool => str_contains((string) $request->url(), '/search')
         && $request['q'] === 'cats'
         && $request['lang'] === 'fr');
 });
@@ -109,6 +109,22 @@ it('skips GIFs without a usable animated rendition', function (): void {
 
     expect($page->results)->toHaveCount(1)
         ->and($page->results[0]->id)->toBe('good');
+});
+
+it('leaves the description null when a GIF has no alt text or title', function (): void {
+    Http::fake([
+        'api.giphy.com/*' => Http::response([
+            'data' => [[
+                'id' => 'plain',
+                'images' => ['fixed_height' => ['url' => 'https://media.giphy.com/plain/200.gif', 'width' => '100', 'height' => '100']],
+            ]],
+            'pagination' => ['total_count' => 1, 'count' => 1, 'offset' => 0],
+        ]),
+    ]);
+
+    $page = app(GiphyClient::class)->search('cats');
+
+    expect($page->results[0]->description)->toBeNull();
 });
 
 it('degrades to an empty page when Giphy errors', function (): void {

@@ -14,6 +14,7 @@ import {
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { store as storeAttachment } from '@/actions/App/Http/Controllers/Channels/AttachmentController';
 import ComposerSendButton from '@/components/ComposerSendButton.vue';
+import GifPickerPanel from '@/components/GifPickerPanel.vue';
 import MessageQuote from '@/components/MessageQuote.vue';
 import ScheduleMessageDialog from '@/components/ScheduleMessageDialog.vue';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ import {
 import { isInteractiveComposerTarget } from '@/lib/composerFocus';
 import { toggleInlineMark } from '@/lib/composerFormat';
 import type { Mention, Message } from '@/types';
+import type { AttachmentData } from '@/types/attachments';
 
 const props = defineProps<{
     channelName: string;
@@ -76,6 +78,9 @@ const props = defineProps<{
     // commands apply (the main channel composer); absent/empty elsewhere (e.g.
     // the thread composer), which disables all slash handling.
     slashCommands?: App.Data.SlashCommandData[];
+    // Whether the Giphy `/gif` picker is available (an API key is configured).
+    // When false, `/gif` is neither in the manifest nor intercepted here.
+    gifPickerEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -402,7 +407,61 @@ function slashMoveActive(delta: number): void {
     slashActiveIndex.value = (slashActiveIndex.value + delta + count) % count;
 }
 
+// The one picker-backed command: `/gif` opens the Giphy picker instead of
+// completing to text and posting through the command endpoint.
+const GIF_COMMAND_NAME = 'gif';
+
+// The GIF picker's open state and the search term it opens on (from `/gif cats`).
+const gifPickerOpen = ref(false);
+const gifPickerQuery = ref('');
+
+// The picker is usable only when configured and when the composer knows its
+// channel (a picked GIF is staged as an attachment on that channel).
+const gifPickerAvailable = computed(
+    () => Boolean(props.gifPickerEnabled) && attachmentsEnabled.value,
+);
+
+/**
+ * The search term if `text` is the `/gif` command (`/gif` or `/gif <query>`) and
+ * the picker is available, else null. Used to divert `/gif` away from the text
+ * command path and into the picker.
+ */
+function gifCommandQuery(text: string): string | null {
+    if (!gifPickerAvailable.value) {
+        return null;
+    }
+
+    const match = text.match(/^\/gif(?:\s+(.*))?$/i);
+
+    return match ? (match[1]?.trim() ?? '') : null;
+}
+
+/** Open the GIF picker on the given search term, clearing the `/gif` text. */
+function openGifPicker(query: string): void {
+    slashMenuOpen.value = false;
+    gifPickerQuery.value = query;
+    gifPickerOpen.value = true;
+    body.value = '';
+}
+
+function closeGifPicker(): void {
+    gifPickerOpen.value = false;
+    nextTick(() => textarea.value?.focus());
+}
+
+/** A picked GIF joins the tray as a remote attachment; the picker then closes. */
+function onGifSelected(attachment: AttachmentData): void {
+    uploads.addRemote(attachment);
+    closeGifPicker();
+}
+
 function selectSlashCommand(command: App.Data.SlashCommandData): void {
+    if (command.name === GIF_COMMAND_NAME && gifPickerAvailable.value) {
+        openGifPicker('');
+
+        return;
+    }
+
     body.value = `/${command.name} `;
     slashMenuOpen.value = false;
 
@@ -694,6 +753,16 @@ function submit(): void {
     // non-optimistic send. Only when the tray is empty — a command carries no
     // attachments, so a command-looking body with staged files posts as text.
     if (uploads.attachmentIds.value.length === 0 && looksLikeCommand(trimmed)) {
+        // `/gif [query]` opens the picker rather than posting text; the chosen
+        // GIF is then sent as an attachment through the ordinary path.
+        const gifQuery = gifCommandQuery(trimmed);
+
+        if (gifQuery !== null) {
+            openGifPicker(gifQuery);
+
+            return;
+        }
+
         submitCommand(trimmed);
 
         return;
@@ -1051,6 +1120,18 @@ function onKeydown(event: KeyboardEvent): void {
                     </span>
                 </li>
             </ul>
+
+            <!-- The Giphy picker, opened by `/gif`. Sits in the same anchored
+                 position as the autocomplete menus; picking a GIF stages it in
+                 the attachment tray below. -->
+            <GifPickerPanel
+                v-if="gifPickerOpen && gifPickerAvailable"
+                :team-slug="props.teamSlug ?? ''"
+                :channel-slug="props.channelSlug ?? ''"
+                :initial-query="gifPickerQuery"
+                @select="onGifSelected"
+                @close="closeGifPicker"
+            />
 
             <div
                 v-if="props.replyTarget"
