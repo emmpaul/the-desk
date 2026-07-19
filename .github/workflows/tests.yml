@@ -66,7 +66,10 @@ jobs:
           php-version: ${{ matrix.php-version }}
           extensions: gd, imagick
           tools: composer:v2
-          coverage: xdebug
+          # CI does not enforce the coverage gate — that stays local via
+          # `composer test` (--min=100 with PCOV). Loading a coverage driver
+          # here would only slow the suite down (see #582).
+          coverage: none
 
       - name: Setup Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -109,8 +112,14 @@ jobs:
       - name: Run Type Analysis
         run: composer types:check
 
+      # Parallel Pest (paratest): Laravel provisions one `testing_{n}` Postgres
+      # database per worker automatically — the `laravel` service user owns the
+      # server, so CREATE DATABASE works out of the box. The split of the ci job
+      # into per-stage jobs proposed in #582 was measured and declined: Tests
+      # dominate the job (~6 of ~7.5 min) while build/vue-tsc/PHPStan take
+      # seconds each, so extra per-job setup would cost more than it saves.
       - name: Tests
-        run: php artisan test
+        run: php artisan test --parallel
 
   # Browser (E2E) realtime suite: drives real Playwright browsers against the
   # app served in-process, with a live Reverb server so two clients exchange

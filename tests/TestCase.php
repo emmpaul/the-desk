@@ -42,6 +42,15 @@ abstract class TestCase extends BaseTestCase
             }
         }
 
+        if ($this->originalEnv !== []) {
+            // Also reset the memoized env repository. Its immutable writer keeps
+            // a "loaded by Dotenv" ledger; any key still on that ledger would be
+            // re-written from .env on the next application boot, clobbering the
+            // values restored above. A fresh repository treats them as external
+            // definitions that reloading .env leaves untouched.
+            Env::enablePutenv();
+        }
+
         $this->originalEnv = [];
 
         // The LDAP directory-bind path registers a custom Fortify auth callback
@@ -110,7 +119,18 @@ abstract class TestCase extends BaseTestCase
         // value as an external definition that reloading .env leaves untouched.
         Env::enablePutenv();
 
+        // Parallel testing switches each worker to its own database (e.g.
+        // `testing_test_3`) via config only — TestDatabases::switchToDatabase()
+        // never touches DB_DATABASE — so the rebooted app below would rebuild
+        // config from env and silently fall back to the base `testing`
+        // database, escaping worker isolation (and 500ing in CI, where the base
+        // database is never migrated). Carry the active name across the reload.
+        $connection = config('database.default');
+        $database = config("database.connections.{$connection}.database");
+
         $this->refreshApplication();
+
+        config(["database.connections.{$connection}.database" => $database]);
 
         // RefreshDatabase opened its transaction against the pre-refresh
         // connection; re-open one on the fresh app so writes in this test are
