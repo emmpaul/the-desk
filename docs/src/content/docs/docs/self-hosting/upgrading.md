@@ -41,8 +41,10 @@ It does three things, stopping at the first that fails:
 
 1. **Backs up** by running [`docker/backup.sh`](#backups) for you, into the
    directory you name (the current one by default).
-2. **Starts the new release.** Migrations run automatically on boot, via the
-   `app` container's entrypoint.
+2. **Starts the new release.** Just before starting it, your `.env` is
+   [checked for settings the new release added](#new-settings-in-a-release);
+   migrations then run automatically on boot, via the `app` container's
+   entrypoint.
 3. **Verifies the upgrade landed.** It waits for `/up` to answer, then asks the
    instance what it is actually running and compares that with `APP_VERSION`.
 
@@ -62,6 +64,41 @@ Useful flags:
 | `--target=X.Y.Z` | The release to upgrade to. Written to `APP_VERSION` before pulling, and the version the verify step expects. Omit it to use whatever `APP_VERSION` already holds. |
 | `--timeout=SECONDS` | How long to wait for `/up` (default 300). A cold boot runs migrations and rebuilds the search index first, so raise it on a slow host or a large database. |
 | `--no-pull` | Use the image already on the host, for air-gapped hosts or when you pulled ahead of the window. |
+| `--sync-env` | Append any [new settings](#new-settings-in-a-release) to `.env` without asking, for unattended runs that should adopt the template defaults. |
+| `--no-sync-env` | Skip the new-settings check entirely. |
+
+### New settings in a release
+
+A new release often introduces settings — a feature toggle, a new tunable — that
+your `.env` predates. Without them the app silently falls back to its built-in
+defaults, and nothing tells you the option now exists. So before starting the
+new release, `upgrade.sh` compares your `.env` against the **target release's**
+`.env.prod.example` (read from the image it just pulled, never from a stale
+working-tree copy; build-from-source setups use the tree they are about to
+build) and reports any active settings the template has that your `.env` lacks.
+
+On an interactive run it then offers to append them with the template's default
+values, carrying the template's comment block for each key so the context
+travels along. Only *missing* keys are ever appended — a key you already set is
+never touched, even when its default changed. Declining leaves `.env` alone and
+keeps the report on screen.
+
+Non-interactive runs (cron, CI — anything without a TTY) never block on a
+prompt: the report still prints, and nothing is appended unless you pass
+`--sync-env`. The check is a courtesy, not a gate — if it cannot run (for
+example, the target image predates the template being shipped inside it), the
+upgrade proceeds with a note.
+
+You can run the same comparison yourself at any time, against any template
+copy:
+
+```bash
+./docker/env-sync.sh .env .env.prod.example          # report only
+./docker/env-sync.sh .env .env.prod.example --apply  # append what is missing
+```
+
+It exits `0` when nothing is missing, `1` after reporting missing keys, and `2`
+on usage errors, so it also scripts cleanly.
 
 ### If it fails, it stops and hands you the backup
 
