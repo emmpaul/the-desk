@@ -159,6 +159,9 @@
     --demo-badge-foreground: #c9a35c;
     --demo-chip: #ffffff;
     --demo-chip-foreground: #7d6023;
+    /* Height of the fixed demo strip, so the shell can reserve space beneath it
+       (the banner is `position: fixed`, out of flow). Theme-independent. */
+    --demo-banner-height: 2.5rem;
     --chart-1: #c9a35c;
     --chart-2: #7d6023;
     --chart-3: #8b8370;

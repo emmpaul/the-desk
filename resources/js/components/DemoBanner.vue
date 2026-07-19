@@ -67,7 +67,7 @@ const minutesUntilReset = computed<number | null>(() => {
         v-if="demoMode"
         role="status"
         data-test="demo-banner"
-        class="fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 border-b border-demo-banner-border bg-demo-banner px-4 py-2 text-demo-banner-foreground shadow-sm"
+        class="fixed inset-x-0 top-0 z-40 flex h-(--demo-banner-height) items-center gap-2.5 border-b border-demo-banner-border bg-demo-banner px-4 text-demo-banner-foreground shadow-sm"
     >
         <span
             class="flex size-5.5 shrink-0 items-center justify-center rounded-full bg-demo-badge"
@@ -77,7 +77,7 @@ const minutesUntilReset = computed<number | null>(() => {
                 aria-hidden="true"
             />
         </span>
-        <span class="text-[13px] leading-snug">
+        <span class="text-center text-[13px] leading-snug">
             {{ $t("You're exploring a") }}
             <strong class="font-semibold text-demo-banner-strong">{{
                 $t('live demo')
