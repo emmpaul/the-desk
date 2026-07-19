@@ -110,7 +110,18 @@ abstract class TestCase extends BaseTestCase
         // value as an external definition that reloading .env leaves untouched.
         Env::enablePutenv();
 
+        // Parallel testing switches each worker to its own database (e.g.
+        // `testing_test_3`) via config only — TestDatabases::switchToDatabase()
+        // never touches DB_DATABASE — so the rebooted app below would rebuild
+        // config from env and silently fall back to the base `testing`
+        // database, escaping worker isolation (and 500ing in CI, where the base
+        // database is never migrated). Carry the active name across the reload.
+        $connection = config('database.default');
+        $database = config("database.connections.{$connection}.database");
+
         $this->refreshApplication();
+
+        config(["database.connections.{$connection}.database" => $database]);
 
         // RefreshDatabase opened its transaction against the pre-refresh
         // connection; re-open one on the fresh app so writes in this test are
