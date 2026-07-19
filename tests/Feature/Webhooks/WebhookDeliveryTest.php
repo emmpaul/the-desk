@@ -147,6 +147,31 @@ it('refuses to deliver to a non-public URL and logs the blocked attempt', functi
         ->and($delivery->error)->toContain('Blocked non-public');
 });
 
+it('does not follow a redirect to an internal address and records the attempt as failed', function (): void {
+    Http::fake([
+        'example.test/*' => Http::response('', 302, ['Location' => 'http://169.254.169.254/latest/meta-data/']),
+        '169.254.169.254/*' => Http::response('', 200),
+    ]);
+
+    try {
+        (new DeliverWebhook($this->subscription->id, [
+            'id' => (string) Str::uuid(),
+            'type' => WebhookEvent::MessageCreated->value,
+            'created_at' => now()->toIso8601String(),
+            'data' => [],
+        ]))->handle(app(AuditRecorder::class));
+    } catch (RuntimeException) {
+        // expected retry signal
+    }
+
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '169.254.169.254'));
+
+    $delivery = $this->subscription->deliveries()->sole();
+    expect($delivery->succeeded)->toBeFalse()
+        ->and($delivery->response_status)->toBe(302)
+        ->and($delivery->error)->toBe('HTTP 302');
+});
+
 it('auto-disables a subscription whose URL is blocked once it hits the threshold', function (): void {
     $threshold = (int) config('integrations.webhooks.disable_after');
     $this->subscription->update([

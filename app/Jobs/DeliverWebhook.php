@@ -101,6 +101,7 @@ class DeliverWebhook implements ShouldQueue
                 'X-Desk-Signature' => WebhookSignature::header($subscription->secret, $body, $timestamp),
             ])
                 ->timeout((int) config('integrations.webhooks.timeout'))
+                ->withOptions(['allow_redirects' => false])
                 ->withBody($body, 'application/json')
                 ->post($subscription->url);
         } catch (Throwable $exception) {
