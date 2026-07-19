@@ -24,6 +24,16 @@
 # for air-gapped hosts or when you pulled ahead of the maintenance window.
 # Build-from-source setups never pull: the overlay is detected from COMPOSE_FILE.
 #
+# Before starting the new release, .env is compared against the target's
+# .env.prod.example (shipped inside the image) and any new settings are
+# reported, so a feature toggle introduced by the release is never silently
+# unset. On an interactive run you are offered to append them with the
+# template defaults (existing keys are never touched); non-interactive runs
+# only report. --sync-env appends without asking (for automation);
+# --no-sync-env skips the check entirely. The check is a courtesy: whatever
+# goes wrong with it (an image too old to ship the template, a missing
+# docker/env-sync.sh), the upgrade itself proceeds.
+#
 # IT NEVER ROLLS BACK ON ITS OWN. Rolling back is not a git revert here, it is a
 # destructive database restore, and this script cannot tell the two cases apart:
 # a migration that genuinely broke the schema, and an app that is fine but whose
@@ -45,9 +55,10 @@ TARGET=""
 TIMEOUT="300"
 PULL="true"
 POLL_INTERVAL="5"
+SYNC_ENV="ask"
 
 usage() {
-    echo "Usage: ./docker/upgrade.sh --target=X.Y.Z [BACKUP_DIR] [--timeout=SECONDS] [--no-pull]"
+    echo "Usage: ./docker/upgrade.sh --target=X.Y.Z [BACKUP_DIR] [--timeout=SECONDS] [--no-pull] [--sync-env|--no-sync-env]"
 }
 
 for arg in "$@"; do
@@ -60,6 +71,12 @@ for arg in "$@"; do
             ;;
         --no-pull)
             PULL="false"
+            ;;
+        --sync-env)
+            SYNC_ENV="always"
+            ;;
+        --no-sync-env)
+            SYNC_ENV="never"
             ;;
         -h | --help)
             usage
@@ -207,9 +224,14 @@ echo
 # which the failure path needs to hand back to the operator.
 echo "Step 1/3: backing up..."
 BACKUP_LOG="$(mktemp)"
+SYNC_TMP_DIR=""
 
 cleanup() {
     rm -f "$BACKUP_LOG"
+
+    if [ -n "$SYNC_TMP_DIR" ]; then
+        rm -rf "$SYNC_TMP_DIR"
+    fi
 }
 trap cleanup EXIT
 
@@ -283,6 +305,71 @@ echo "Step 2/3: starting $TARGET..."
 if [ "$PULL" = "true" ]; then
     if ! docker compose pull </dev/null; then
         fail_with_restore "could not pull the image for $TARGET; nothing was restarted."
+    fi
+fi
+
+# ---- New settings check -------------------------------------------------
+# Compare .env against the target release's .env.prod.example so a setting
+# introduced by the new version (a feature toggle, a new tunable) is surfaced
+# before that version boots with it silently unset. The template is read from
+# the image just pulled — never the working tree's stale copy — except on
+# build-from-source setups, where the working tree IS what gets built. Every
+# failure path here is a note, not an error: this check must never be the
+# reason an upgrade dies.
+if [ "$SYNC_ENV" != "never" ]; then
+    TEMPLATE_PATH=""
+
+    if [ "$BUILD_FROM_SOURCE" = "true" ]; then
+        if [ -f ".env.prod.example" ]; then
+            TEMPLATE_PATH=".env.prod.example"
+        else
+            echo "  note: .env.prod.example not found in the working tree; skipping the new-settings check."
+        fi
+    else
+        SYNC_TMP_DIR="$(mktemp -d)"
+
+        # --entrypoint bypasses docker/entrypoint.sh: a one-off `cat` must not
+        # run migrations or wait on the database.
+        if docker compose run --rm --no-deps --entrypoint cat app /app/.env.prod.example \
+            >"$SYNC_TMP_DIR/.env.prod.example" 2>/dev/null </dev/null; then
+            TEMPLATE_PATH="$SYNC_TMP_DIR/.env.prod.example"
+        else
+            echo "  note: the $TARGET image does not ship .env.prod.example (older releases do not); skipping the new-settings check."
+        fi
+    fi
+
+    if [ -n "$TEMPLATE_PATH" ]; then
+        if [ ! -x "docker/env-sync.sh" ]; then
+            echo "  note: docker/env-sync.sh is missing or not executable; skipping the new-settings check."
+        else
+            SYNC_STATUS=0
+            ./docker/env-sync.sh .env "$TEMPLATE_PATH" || SYNC_STATUS=$?
+
+            if [ "$SYNC_STATUS" -eq 1 ]; then
+                APPLY="false"
+
+                if [ "$SYNC_ENV" = "always" ]; then
+                    APPLY="true"
+                elif [ -t 0 ]; then
+                    printf 'Append them to .env with the template defaults? [Y/n] '
+                    read -r SYNC_ANSWER || SYNC_ANSWER=""
+
+                    case "$SYNC_ANSWER" in
+                        [Nn]*) ;;
+                        *) APPLY="true" ;;
+                    esac
+                else
+                    echo "  (non-interactive run: nothing appended. Pass --sync-env to append automatically.)"
+                fi
+
+                if [ "$APPLY" = "true" ]; then
+                    ./docker/env-sync.sh .env "$TEMPLATE_PATH" --apply \
+                        || echo "  note: appending failed; .env is untouched. The report above lists the keys."
+                fi
+            elif [ "$SYNC_STATUS" -ge 2 ]; then
+                echo "  note: the new-settings check could not run; continuing."
+            fi
+        fi
     fi
 fi
 

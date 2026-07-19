@@ -13,10 +13,13 @@ vendor
 .zed
 .DS_Store
 
-# Secrets and local environment. .env.prod.example stays out of the image too;
-# it is only a template for the operator's .env.
+# Secrets and local environment. The one exception is .env.prod.example: it is
+# baked into the image so docker/upgrade.sh can compare the operator's .env
+# against the *target release's* template (its working-tree copy may be stale
+# or absent — installed hosts have no checkout at all).
 .env
 .env.*
+!.env.prod.example
 
 # Build artifacts generated inside the image.
 public/build

@@ -139,7 +139,7 @@ echo "Step 1/3: downloading the stack..."
 fetch "docker-compose.prod.yml" "docker-compose.prod.yml"
 fetch ".env.prod.example" ".env.prod.example"
 # The operational scripts, so backup / upgrade / restore are on the box too.
-for script in gen-secrets upgrade backup restore; do
+for script in gen-secrets upgrade backup restore env-sync; do
     fetch "docker/${script}.sh" "docker/${script}.sh"
     chmod +x "docker/${script}.sh"
 done
