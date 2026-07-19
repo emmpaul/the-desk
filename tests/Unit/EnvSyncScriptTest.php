@@ -109,6 +109,37 @@ test('usage and file errors exit 2', function (array $arguments): void {
     'extra argument' => [['a', 'b', 'c']],
 ]);
 
+test('an unreadable file exits 2 rather than reading as empty', function (): void {
+    $env = envSyncFixture("APP_NAME=\"My Desk\"\n");
+    $template = envSyncFixture("APP_NAME=\"The Desk\"\nNEW_TOGGLE=true\n");
+    chmod($template, 0o000);
+
+    if (is_readable($template)) {
+        $this->markTestSkipped('The test process can read mode-000 files (running as root).');
+    }
+
+    $process = runEnvSync($env, $template);
+
+    expect($process->getExitCode())->toBe(2)
+        ->and($process->getErrorOutput())->toContain('not readable');
+});
+
+test('--apply against an unwritable env file exits 2 instead of failing mid-append', function (): void {
+    $env = envSyncFixture("APP_NAME=\"My Desk\"\n");
+    $template = envSyncFixture("APP_NAME=\"The Desk\"\nNEW_TOGGLE=true\n");
+    chmod($env, 0o400);
+
+    if (is_writable($env)) {
+        $this->markTestSkipped('The test process can write mode-400 files (running as root).');
+    }
+
+    $process = runEnvSync($env, $template, '--apply');
+
+    expect($process->getExitCode())->toBe(2)
+        ->and($process->getErrorOutput())->toContain('not writable')
+        ->and(file_get_contents($env))->toBe("APP_NAME=\"My Desk\"\n");
+});
+
 test('a copy of the shipped template is already in sync with the template', function (): void {
     $template = dirname(__DIR__, 2).'/.env.prod.example';
     $env = envSyncFixture(file_get_contents($template));

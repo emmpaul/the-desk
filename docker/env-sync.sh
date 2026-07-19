@@ -56,7 +56,22 @@ for file in "$ENV_FILE" "$TEMPLATE_FILE"; do
         echo "Error: '$file' not found." >&2
         exit 2
     fi
+
+    # An unreadable file would parse as empty, which reads as "in sync" for a
+    # template and as "every key is missing" for an .env. Refuse instead.
+    if [ ! -r "$file" ]; then
+        echo "Error: '$file' is not readable." >&2
+        exit 2
+    fi
 done
+
+# Checked up front so an unwritable .env fails as a usage error, rather than as
+# a redirection failure midway that would be indistinguishable from the exit 1
+# that means "missing keys were reported".
+if [ "$APPLY" = "true" ] && [ ! -w "$ENV_FILE" ]; then
+    echo "Error: '$ENV_FILE' is not writable." >&2
+    exit 2
+fi
 
 # Active keys only: a line assigning KEY=... at column one. Commented-out
 # template keys (`# APP_PORT=8000`) are documentation, not settings.
