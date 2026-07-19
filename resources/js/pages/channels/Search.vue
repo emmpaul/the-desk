@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DOMPurify from 'dompurify';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     Calendar,
@@ -413,6 +414,15 @@ function jumpHref(result: MessageSearchResult): string {
         { team: result.teamSlug, channel: result.channelSlug },
         { query: { message: result.message.id } },
     ).url;
+}
+
+function sanitizeHtml(html: string) {
+    return html
+        ? DOMPurify.sanitize(html, {
+              ALLOWED_TAGS: ['span', 'p', 'mark'],
+              ALLOWED_ATTR: ['class'],
+          })
+        : '';
 }
 </script>
 
@@ -864,7 +874,7 @@ function jumpHref(result: MessageSearchResult): string {
                             </div>
                             <p
                                 class="search-snippet mt-0.5 line-clamp-2 text-[14px] leading-[1.55] break-words text-foreground/90"
-                                v-html="result.snippet"
+                                v-html="sanitizeHtml(result.snippet)"
                             ></p>
                             <span
                                 v-if="result.message.threadReplyCount > 0"
