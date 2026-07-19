@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DOMPurify from 'dompurify';
 import { Forward } from '@lucide/vue';
 import { computed } from 'vue';
 import { useCustomEmojis } from '@/composables/useCustomEmojis';
@@ -25,6 +26,15 @@ const rendered = computed(() =>
         ? ''
         : renderMessageBody(props.body, props.mentions, customEmojis.value),
 );
+
+function sanitizeHtml(html: string) {
+    return html
+        ? DOMPurify.sanitize(html, {
+              ALLOWED_TAGS: ['span', 'p'],
+              ALLOWED_ATTR: ['class'],
+          })
+        : '';
+}
 </script>
 
 <template>
@@ -58,7 +68,7 @@ const rendered = computed(() =>
                 <p
                     class="mt-0.5 text-[13.5px] leading-[1.5] break-words whitespace-pre-wrap text-foreground/85"
                 >
-                    <span v-html="rendered"></span>
+                    <span v-html="sanitizeHtml(rendered)"></span>
                 </p>
             </template>
         </div>
