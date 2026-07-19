@@ -11,13 +11,12 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       # Use a PAT (not the built-in GITHUB_TOKEN) so the `v*` tag release-please
       # pushes triggers downstream workflows — notably docker.yml's GHCR publish.
