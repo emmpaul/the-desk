@@ -12,6 +12,7 @@ use App\Http\Requests\Teams\DeleteTeamRequest;
 use App\Http\Requests\Teams\SaveTeamRequest;
 use App\Models\Membership;
 use App\Models\Team;
+use App\Models\TeamInvitation;
 use App\Models\User;
 use App\Support\AuditRecorder;
 use App\Support\SecurityEventRecorder;
@@ -88,7 +89,7 @@ class TeamController extends Controller
                 ? $team->invitations()
                     ->whereNull('accepted_at')
                     ->get()
-                    ->map(fn ($invitation): array => [
+                    ->map(fn (TeamInvitation $invitation): array => [
                         'code' => $invitation->code,
                         'email' => $invitation->email,
                         'role' => $invitation->role->value,

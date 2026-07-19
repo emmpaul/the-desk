@@ -74,6 +74,20 @@ test('the team edit page can be rendered', function (): void {
         );
 });
 
+test('the team edit page cannot be viewed by non-members', function (): void {
+    $owner = User::factory()->create();
+    $outsider = User::factory()->create();
+    $team = Team::factory()->create();
+
+    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
+
+    $response = $this
+        ->actingAs($outsider)
+        ->get(route('teams.edit', $team));
+
+    $response->assertForbidden();
+});
+
 test('the team edit page hides member emails and invitations from plain members', function (): void {
     $owner = User::factory()->create();
     $member = User::factory()->create();
