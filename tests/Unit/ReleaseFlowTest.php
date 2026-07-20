@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -206,4 +207,110 @@ test('the candidate line releases from the candidate config pair', function (): 
 test('the candidate line is gated to develop', function (): void {
     expect(readWorkflow('release-please.yml')['jobs']['prerelease']['if'])
         ->toContain('refs/heads/develop');
+});
+
+/**
+ * The shell body of the step that appends the GHCR pull reference to a release.
+ */
+function releaseNoteScript(): string
+{
+    $workflow = readWorkflow('docker.yml');
+
+    /** @var array<int, array<string, mixed>> $steps */
+    $steps = $workflow['jobs']['link-release-image']['steps'];
+
+    return (string) $steps[0]['run'];
+}
+
+/*
+ * `link-release-image` fires for every `v*` tag, candidates included — which is
+ * what we want, since a candidate-tester needs the pull reference more than
+ * anyone. But the note it appends reads as an invitation to deploy, so a
+ * candidate has to say plainly that it is not supported in production.
+ */
+test('candidate releases warn against running them in production', function (): void {
+    expect(releaseNoteScript())
+        ->toContain('-rc.')
+        ->toContain('not supported for production');
+});
+
+/**
+ * Run the real `link-release-image` script against a stubbed `gh`, and return
+ * the release body it would have written.
+ *
+ * Asserting on the script's source only proves the warning text is present
+ * somewhere; it cannot catch the note being assembled wrongly — command
+ * substitution strips trailing newlines, so a heading built with its own
+ * trailing blank line renders glued to the section that follows it. Executing
+ * the script is the only way to see what a reader actually gets.
+ */
+function renderReleaseNote(string $tag): string
+{
+    $sandbox = sys_get_temp_dir().'/release-note-'.bin2hex(random_bytes(6));
+    mkdir($sandbox.'/bin', 0o777, true);
+
+    file_put_contents($sandbox.'/bin/gh', <<<'SHELL'
+        #!/usr/bin/env bash
+        # Stand in for the two `gh` calls the step makes: read the release body
+        # release-please wrote, then write the body back with the note appended.
+        if [ "$2" = "view" ]; then
+            printf '### Features\n\n* something shipped\n'
+            exit 0
+        fi
+        while [ "$#" -gt 0 ]; do
+            if [ "$1" = "--notes" ]; then
+                printf '%s' "$2" > "$SANDBOX/body.md"
+                exit 0
+            fi
+            shift
+        done
+        SHELL);
+    chmod($sandbox.'/bin/gh', 0o755);
+
+    $process = new Process(
+        ['bash', '-c', releaseNoteScript()],
+        env: [
+            'PATH' => $sandbox.'/bin:'.getenv('PATH'),
+            'SANDBOX' => $sandbox,
+            'TAG' => $tag,
+            'REPO' => 'emmpaul/the-desk',
+            'GH_TOKEN' => 'stub',
+        ],
+    );
+    $process->mustRun();
+
+    return (string) file_get_contents($sandbox.'/body.md');
+}
+
+test('a candidate release note warns before it invites a pull', function (): void {
+    $body = renderReleaseNote('v1.12.0-rc.3');
+
+    expect($body)
+        ->toContain('🚧 Release candidate')
+        ->toContain('published for testing ahead of 1.12.0')
+        ->toContain('not supported for production')
+        ->toContain('ghcr.io/emmpaul/the-desk:1.12.0-rc.3');
+});
+
+test('the candidate warning is a section of its own, not glued to the next one', function (): void {
+    expect(renderReleaseNote('v1.12.0-rc.3'))
+        ->toContain("releases/latest).\n\n### 📦 Docker image");
+});
+
+test('a stable release note carries no candidate warning', function (): void {
+    $body = renderReleaseNote('v1.12.0');
+
+    expect($body)->not->toContain('Release candidate')
+        ->and($body)->toContain('ghcr.io/emmpaul/the-desk:1.12.0')
+        ->and($body)->toContain('### 📦 Docker image');
+});
+
+test('the note is appended to the notes release-please wrote, not replacing them', function (): void {
+    expect(renderReleaseNote('v1.12.0'))->toStartWith("### Features\n\n* something shipped");
+});
+
+test('the release note still links the image for a candidate', function (): void {
+    expect(readWorkflow('docker.yml')['jobs']['link-release-image']['if'])
+        ->toContain("startsWith(github.ref, 'refs/tags/v')")
+        ->not->toContain('-rc.');
 });

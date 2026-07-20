@@ -160,8 +160,25 @@ jobs:
             exit 0
           fi
 
+          # A candidate is published so it can be tested, not deployed. The
+          # GitHub "Pre-release" badge says so only in the releases list; anyone
+          # arriving from a direct link sees the notes alone, so the warning
+          # belongs in the body, above the pull command rather than after it.
+          case "$version" in
+            *-rc.*)
+              # Command substitution strips trailing newlines, so the blank line
+              # separating this from the image heading lives in the note format
+              # below, not here.
+              # shellcheck disable=SC2016  # printf format is intentionally literal; values are the %s args.
+              heading="$(printf '### 🚧 Release candidate\n\nThis is a **release candidate**, published for testing ahead of %s. It is **not supported for production** — run it against a copy of your data, not your live workspace, and expect it to be superseded without notice. Self-hosters should stay on the [latest stable release](https://github.com/%s/releases/latest).' "${version%%-rc.*}" "$REPO")"
+              ;;
+            *)
+              heading=""
+              ;;
+          esac
+
           # shellcheck disable=SC2016  # printf format is intentionally literal; values are the %s args.
-          note="$(printf '\n\n%s\n\n---\n\n### 📦 Docker image\n\nThis release is published to the GitHub Container Registry:\n\n```\n%s\n```\n\nPull it directly or browse the [package page](%s). See the [upgrade guide](https://the-desk.emmanuelpaul.com/docs/self-hosting/upgrading/) for self-hosting steps.\n' "$marker" "$image" "$package_url")"
+          note="$(printf '\n\n%s\n\n---\n\n%s\n\n### 📦 Docker image\n\nThis release is published to the GitHub Container Registry:\n\n```\n%s\n```\n\nPull it directly or browse the [package page](%s). See the [upgrade guide](https://the-desk.emmanuelpaul.com/docs/self-hosting/upgrading/) for self-hosting steps.\n' "$marker" "$heading" "$image" "$package_url")"
 
           gh release edit "$TAG" --repo "$REPO" --notes "${body}${note}"
           echo "Linked $image on release $TAG."
