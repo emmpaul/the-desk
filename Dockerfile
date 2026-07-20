@@ -92,14 +92,14 @@ FROM dunglas/frankenphp:1-php${PHP_VERSION}-alpine AS runtime
 # ldap: directory bind authentication (LdapRecord); required by the package even
 # when LDAP is not configured, since the extension is a hard dependency.
 #
-# The redis extension is fetched from pecl.php.net on every build, so a PECL
-# outage reds the whole Docker workflow on a commit that changed nothing (#626).
-# Retry with linear backoff: a transient 5xx clears on a later attempt, while a
-# genuine error (a missing or incompatible extension) still fails after
-# max_attempts tries and at most retry_delay * 3 = 30s of extra waiting — bounded,
-# not a multi-minute hang.
+# The redis extension is fetched from pecl.php.net, so a PECL outage reds the
+# whole Docker workflow on a commit that changed nothing (#626). CI caches this
+# layer, so an outage is only ever reached on a real rebuild; retry with linear
+# backoff to ride out the rest. A genuine error (a missing or incompatible
+# extension) fails without touching the network, so it costs at most the 100s of
+# backoff before giving up — bounded, not a multi-minute hang.
 RUN set -eu; \
-    max_attempts=3; \
+    max_attempts=5; \
     retry_delay=10; \
     attempt=1; \
     until install-php-extensions \

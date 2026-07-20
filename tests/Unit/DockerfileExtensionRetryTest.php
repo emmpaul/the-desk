@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * `install-php-extensions` fetches `redis` from pecl.php.net on every image build,
@@ -43,7 +44,7 @@ test('the extension install retries a bounded number of times with a bounded wai
         range(1, $maxAttempts - 1),
     ));
 
-    expect($totalWait)->toBeLessThanOrEqual(60, 'a genuine failure must not hang the build for minutes');
+    expect($totalWait)->toBeLessThanOrEqual(120, 'a genuine failure must not hang the build for minutes');
 });
 
 test('the retry loop advances, backs off, and gives up with a legible message', function (): void {
@@ -56,6 +57,18 @@ test('the retry loop advances, backs off, and gives up with a legible message', 
         ->toContain('if [ "$attempt" -ge "$max_attempts" ]; then')
         ->toContain('exit 1')
         ->toMatch('/echo "[^"]*failed after \$max_attempts attempts[^"]*" >&2/');
+});
+
+test('the build-only validation caches its layers so PECL is not refetched every run', function (): void {
+    $steps = Yaml::parseFile(dirname(__DIR__, 2).'/.github/workflows/docker.yml')['jobs']['build']['steps'];
+
+    $build = collect($steps)->firstWhere('name', 'Build production image');
+
+    expect($build)->not->toBeNull()
+        ->and($build['uses'] ?? '')->toStartWith('docker/build-push-action@')
+        ->and($build['with']['cache-from'] ?? null)->toBe('type=gha')
+        ->and($build['with']['cache-to'] ?? null)->toBe('type=gha,mode=max')
+        ->and($build['with']['push'] ?? null)->toBeFalse();
 });
 
 test('the installed extension list is unchanged', function (): void {
