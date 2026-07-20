@@ -92,7 +92,9 @@ capital letter (commitlint rejects sentence-case subjects).
 ## Pull requests
 
 1. Branch off `develop` (e.g. `feat/message-reminders`, `fix/session-index`), and
-   target `develop` — see [Releases](#releases) below.
+   target `develop` — see [Releases](#releases) below. The one exception is a
+   [hotfix](#hotfixes-releasing-when-develop-is-not-releasable) for a broken
+   production release, which branches off and targets `master`.
 2. **Title the PR as a Conventional Commit** — see below.
 3. Keep the PR focused on a single concern; reference the issue it closes.
 4. Make sure both quality gates pass locally.
@@ -192,4 +194,55 @@ convention — change the release setup and that file will tell you what broke.
 
 After each stable release, a job moves `develop`'s candidate baseline onto the
 version just released, so the next feature there starts a fresh `-rc.0` series
-instead of incrementing the previous one forever.
+instead of incrementing the previous one forever. It arrives as a small
+auto-merging pull request rather than a push, because `develop` — like `master` —
+only accepts changes through one.
+
+### Hotfixes: releasing when develop is not releasable
+
+Promotion is all-or-nothing. If `master` is at `1.12.0` and `develop` is carrying
+three half-finished features, a one-line fix routed through `develop` cannot ship
+without shipping those features too. For that case — and **only** that case —
+there is a second path that releases straight from `master`.
+
+**The bar is deliberately high. Both of these must hold:**
+
+- a released version is broken in production (or has a security hole), **and**
+- `develop` cannot be promoted as it stands.
+
+If either is false, use the normal flow. Anything that can wait for the next
+candidate — which is nearly everything, including most `fix:` work — goes through
+`develop`. A `master`-first route that gets used for convenience is how `develop`
+becomes vestigial again, which is the problem the two-line setup was introduced
+to solve.
+
+When it does apply:
+
+1. **Branch off `master`**, not `develop`.
+2. **Open the PR against `master`.** It is squash-merged like any other, so the
+   title is still the release entry — `fix:` here, which cuts a patch.
+3. **Merge the stable release PR** release-please opens. That tags `1.12.1` and
+   publishes it; `sync-candidate-baseline` moves develop's baseline onto it as
+   usual.
+4. **Merge `master` back into `develop`.**
+
+#### Why step 4 is not optional
+
+The fix now exists only on `master`. `develop` still holds an older ancestor of
+the same files, so the next `develop` → `master` promotion overwrites the fix and
+production breaks a second time, for the same reason, with nothing in the diff
+pointing at the cause. The back-merge is what prevents that.
+
+It is not left to memory: every stable release runs the `backmerge` job, which
+opens a `master` → `develop` pull request whenever `master` carries commits
+`develop` does not. After a normal promotion there is nothing to send back and
+the job does nothing; after a hotfix it leaves an open PR. If one is already
+open, it tracks `master` rather than being duplicated.
+
+**Merge that PR with a merge commit, never a squash** — for the same reason a
+promotion is never squashed, plus a sharper one: a squash would flatten `master`'s
+history into a single new commit on `develop`, leaving the two branches
+permanently diverged and every later back-merge conflicting.
+
+A hotfix does not need a candidate of its own. The back-merge puts it on
+`develop`, and the next candidate cut there includes it.
