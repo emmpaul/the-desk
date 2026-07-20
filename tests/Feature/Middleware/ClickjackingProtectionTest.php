@@ -98,6 +98,7 @@ test('report-only mode reports the ancestors without enforcing them', function (
 
     $response = $this->get(route('home'))->assertOk();
 
+    expect($response->headers->get('Content-Security-Policy'))->toBeNull();
     expect($response->headers->get('Content-Security-Policy-Report-Only'))
         ->toContain("frame-ancestors 'none'");
 
@@ -109,5 +110,6 @@ test('report-only mode reports the ancestors without enforcing them', function (
 test('api responses carry no framing headers — they are never rendered in a frame', function (): void {
     $response = $this->getJson('/api/v1/channels');
 
+    expect($response->headers->get('Content-Security-Policy'))->toBeNull();
     expect($response->headers->get('X-Frame-Options'))->toBeNull();
 });

@@ -92,7 +92,8 @@ question to `frame-src`: not what the app may embed, but who may embed *it*. It
 defaults to `'none'`, which is what stops an attacker overlaying an invisible
 frame of your instance on their own page and steering a signed-in member's
 clicks into real controls. It is paired with `X-Frame-Options: DENY` for
-browsers that predate CSP3, and both are configurable through
+browsers that do not support CSP Level 2 `frame-ancestors`, and both are
+configurable through
 [`CSP_FRAME_ANCESTORS`](/docs/reference/feature-toggles/#clickjacking-protection)
 if you embed the app in a portal of your own.
 

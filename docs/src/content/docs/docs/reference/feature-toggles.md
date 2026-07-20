@@ -277,7 +277,7 @@ your controls — leaving a workspace, deleting a channel, revoking a token.
 
 | Variable              | Default | Effect                                                                     |
 | --------------------- | ------- | -------------------------------------------------------------------------- |
-| `CSP_FRAME_ANCESTORS` | `none`  | Who may frame the app. Sent as the CSP `frame-ancestors` directive and as `X-Frame-Options`. |
+| `CSP_FRAME_ANCESTORS` | `none`  | Who may frame the app. Always sets the CSP `frame-ancestors` directive; also sends `X-Frame-Options` when the value maps to `DENY` or `SAMEORIGIN` and the policy is enforcing. |
 
 Accepted values:
 

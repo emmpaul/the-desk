@@ -14,7 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Emit the Content-Security-Policy on web responses, plus the X-Frame-Options
- * that stands in for its frame-ancestors directive on browsers predating CSP3.
+ * that stands in for its frame-ancestors directive on browsers without CSP
+ * Level 2 support.
  * Both hang off `csp.enabled`: switching the app policy off means the operator
  * has taken ownership of these headers at their reverse proxy.
  *
