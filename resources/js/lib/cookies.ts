@@ -5,9 +5,9 @@
  * this way (`appearance` and `sidebar_state`), and neither carries anything
  * sensitive. They still get the transport flags the server-set cookies get:
  * `SameSite=Lax`, so they are not sent on cross-site subrequests, and `Secure`
- * on an HTTPS page, so an active network attacker cannot plant or overwrite
- * them over plain HTTP. Exposed separately from {@see writeClientCookie} so the
- * string is testable without a DOM.
+ * on an HTTPS page, so the browser never sends them back over plain HTTP.
+ * Exposed separately from {@see writeClientCookie} so the string is testable
+ * without a DOM.
  */
 export function buildClientCookie(
     name: string,

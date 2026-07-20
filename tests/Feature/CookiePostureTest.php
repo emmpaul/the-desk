@@ -30,12 +30,20 @@ test('the session cookie is http-only and same-site lax', function (): void {
         ->and($cookie->getSameSite())->toBe(Cookie::SAMESITE_LAX);
 });
 
-test('the session cookie is marked secure when SESSION_SECURE_COOKIE is on', function (): void {
-    expect(cookieFromResponse($this->get('/login'), config('session.cookie'))->isSecure())->toBeFalse();
+test('both server-set cookies are marked secure when SESSION_SECURE_COOKIE is on', function (): void {
+    config()->set('session.secure', false);
+
+    $response = $this->get('/login');
+
+    expect(cookieFromResponse($response, config('session.cookie'))->isSecure())->toBeFalse()
+        ->and(cookieFromResponse($response, 'XSRF-TOKEN')->isSecure())->toBeFalse();
 
     config()->set('session.secure', true);
 
-    expect(cookieFromResponse($this->get('/login'), config('session.cookie'))->isSecure())->toBeTrue();
+    $response = $this->get('/login');
+
+    expect(cookieFromResponse($response, config('session.cookie'))->isSecure())->toBeTrue()
+        ->and(cookieFromResponse($response, 'XSRF-TOKEN')->isSecure())->toBeTrue();
 });
 
 test('the XSRF-TOKEN cookie is readable by javascript by design, but encrypted and same-site lax', function (): void {

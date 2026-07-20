@@ -160,9 +160,9 @@ splits those across two hosts and so needs both.
 
 ## Cookies
 
-The Desk sets four cookies. Every one of them is either HTTP-only or holds
-nothing worth reading, and all four are `SameSite=Lax`, so none is sent on a
-cross-site subrequest.
+The Desk sets four cookies. Only one of them, the session cookie, is worth
+stealing, and that one is HTTP-only so a script cannot read it. All four are
+`SameSite=Lax`, so none is sent on a cross-site subrequest.
 
 | Cookie                | Set by         | Contents                       | `HttpOnly` | Encrypted |
 | --------------------- | -------------- | ------------------------------ | ---------- | --------- |
@@ -171,11 +171,13 @@ cross-site subrequest.
 | `appearance`          | Browser        | `light`, `dark` or `system`    | No         | No        |
 | `sidebar_state`       | Browser        | `true` or `false`              | No         | No        |
 
-All four are marked `Secure` when the page is served over HTTPS. For the two
-server-set cookies that comes from `SESSION_SECURE_COOKIE`, which you should set
-to `true` in any production deployment (see
-[reverse proxy & TLS](/docs/self-hosting/reverse-proxy/)); the two written by the
-browser pick it up from the page's own scheme.
+The `Secure` flag comes from two different places. The two cookies the browser
+writes take it from the page's own scheme, so they are `Secure` on any HTTPS
+page with nothing to configure. The two the server sets are `Secure` only when
+`SESSION_SECURE_COOKIE=true`, which is **not** inferred from the request: set it
+explicitly in any production deployment, or your session cookie will keep being
+sent over plain HTTP. See
+[reverse proxy & TLS](/docs/self-hosting/reverse-proxy/).
 
 The session cookie name follows `APP_NAME`, so it reads `the-desk-session` on a
 default install and something else if you renamed the app.
