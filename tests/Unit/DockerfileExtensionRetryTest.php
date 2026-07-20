@@ -37,7 +37,8 @@ test('the extension install retries a bounded number of times with a bounded wai
     $maxAttempts = (int) $attempts[1];
     $baseDelay = (int) $delay[1];
 
-    expect($maxAttempts)->toBeGreaterThan(1)->toBeLessThanOrEqual(5);
+    expect($maxAttempts)->toBeGreaterThan(1)->toBeLessThanOrEqual(5)
+        ->and($baseDelay)->toBeGreaterThan(0, 'a zero backoff would hammer an outage rather than ride it out');
 
     $totalWait = array_sum(array_map(
         static fn (int $attempt): int => $attempt * $baseDelay,
@@ -57,6 +58,9 @@ test('the retry loop advances, backs off, and gives up with a legible message', 
         ->toContain('if [ "$attempt" -ge "$max_attempts" ]; then')
         ->toContain('exit 1')
         ->toMatch('/echo "[^"]*failed after \$max_attempts attempts[^"]*" >&2/');
+
+    expect(strpos($contents, 'if [ "$attempt" -ge "$max_attempts" ]; then'))
+        ->toBeLessThan(strpos($contents, 'sleep "$delay"'), 'the last attempt must give up, not sleep first');
 });
 
 test('the build-only validation caches its layers so PECL is not refetched every run', function (): void {
@@ -67,7 +71,7 @@ test('the build-only validation caches its layers so PECL is not refetched every
     expect($build)->not->toBeNull()
         ->and($build['uses'] ?? '')->toStartWith('docker/build-push-action@')
         ->and($build['with']['cache-from'] ?? null)->toBe('type=gha')
-        ->and($build['with']['cache-to'] ?? null)->toBe('type=gha,mode=max')
+        ->and($build['with']['cache-to'] ?? '')->toStartWith('type=gha,mode=max')
         ->and($build['with']['push'] ?? null)->toBeFalse();
 });
 

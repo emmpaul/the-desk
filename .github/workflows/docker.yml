@@ -82,7 +82,7 @@ jobs:
           push: false
           tags: the-desk:ci
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       # Decide once whether this tag is a candidate, and decide it strictly.
       # A substring test for `-rc.` would also match a tag that merely contains
@@ -155,7 +155,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
   # release-please creates the GitHub Release (CHANGELOG body + `v*` tag) BEFORE
   # the image exists — that tag is exactly what triggers the publish above. So
