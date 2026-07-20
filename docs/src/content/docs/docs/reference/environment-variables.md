@@ -123,6 +123,7 @@ production — see [Configuration](/docs/self-hosting/configuration/#reverb-webs
 | `DEMO_MODE`                  | `false` | [Feature toggles → Demo mode](/docs/reference/feature-toggles/#demo-mode) |
 | `CSP_ENABLED`                | `true`  | [Feature toggles → Content Security Policy](/docs/reference/feature-toggles/#content-security-policy) |
 | `CSP_REPORT_ONLY`            | `false` | [Feature toggles → Content Security Policy](/docs/reference/feature-toggles/#content-security-policy) |
+| `CSP_FRAME_ANCESTORS`        | `none`  | [Feature toggles → Clickjacking protection](/docs/reference/feature-toggles/#clickjacking-protection) |
 
 ## Content Security Policy
 
@@ -138,6 +139,13 @@ only: none of them can remove the script nonce or `'strict-dynamic'`. See
 | `CSP_EXTRA_IMG_SRC`     | *(none)* | `img-src`     |
 | `CSP_EXTRA_CONNECT_SRC` | *(none)* | `connect-src` |
 | `CSP_EXTRA_FRAME_SRC`   | *(none)* | `frame-src`   |
+
+One more key controls who may embed the app **in** a frame, rather than what the
+app may load:
+
+| Variable               | Default | Effect                                                                 |
+| ---------------------- | ------- | ---------------------------------------------------------------------- |
+| `CSP_FRAME_ANCESTORS`  | `none`  | Sends `frame-ancestors` and `X-Frame-Options`. See [Feature toggles → Clickjacking protection](/docs/reference/feature-toggles/#clickjacking-protection). |
 
 ## Single sign-on (OpenID Connect)
 
