@@ -253,7 +253,8 @@ Vue components must have a single root element.
 
 - **Always run Node/npm tooling through Sail** — `./vendor/bin/sail npm run <script>`, never bare `npm` on the host. `node_modules` is installed inside the Linux container, so its native bindings (`@unrs/resolver-*`, `@rolldown/binding-*`) are Linux-only. Running `npm run build`, `lint`, etc. directly on macOS fails with `Cannot find native binding` (the npm optional-dependencies bug); Sail runs them in the matching Linux environment where the bindings exist.
 - `vue-tsc` (`npm run types:check`) doesn't use those native bindings, so it can run on the host, but prefer Sail for consistency.
-- The frontend quality gate is `./vendor/bin/sail npm run lint:check`, `format:check`, `types:check`, and `build` — all four must pass before pushing. Use `sail npm run lint` / `format` (the write variants) to auto-fix violations.
+- The frontend quality gate is `./vendor/bin/sail npm run lint:check`, `format:check`, `types:check`, `test:js`, and `build` — all five must pass before pushing. Use `sail npm run lint` / `format` (the write variants) to auto-fix violations.
+- **`./vendor/bin/sail npm run test:js` is the Vitest suite**, covering `resources/js/composables`, `components`, `lib`, `theme`, and the custom `eslint-rules` — the layer the PHP `--min=100` coverage gate cannot reach. It needs no database, Reverb, or browser and runs in seconds. CI runs it in the `ci` job of `.github/workflows/tests.yml`, ahead of the PHP suite so a frontend regression fails fast. It is deliberately **not** part of `composer test` (which stays the backend gate and must not require a Node install); run it with the frontend gate above, or run both gates at once with `./vendor/bin/sail composer ci:check`.
 
 ## Code Comments (JS/TS) — no redundant inline `//`
 
@@ -277,7 +278,8 @@ Vue components must have a single root element.
 ## Code Coverage
 
 - **100% code coverage is required — this is non-negotiable.** The test suite is gated at `--min=100` (see the `test` script in `composer.json`), so any line left uncovered fails the build.
-- **Always check coverage before pushing.** Run the full gate — which also runs Pint, PHPStan, and Rector — with `./vendor/bin/sail composer test` (this executes `lint:check`, `types:check`, `refactor:check`, and `php artisan test --coverage --min=100`). Do not push or open/update a PR until it reports `Total: 100.0 %` with a clean Rector dry-run.
+- **Always check coverage before pushing.** Run the full gate — which also runs Pint, PHPStan, and Rector — with `./vendor/bin/sail composer test` (this executes `lint:check`, `types:check`, `refactor:check`, and `php artisan test --parallel --coverage --min=100`). Do not push or open/update a PR until it reports `Total: 100.0 %` with a clean Rector dry-run.
+- **The gate runs the suite in parallel, like CI does.** Paratest gives each worker its own `testing_N` database and merges the per-worker PCOV reports, so `--min=100` still bites while the run takes roughly a third of the serial wall clock. The browser suite (`composer test:browser`) stays single-process — it binds Reverb and a live server, so it cannot be sharded.
 - If new code drops coverage, add or update tests until it is back at 100%. When a line reads as uncovered even though a test exercises it (e.g. the `: null` branch of a multi-line ternary is a known PCOV line-attribution quirk), collapse it onto a single line rather than leaving the gate red.
 
 ## Reporting Bugs Found While Doing Something Else

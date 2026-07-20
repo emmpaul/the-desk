@@ -44,14 +44,19 @@ Both gates must pass. CI runs them too, so a red gate blocks the merge.
 If Rector reports pending changes, apply them with `./vendor/bin/sail composer refactor`,
 review the diff, and re-run. Fix any Pint issues with `./vendor/bin/sail composer lint`.
 
-**Frontend** — ESLint, Prettier, `vue-tsc`, and the build:
+**Frontend** — ESLint, Prettier, `vue-tsc`, the [Vitest](https://vitest.dev) unit
+suite, and the build:
 
 ```bash
 ./vendor/bin/sail npm run lint:check
 ./vendor/bin/sail npm run format:check
 ./vendor/bin/sail npm run types:check
+./vendor/bin/sail npm run test:js
 ./vendor/bin/sail npm run build
 ```
+
+`test:js` covers the composables, lib helpers, and custom eslint rules that sit
+below the PHP coverage gate. It needs no database and runs in seconds.
 
 Auto-fix with `./vendor/bin/sail npm run lint` and `./vendor/bin/sail npm run format`.
 
@@ -207,6 +212,32 @@ instead of incrementing the previous one forever. It arrives as a small pull
 request rather than a push, because `develop` — like `master` — only accepts
 changes through one; the job asks for auto-merge, so unless the repository has it
 turned off the PR merges itself once the checks pass.
+
+#### The quiet window between a release and the next feature
+
+The baseline PR is deliberately **not** merged before the back-merge is. The tag
+it names — `v1.12.2`, say — sits on a commit cut on `master`, so until `master`
+has been merged back it is unreachable from `develop`. release-please decides
+what to propose from the release it can reach walking the branch it targets: with
+the baseline naming a version it cannot find, it concludes there has been no
+release at all, falls back to its initial `1.0.0`, and proposes that — a
+*downgrade*, whose merge would tag `v1.0.0`, publish a GitHub release, and let a
+GHCR image claim the moving `latest` aliases ahead of every real version. That is
+what happened at 1.12.2 ([#637](https://github.com/emmpaul/the-desk/issues/637)),
+where the baseline PR won the race by 34 seconds. So the sync job waits for the
+comparison to say `develop` already contains `master` before it queues its own
+merge; if that never happens it leaves the PR open and goes red rather than
+merging it early.
+
+Once both have landed, the candidate line has nothing to do until the next
+`feat:`/`fix:` arrives: `chore:` and the merge commit are not user-facing, so
+release-please proposes **nothing** at all, and no candidate PR is open. The
+first feature after that cuts `1.12.3-rc.0` from the released baseline as usual.
+
+A candidate that is proposed anyway and does not move the baseline forwards is
+closed automatically by the `candidate-guard` job, which fails the run with it.
+It compares versions by SemVer precedence rather than as strings, so a stale
+`1.12.2-rc.0` proposed after `1.12.2` shipped is caught as well.
 
 ### Hotfixes: releasing when develop is not releasable
 

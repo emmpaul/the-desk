@@ -205,9 +205,11 @@ without a Gravatar falls back cleanly to their initials.
 | `GRAVATAR_DEFAULT`  | `404`                              | The `d=` fallback. `404` is what makes users without a Gravatar fall back to initials; `mp`, `identicon`, or a URL are alternatives. |
 
 :::tip
-Turning `GRAVATAR_ENABLED=false` is the privacy-conscious choice if you don't want
-your instance making per-user requests to gravatar.com — everyone then shows their
-initials.
+Avatars are fetched by the server and re-served from your own origin (see
+[Remote images are proxied](/docs/reference/security/#remote-images-are-proxied)),
+so no reader's browser ever talks to gravatar.com. Turning `GRAVATAR_ENABLED=false`
+goes further and stops the instance itself making per-user requests — everyone
+then shows their initials.
 :::
 
 ## Activity logging
@@ -218,6 +220,156 @@ The Desk records an activity log (audit trail) of notable actions.
 | --------------------------- | ------- | --------------------------------------------------- |
 | `ACTIVITYLOG_ENABLED`       | `true`  | Records activity to the database. Set `false` to disable logging entirely. |
 | `ACTIVITYLOG_BUFFER_ENABLED`| `false` | Buffers log writes and flushes them in a batch (advanced; reduces write volume). |
+
+## Content Security Policy
+
+Every web response carries a `Content-Security-Policy` header — the browser-side
+allow-list that limits what injected markup could do. It is **on** by default and
+needs no proxy configuration. See
+[Security & compliance → Content Security Policy](/docs/reference/security/#content-security-policy)
+for the policy itself and the two accepted residuals.
+
+| Variable           | Default | Effect                                                        |
+| ------------------ | ------- | ------------------------------------------------------------- |
+| `CSP_ENABLED`      | `true`  | Sends the policy. Set `false` only to serve your own from the reverse proxy. |
+| `CSP_REPORT_ONLY`  | `false` | Sends it as `Content-Security-Policy-Report-Only`: violations are logged to the browser console but nothing is blocked. |
+
+Report-only is the safe way to try a change: turn it on, browse the app with the
+developer console open, fix whatever is reported, then turn it back off. Leaving
+it on permanently protects nobody.
+
+### Allow-listing your own origins
+
+If you add a script, stylesheet, image host, API, embedded frame or font
+provider of your own, name it in the matching key rather than disabling the
+policy. Values are comma-separated and **appended** to the defaults — they can
+never remove the script nonce or `'strict-dynamic'`, so an allow-list entry
+cannot silently un-harden the app.
+
+| Variable                | Adds to       |
+| ----------------------- | ------------- |
+| `CSP_EXTRA_SCRIPT_SRC`  | `script-src`  |
+| `CSP_EXTRA_STYLE_SRC`   | `style-src`   |
+| `CSP_EXTRA_IMG_SRC`     | `img-src`     |
+| `CSP_EXTRA_CONNECT_SRC` | `connect-src` |
+| `CSP_EXTRA_FRAME_SRC`   | `frame-src`   |
+| `CSP_EXTRA_FONT_SRC`    | `font-src`    |
+
+```bash
+CSP_EXTRA_SCRIPT_SRC="https://analytics.example.com"
+CSP_EXTRA_CONNECT_SRC="https://analytics.example.com"
+```
+
+An external font is governed by two directives, because a stylesheet and the
+font files it references are different resource types: the host serving the CSS
+goes in `CSP_EXTRA_STYLE_SRC`, and the host serving the `@font-face` files goes
+in `CSP_EXTRA_FONT_SRC`. Google Fonts splits those across two hosts, so it needs
+both:
+
+```bash
+CSP_EXTRA_STYLE_SRC="https://fonts.googleapis.com"
+CSP_EXTRA_FONT_SRC="https://fonts.gstatic.com"
+```
+
+Setting only `CSP_EXTRA_STYLE_SRC` there lets the stylesheet load and then
+blocks every `@font-face` file it asks for, so the text still falls back — the
+half-configured case is the one that looks mysterious. A provider that serves
+both from a single origin needs that origin in both keys; a font referenced from
+your own CSS needs only `CSP_EXTRA_FONT_SRC`. The app self-hosts its own fonts,
+so reach for this only if you deliberately add a web font of your own — see
+[Security → Content Security Policy](/docs/reference/security/#content-security-policy).
+
+:::note
+`script-src` uses `'strict-dynamic'`, and browsers that understand it ignore host
+allow-lists in that directive. An extra script host therefore only takes effect
+for a tag loaded by an already-trusted script. If a third-party snippet has to be
+pasted into the page as inline `<script>`, there is no allow-list that reaches
+it — set `CSP_ENABLED=false` and serve your own policy from the reverse proxy.
+:::
+
+There is deliberately no key that replaces the whole policy: an override that
+could drop the nonce would leave a header that looks protective and is not.
+
+## Clickjacking protection
+
+Nothing may embed the app in a frame by default. That closes **clickjacking**:
+an attacker loads your instance in an invisible iframe over their own page, and
+a signed-in member who thinks they are clicking that page is really clicking
+your controls — leaving a workspace, deleting a channel, revoking a token.
+
+| Variable              | Default | Effect                                                                     |
+| --------------------- | ------- | -------------------------------------------------------------------------- |
+| `CSP_FRAME_ANCESTORS` | `none`  | Who may frame the app. Always sets the CSP `frame-ancestors` directive; also sends `X-Frame-Options` when the value maps to `DENY` or `SAMEORIGIN` and the policy is enforcing. |
+
+Accepted values:
+
+| Value                     | `frame-ancestors`         | `X-Frame-Options` |
+| ------------------------- | ------------------------- | ----------------- |
+| `none` *(default)*        | `'none'` — nobody          | `DENY`            |
+| `self`                    | `'self'` — your own origin | `SAMEORIGIN`      |
+| One or more origins       | those origins             | *(not sent)*      |
+
+```bash
+# Embed the app in your intranet portal
+CSP_FRAME_ANCESTORS="https://portal.example.com"
+```
+
+:::note
+`X-Frame-Options` has no allow-list form — its `ALLOW-FROM` was never supported
+by Chrome and Firefox dropped it — so naming origins sends `frame-ancestors`
+alone. Every browser released in the last several years honours it; the legacy
+header is only a fallback for the ones that do not.
+:::
+
+Both headers ride on `CSP_ENABLED`. Turning the app policy off means you have
+taken ownership of these headers at your reverse proxy, so set them there too.
+Under `CSP_REPORT_ONLY=true` the directive is reported but not enforced, and
+`X-Frame-Options` is withheld — it has no report-only form, so sending it would
+enforce the very thing the dry run is meant to only observe.
+
+## HTTPS enforcement (HSTS)
+
+Responses that arrive over HTTPS carry
+`Strict-Transport-Security`, which tells the browser to reach the host over
+HTTPS only from then on. Without it the first visit, or any later one typed
+without a scheme, still goes out as plain HTTP — the window an on-path attacker
+uses to strip TLS and read the session cookie before your redirect to HTTPS ever
+happens.
+
+| Variable                   | Default    | Effect                                                                 |
+| -------------------------- | ---------- | ---------------------------------------------------------------------- |
+| `HSTS_ENABLED`             | `true`     | Send the header at all. Turn off only if your reverse proxy sends it.  |
+| `HSTS_MAX_AGE`             | `31536000` | Seconds the browser remembers the pin (one year). `0` forgets the host. |
+| `HSTS_INCLUDE_SUBDOMAINS`  | `true`     | Extend the pin to every subdomain.                                     |
+| `HSTS_PRELOAD`             | `false`    | Add `preload`. See the warning below.                                  |
+
+The defaults send:
+
+```http
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+```
+
+The header is **never** sent on a request that arrived over plain HTTP, so a LAN
+deployment served over `http://` cannot lock itself out of its own hostname.
+TLS is detected from your proxy's `X-Forwarded-Proto`, which the app already
+trusts — see [Reverse proxy & TLS](/docs/self-hosting/reverse-proxy/).
+
+:::caution
+`HSTS_PRELOAD` is effectively irreversible. Submitting a domain to
+[hstspreload.org](https://hstspreload.org) bakes it into browsers themselves, it
+commits **every** subdomain of the registrable domain to HTTPS, and removal takes
+months to reach users. Only enable it if you own the whole domain and intend to
+submit it deliberately.
+:::
+
+`preload` is only sent when the rest of the policy would actually qualify for
+the list — `HSTS_MAX_AGE` of at least `31536000` **and**
+`HSTS_INCLUDE_SUBDOMAINS=true`. Set it beside a shorter max-age or with
+subdomains excluded and the directive is left off rather than advertising an
+intent the policy cannot back.
+
+Turn `HSTS_INCLUDE_SUBDOMAINS` off if a subdomain of your app's host still has to
+answer over plain HTTP — the pin would otherwise make it unreachable too.
 
 ## Search analytics
 

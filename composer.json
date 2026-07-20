@@ -29,6 +29,7 @@
         "laravel/wayfinder": "^0.1.14",
         "meilisearch/meilisearch-php": "^1.16",
         "spatie/laravel-activitylog": "^5.0",
+        "spatie/laravel-csp": "^3.26",
         "spatie/laravel-data": "^4.23",
         "spatie/laravel-typescript-transformer": "^3.3",
         "symfony/dom-crawler": "^8.1"
@@ -101,7 +102,7 @@
             "@lint:check",
             "@types:check",
             "@refactor:check",
-            "@php artisan test --coverage --min=100"
+            "@php artisan test --parallel --coverage --min=100"
         ],
         "test:browser": [
             "pest tests/Browser"
