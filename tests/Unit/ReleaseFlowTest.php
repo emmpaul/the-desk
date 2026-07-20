@@ -415,8 +415,32 @@ function baselineSyncScript(): string
     /** @var array<int, array<string, mixed>> $steps */
     $steps = $workflow['jobs']['sync-candidate-baseline']['steps'];
 
-    return (string) $steps[1]['run'];
+    foreach ($steps as $step) {
+        $run = (string) ($step['run'] ?? '');
+
+        if (str_contains($run, '.release-please-manifest.develop.json')) {
+            return $run;
+        }
+    }
+
+    throw new RuntimeException('release-please.yml has no step moving the candidate baseline.');
 }
+
+/*
+ * `develop` is created independently of this workflow, so a stable release must
+ * not be reported as failed merely because there is no candidate line to update.
+ * Every step that touches develop is gated on it actually being there.
+ */
+test('a stable release succeeds when there is no develop branch', function (): void {
+    /** @var array<int, array<string, mixed>> $steps */
+    $steps = readWorkflow('release-please.yml')['jobs']['sync-candidate-baseline']['steps'];
+
+    $guarded = collect($steps)->filter(fn (array $step): bool => ($step['id'] ?? null) !== 'develop');
+
+    expect($guarded)->not->toBeEmpty()
+        ->and($guarded->every(fn (array $step): bool => ($step['if'] ?? null) === "steps.develop.outputs.exists == 'true'"))
+        ->toBeTrue();
+});
 
 /**
  * Build a throwaway origin with a `develop` branch, and a clone of it standing in

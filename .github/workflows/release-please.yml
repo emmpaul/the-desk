@@ -83,9 +83,29 @@ jobs:
     permissions:
       contents: write
     steps:
+      # A stable release must not be reported as failed just because there is no
+      # candidate line to update — `develop` is created separately from this
+      # workflow, and until it exists (or if it is ever retired) there is simply
+      # nothing to sync.
+      - name: Check whether develop exists
+        id: develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if gh api "repos/$REPO/branches/develop" --silent 2>/dev/null; then
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+            echo "No develop branch; there is no candidate baseline to move."
+          fi
+
       # The PAT is needed to push; `develop` is checked out directly because the
       # only edit is a one-line baseline rewrite that never conflicts.
       - name: Check out develop
+        if: steps.develop.outputs.exists == 'true'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: develop
@@ -101,6 +121,7 @@ jobs:
       # top of whatever landed meanwhile is always correct — and, unlike a
       # rebase, it cannot conflict.
       - name: Point the candidate baseline at the released version
+        if: steps.develop.outputs.exists == 'true'
         env:
           VERSION: ${{ needs.release-please.outputs.version }}
         run: |
