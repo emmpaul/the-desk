@@ -212,7 +212,7 @@ test('the stable line releases from the stable config pair', function (): void {
 test('the stable line is gated to master', function (): void {
     $job = readWorkflow('release-please.yml')['jobs']['release-please'];
 
-    expect($job['if'])->toContain("refs/heads/master")
+    expect($job['if'])->toContain('refs/heads/master')
         ->and(releaseActionInputs('release-please'))->not->toHaveKey('target-branch');
 });
 

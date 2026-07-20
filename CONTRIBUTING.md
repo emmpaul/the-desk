@@ -91,9 +91,65 @@ capital letter (commitlint rejects sentence-case subjects).
 
 ## Pull requests
 
-1. Branch off `master` (e.g. `feat/message-reminders`, `fix/session-index`).
+1. Branch off `develop` (e.g. `feat/message-reminders`, `fix/session-index`), and
+   target `develop` — see [Releases](#releases) below.
 2. Keep the PR focused on a single concern; reference the issue it closes.
 3. Make sure both quality gates pass locally.
 4. Fill in what changed and why, and how you tested it.
 
 A maintainer will review and merge. Thanks for helping make The Desk better!
+
+## Releases
+
+Two branches, two release lines, both cut by
+[release-please](https://github.com/googleapis/release-please) from the
+Conventional Commit history:
+
+| Branch | Cuts | Example tag | Docker tags |
+| --- | --- | --- | --- |
+| `develop` | Release candidates | `v1.12.0-rc.0` | `1.12.0-rc.0`, and the moving `rc` |
+| `master` | Stable releases | `v1.12.0` | `1.12.0`, `1.12`, and the moving `latest` |
+
+Work flows in one direction: a feature PR merges into `develop`, which cuts
+candidates as it accumulates changes; when a version is ready, `develop` is
+promoted to `master`, which cuts the stable release. Pushing to `master` also
+moves the `edge` image tag.
+
+**Promote `develop` to `master` with a merge commit, never a squash.** Everything
+else in this repo is squash-merged, and that is exactly the problem here:
+release-please reads the individual Conventional Commits, so squashing a
+promotion would collapse an entire release worth of `feat:`/`fix:` subjects into
+one, and the changelog would lose every entry but that one.
+
+### Why the two lines cannot contaminate each other
+
+release-please reads its config *and* its version manifest from the branch it
+targets, so each line gets its own pair:
+
+| | Stable (`master`) | Candidate (`develop`) |
+| --- | --- | --- |
+| Config | `release-please-config.json` | `release-please-config.develop.json` |
+| Manifest | `.release-please-manifest.json` | `.release-please-manifest.develop.json` |
+
+They are **separate files, not divergent copies of one file**. That distinction
+is the whole safety property: a merge in either direction carries both pairs
+across unchanged, so a promotion can never move the `prerelease` flag onto the
+stable config and turn a stable release into a candidate. Nothing about
+`.github/workflows/release-please.yml` differs per branch either — one file
+contains both jobs, and the pushed branch decides which one runs.
+
+Two consequences worth knowing:
+
+- **The candidate config declares no `extra-files`**, so an rc bump never stamps
+  `1.12.0-rc.0` into `VERSION`, `.env.prod.example`, `docker/install.sh`, or the
+  docs pages that quote a version. Those lines only ever carry stable versions.
+- **The candidate config sets `skip-changelog`**, so `CHANGELOG.md` belongs to
+  `master` alone. Candidates still get full release notes on their GitHub
+  release; they just don't write them to the file.
+
+These invariants are enforced by `tests/Unit/ReleaseFlowTest.php` rather than by
+convention — change the release setup and that file will tell you what broke.
+
+After each stable release, a job moves `develop`'s candidate baseline onto the
+version just released, so the next feature there starts a fresh `-rc.0` series
+instead of incrementing the previous one forever.
