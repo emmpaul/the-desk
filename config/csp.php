@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Spatie\Csp\Nonce\RandomString;
 
 return [
 
@@ -77,6 +78,6 @@ return [
 
     'nonce_enabled' => true,
 
-    'nonce_generator' => Spatie\Csp\Nonce\RandomString::class,
+    'nonce_generator' => RandomString::class,
 
 ];

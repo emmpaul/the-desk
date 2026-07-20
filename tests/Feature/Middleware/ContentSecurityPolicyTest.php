@@ -161,7 +161,7 @@ test('an extra frame source replaces the none placeholder rather than sitting be
 
     $header = (string) $this->get(route('home'))->headers->get('Content-Security-Policy');
 
-    expect($header)->toContain("frame-src https://embed.example.test")
+    expect($header)->toContain('frame-src https://embed.example.test')
         ->not->toContain("frame-src 'none'");
 });
 

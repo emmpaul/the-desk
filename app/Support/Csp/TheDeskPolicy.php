@@ -28,7 +28,7 @@ final class TheDeskPolicy implements Preset
      *
      * @var array<string, Directive>
      */
-    private const EXTENDABLE_DIRECTIVES = [
+    private const array EXTENDABLE_DIRECTIVES = [
         'script-src' => Directive::SCRIPT,
         'style-src' => Directive::STYLE,
         'img-src' => Directive::IMG,
