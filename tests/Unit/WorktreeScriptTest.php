@@ -77,13 +77,17 @@ test('a base branch that exists only on the remote still forks the issue branch'
 
 test('a base branch that exists locally is forked from the local ref', function (): void {
     [$clone, $root] = worktreeFixtureClone();
-    runGit($clone, 'branch', 'develop', 'origin/develop');
+    runGit($clone, 'checkout', '--quiet', '-b', 'develop', 'origin/develop');
+    file_put_contents($clone.'/README.md', "local develop only\n");
+    runGit($clone, 'commit', '--quiet', '-am', 'local develop only');
+    runGit($clone, 'checkout', '--quiet', 'master');
 
     $process = runWorktreeLib($clone, 'attach_worktree '.escapeshellarg($root.'/wt').' 619-slug develop');
 
     expect($process->getExitCode())->toBe(0)
         ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug')
-        ->and(gitRevision($root.'/wt', 'HEAD'))->toBe(gitRevision($clone, 'develop'));
+        ->and(gitRevision($root.'/wt', 'HEAD'))->toBe(gitRevision($clone, 'develop'))
+        ->and(gitRevision($root.'/wt', 'HEAD'))->not->toBe(gitRevision($clone, 'origin/develop'));
 });
 
 test('HEAD as a base forks from the local checkout, not origin/HEAD', function (): void {
@@ -100,12 +104,14 @@ test('HEAD as a base forks from the local checkout, not origin/HEAD', function (
 
 test('an existing local branch is attached instead of being re-forked', function (): void {
     [$clone, $root] = worktreeFixtureClone();
-    runGit($clone, 'branch', '619-slug', 'origin/develop');
+    runGit($clone, 'branch', '619-slug', 'master');
 
     $process = runWorktreeLib($clone, 'attach_worktree '.escapeshellarg($root.'/wt').' 619-slug develop');
 
     expect($process->getExitCode())->toBe(0)
-        ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug');
+        ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug')
+        ->and(gitRevision($root.'/wt', 'HEAD'))->toBe(gitRevision($clone, 'master'))
+        ->and(gitRevision($root.'/wt', 'HEAD'))->not->toBe(gitRevision($clone, 'origin/develop'));
 });
 
 test('a base that names the remote-tracking ref outright is honoured', function (): void {
