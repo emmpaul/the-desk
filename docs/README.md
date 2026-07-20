@@ -16,7 +16,8 @@ The site has two parts:
 
 ## Local development
 
-All commands run from **this `docs/` directory** (not the repo root), and on the
+All commands run inside **this `docs/` directory** (`cd docs` from the repo root
+first — none of them work from the root itself), and on the
 Node version pinned in `docs/.nvmrc` — **22.16.0**, matching the Cloudflare Pages
 builder (which bundles npm 10.9.2). The same pin is declared in `engines` here
 and used by the `docs` CI workflow.

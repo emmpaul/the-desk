@@ -51,11 +51,16 @@ test('the docs guard runs on pull requests touching the docs project', function 
         ->and($triggers['push']['paths'])->toContain('docs/**');
 });
 
-test('the docs guard re-runs when the guard itself changes', function (string $event) use ($docsWorkflow): void {
+test('the docs guard re-runs when its own inputs change', function (string $event, string $path) use ($docsWorkflow): void {
     $triggers = $docsWorkflow()[true] ?? $docsWorkflow()['on'];
 
-    expect($triggers[$event]['paths'])->toContain('.github/workflows/docs.yml');
-})->with(['push', 'pull_request']);
+    expect($triggers[$event]['paths'])->toContain($path);
+})->with(['push', 'pull_request'])->with([
+    '.github/workflows/docs.yml',
+    // The content config stamps the released version from this manifest, so it
+    // can break the build without a single file under `docs/` changing.
+    '.release-please-manifest.json',
+]);
 
 test('the docs job checks out the whole repo, not a sparse docs directory', function () use ($docsJob): void {
     $checkout = collect($docsJob()['steps'])
