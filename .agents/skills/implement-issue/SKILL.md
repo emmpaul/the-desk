@@ -119,7 +119,7 @@ Commit your work to the feature branch as you reach green milestones.
 Before opening the PR, run a **local** CodeRabbit pass so it opens clean. Ensure the CLI is on PATH (`export PATH="$HOME/.local/bin:$PATH"`), then review this branch against the base branch you confirmed in §1 (`develop` for ordinary feature work):
 
 ```bash
-coderabbit review --agent --base develop   # or the foundation branch / master for a hotfix, per §1
+coderabbit review --agent --base <base>   # the base confirmed in §1: develop, a foundation branch, or master for a hotfix
 ```
 
 - `--agent` emits agent-actionable findings; add `-c CLAUDE.md` to feed conventions if a finding looks off.
