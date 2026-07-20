@@ -34,7 +34,9 @@ function runGit(string $cwd, string ...$arguments): Process
 /**
  * Build an "upstream" repository carrying master + develop and clone it, so the
  * clone knows develop only as remotes/origin/develop — the state that made
- * `worktree create <NNN> develop` land on develop itself (issue #619).
+ * `worktree create <NNN> develop` land on develop itself (issue #619). develop
+ * carries an extra commit so forking from the wrong base is detectable by SHA,
+ * not just by branch name.
  *
  * @return array{0: string, 1: string} the clone path and its parent directory
  */
@@ -47,11 +49,19 @@ function worktreeFixtureClone(): array
     file_put_contents($root.'/upstream/README.md', "fixture\n");
     runGit($root.'/upstream', 'add', '-A');
     runGit($root.'/upstream', 'commit', '--quiet', '-m', 'init');
-    runGit($root.'/upstream', 'branch', 'develop');
+    runGit($root.'/upstream', 'checkout', '--quiet', '-b', 'develop');
+    file_put_contents($root.'/upstream/README.md', "fixture on develop\n");
+    runGit($root.'/upstream', 'commit', '--quiet', '-am', 'develop only');
+    runGit($root.'/upstream', 'checkout', '--quiet', 'master');
 
     runGit($root, 'clone', '--quiet', $root.'/upstream', 'main');
 
     return [$root.'/main', $root];
+}
+
+function gitRevision(string $cwd, string $revision): string
+{
+    return trim(runGit($cwd, 'rev-parse', $revision)->getOutput());
 }
 
 test('a base branch that exists only on the remote still forks the issue branch', function (): void {
@@ -61,6 +71,7 @@ test('a base branch that exists only on the remote still forks the issue branch'
 
     expect($process->getExitCode())->toBe(0)
         ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug')
+        ->and(gitRevision($root.'/wt', 'HEAD'))->toBe(gitRevision($clone, 'origin/develop'))
         ->and(runGit($clone, 'branch', '--list', 'develop')->getOutput())->toBe('');
 });
 
@@ -71,7 +82,20 @@ test('a base branch that exists locally is forked from the local ref', function 
     $process = runWorktreeLib($clone, 'attach_worktree '.escapeshellarg($root.'/wt').' 619-slug develop');
 
     expect($process->getExitCode())->toBe(0)
-        ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug');
+        ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug')
+        ->and(gitRevision($root.'/wt', 'HEAD'))->toBe(gitRevision($clone, 'develop'));
+});
+
+test('HEAD as a base forks from the local checkout, not origin/HEAD', function (): void {
+    [$clone, $root] = worktreeFixtureClone();
+    file_put_contents($clone.'/README.md', "local only\n");
+    runGit($clone, 'commit', '--quiet', '-am', 'local only');
+
+    $process = runWorktreeLib($clone, 'attach_worktree '.escapeshellarg($root.'/wt').' 619-slug HEAD');
+
+    expect($process->getExitCode())->toBe(0)
+        ->and(gitRevision($root.'/wt', 'HEAD'))->toBe(gitRevision($clone, 'master'))
+        ->and(gitRevision($root.'/wt', 'HEAD'))->not->toBe(gitRevision($clone, 'origin/master'));
 });
 
 test('an existing local branch is attached instead of being re-forked', function (): void {
@@ -90,7 +114,8 @@ test('a base that names the remote-tracking ref outright is honoured', function 
     $process = runWorktreeLib($clone, 'attach_worktree '.escapeshellarg($root.'/wt').' 619-slug origin/develop');
 
     expect($process->getExitCode())->toBe(0)
-        ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug');
+        ->and(trim(runGit($root.'/wt', 'rev-parse', '--abbrev-ref', 'HEAD')->getOutput()))->toBe('619-slug')
+        ->and(gitRevision($root.'/wt', 'HEAD'))->toBe(gitRevision($clone, 'origin/develop'));
 });
 
 test('a base carried by several remotes is rejected as ambiguous', function (): void {

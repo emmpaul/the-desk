@@ -204,6 +204,16 @@ resolve_base_ref() {
         return 0
     fi
 
+    # HEAD/@ name the current checkout, but refs/remotes/*/HEAD exists in any
+    # clone, so the remote lookup below would silently redirect them to
+    # origin/HEAD.
+    if [ "$base" = "HEAD" ] || [ "$base" = "@" ]; then
+        git -C "$MAIN_ROOT" rev-parse --verify --quiet "${base}^{commit}" >/dev/null \
+            || die "base '${base}' does not resolve to a commit"
+        printf '%s' "$base"
+        return 0
+    fi
+
     local remote_refs count
     remote_refs="$(git -C "$MAIN_ROOT" for-each-ref --format='%(refname:short)' "refs/remotes/*/${base}")"
     count="$(printf '%s' "$remote_refs" | grep -c . || true)"
