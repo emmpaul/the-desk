@@ -92,8 +92,19 @@ capital letter (commitlint rejects sentence-case subjects).
 ## Pull requests
 
 1. Branch off `master` (e.g. `feat/message-reminders`, `fix/session-index`).
-2. Keep the PR focused on a single concern; reference the issue it closes.
-3. Make sure both quality gates pass locally.
-4. Fill in what changed and why, and how you tested it.
+2. **Title the PR as a Conventional Commit** — see below.
+3. Keep the PR focused on a single concern; reference the issue it closes.
+4. Make sure both quality gates pass locally.
+5. Fill in what changed and why, and how you tested it.
+
+### The PR title is the release entry
+
+PRs are squash-merged with the **PR title as the commit subject**, so the title —
+not your individual commits — is what [release-please](https://github.com/googleapis/release-please)
+reads to build `CHANGELOG.md` and pick the next version. A title like
+`Add message reminders` parses as nothing and is dropped from the release
+silently, so the title is validated by its own required check (the `pr-title` job
+in `.github/workflows/commitlint.yml`) using the same types and subject rules as
+commitlint. Editing the title re-runs the check — no new commit needed.
 
 A maintainer will review and merge. Thanks for helping make The Desk better!
