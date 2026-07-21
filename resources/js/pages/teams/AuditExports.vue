@@ -12,12 +12,12 @@ import {
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useTimezone } from '@/composables/useTimezone';
 import { useTranslations } from '@/composables/useTranslations';
 import { backgroundVisit } from '@/lib/backgroundVisit';
-import { formatDateTime } from '@/lib/datetime';
-import { i18n, translate } from '@/lib/i18n';
+import { formatDateTime, formatIsoDay } from '@/lib/datetime';
+import { translate } from '@/lib/i18n';
 import { edit, index } from '@/routes/teams';
 import {
     download,
@@ -175,28 +175,22 @@ function rowState(entry: AuditExport): RowState {
     return entry.isReady ? 'ready' : 'expired';
 }
 
-function formatDay(date: string): string {
-    return new Date(`${date}T00:00:00`).toLocaleDateString(i18n.locale, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
-
 function rangeText(entry: AuditExport): string {
     if (entry.rangeStart === null && entry.rangeEnd === null) {
         return t('All time');
     }
 
     if (entry.rangeStart === null) {
-        return t('Until :date', { date: formatDay(entry.rangeEnd as string) });
+        return t('Until :date', {
+            date: formatIsoDay(entry.rangeEnd as string),
+        });
     }
 
     if (entry.rangeEnd === null) {
-        return t('From :date', { date: formatDay(entry.rangeStart) });
+        return t('From :date', { date: formatIsoDay(entry.rangeStart) });
     }
 
-    return `${formatDay(entry.rangeStart)} – ${formatDay(entry.rangeEnd)}`;
+    return `${formatIsoDay(entry.rangeStart)} – ${formatIsoDay(entry.rangeEnd)}`;
 }
 
 function requestedAt(entry: AuditExport): string {
@@ -305,23 +299,26 @@ function downloadUrl(entry: AuditExport): string {
                         <span class="font-normal">· {{ $t('optional') }}</span>
                     </span>
                     <div class="flex items-center gap-2">
-                        <Input
-                            v-model="rangeStart"
-                            type="date"
-                            class="h-9 w-40 rounded-lg"
+                        <DatePicker
+                            :model-value="rangeStart || null"
+                            :placeholder="$t('Start date')"
                             :aria-label="$t('Start date')"
+                            class="w-40"
                             data-test="audit-export-range-start"
+                            @update:model-value="rangeStart = $event ?? ''"
                         />
                         <span class="text-sm text-muted-foreground">{{
                             $t('to')
                         }}</span>
-                        <Input
-                            v-model="rangeEnd"
-                            type="date"
-                            class="h-9 w-40 rounded-lg"
-                            :aria-invalid="rangeError"
+                        <DatePicker
+                            :model-value="rangeEnd || null"
+                            :placeholder="$t('End date')"
                             :aria-label="$t('End date')"
+                            :invalid="rangeError"
+                            :min="rangeStart || null"
+                            class="w-40"
                             data-test="audit-export-range-end"
+                            @update:model-value="rangeEnd = $event ?? ''"
                         />
                         <Button
                             v-if="rangeStart || rangeEnd"

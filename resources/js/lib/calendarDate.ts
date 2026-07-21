@@ -5,8 +5,9 @@
  * field's model stays a plain ISO day, exactly as the server sends and expects it.
  */
 
+import type { CalendarDate } from '@internationalized/date';
+import { parseDate } from '@internationalized/date';
 import type { DateValue } from 'reka-ui';
-import { CalendarDate, parseDate } from '@internationalized/date';
 
 /**
  * Parse a `YYYY-MM-DD` day into a calendar date, or `undefined` when the value
