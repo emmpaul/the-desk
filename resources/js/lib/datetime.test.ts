@@ -54,11 +54,18 @@ describe('formatIsoDay', () => {
      * A bare `YYYY-MM-DD` is parsed as UTC midnight by `new Date()`, which reads
      * as the previous day in any behind-UTC zone. The helper anchors the day to
      * local midnight instead, so a calendar day never shifts under the reader.
+     * Run in a behind-UTC zone, since the bug is invisible at or ahead of UTC.
      */
-    it('keeps the day stable regardless of the runtime time zone', () => {
-        expect(formatIsoDay('2026-01-01')).toContain('1');
-        expect(formatIsoDay('2026-01-01')).toContain('2026');
-        expect(formatIsoDay('2026-01-01')).toContain('Jan');
+    it('keeps the day stable in a behind-UTC time zone', () => {
+        const zone = process.env.TZ;
+        process.env.TZ = 'America/Los_Angeles';
+
+        try {
+            // The naive `new Date('2026-01-01')` would render "Dec 31, 2025" here.
+            expect(formatIsoDay('2026-01-01', 'en-US')).toBe('Jan 1, 2026');
+        } finally {
+            process.env.TZ = zone;
+        }
     });
 });
 

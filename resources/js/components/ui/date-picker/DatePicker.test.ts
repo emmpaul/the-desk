@@ -12,11 +12,15 @@ import { DatePicker } from '.';
  */
 let app: App | null = null;
 
-function mount(props: Record<string, unknown>): HTMLElement {
+type DatePickerProps = InstanceType<typeof DatePicker>['$props'];
+
+function mount(props: DatePickerProps & Record<string, unknown>): HTMLElement {
     const host = document.createElement('div');
     document.body.appendChild(host);
 
-    app = createApp({ render: () => h(DatePicker, props) });
+    app = createApp({
+        render: () => h(DatePicker, props),
+    });
     app.config.globalProperties.$t = (key: string) => key;
     app.mount(host);
 
@@ -43,13 +47,17 @@ afterEach(() => {
 
 describe('DatePicker', () => {
     it('shows the placeholder while nothing is selected', () => {
-        mount({ modelValue: null, placeholder: 'Start date' });
+        mount({
+            modelValue: null,
+            placeholder: 'Start date',
+            fieldLabel: 'Start date',
+        });
 
         expect(trigger().textContent).toContain('Start date');
     });
 
     it('shows the selected day formatted for the active locale', () => {
-        mount({ modelValue: '2026-07-10' });
+        mount({ modelValue: '2026-07-10', fieldLabel: 'Start date' });
 
         expect(trigger().textContent).toContain('Jul 10, 2026');
     });
@@ -57,7 +65,7 @@ describe('DatePicker', () => {
     it('labels the trigger and flags an invalid value for assistive tech', () => {
         mount({
             modelValue: null,
-            ariaLabel: 'Start date',
+            fieldLabel: 'Start date',
             invalid: true,
             'data-test': 'audit-export-range-start',
         });
@@ -74,6 +82,7 @@ describe('DatePicker', () => {
 
         mount({
             modelValue: selected.value,
+            fieldLabel: 'Start date',
             'onUpdate:modelValue': (day: string | null) => {
                 selected.value = day;
             },

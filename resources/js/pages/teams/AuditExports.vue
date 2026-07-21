@@ -302,7 +302,7 @@ function downloadUrl(entry: AuditExport): string {
                         <DatePicker
                             :model-value="rangeStart || null"
                             :placeholder="$t('Start date')"
-                            :aria-label="$t('Start date')"
+                            :field-label="$t('Start date')"
                             class="w-40"
                             data-test="audit-export-range-start"
                             @update:model-value="rangeStart = $event ?? ''"
@@ -313,7 +313,7 @@ function downloadUrl(entry: AuditExport): string {
                         <DatePicker
                             :model-value="rangeEnd || null"
                             :placeholder="$t('End date')"
-                            :aria-label="$t('End date')"
+                            :field-label="$t('End date')"
                             :invalid="rangeError"
                             :min="rangeStart || null"
                             class="w-40"

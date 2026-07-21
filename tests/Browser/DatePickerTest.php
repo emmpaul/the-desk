@@ -66,6 +66,7 @@ test('the audit export period is picked from a calendar and validates its order'
     JS);
 
     $page->wait(0.5)
+        ->assertPresent('html.dark')
         ->click('@audit-export-range-start')
         ->wait(0.3)
         ->assertPresent('[data-reka-calendar-cell-trigger]')

@@ -31,8 +31,12 @@ const props = withDefaults(
         min?: string | null;
         /** Latest selectable day, as `YYYY-MM-DD`. */
         max?: string | null;
-        /** Accessible name for the trigger, since the value alone rarely says which field this is. */
-        ariaLabel?: string;
+        /**
+         * Accessible name for the trigger. Required: the trigger's visible text
+         * is the value (or a generic placeholder), which never says *which*
+         * date field it is — and is absent entirely before anything is picked.
+         */
+        fieldLabel: string;
         /** Marks the trigger `aria-invalid`, e.g. when the range it belongs to is backwards. */
         invalid?: boolean;
         disabled?: boolean;
@@ -43,7 +47,6 @@ const props = withDefaults(
         placeholder: undefined,
         min: null,
         max: null,
-        ariaLabel: undefined,
         invalid: false,
         disabled: false,
         class: undefined,
@@ -81,7 +84,7 @@ function select(value: DateValue | undefined): void {
                     variant="outline"
                     type="button"
                     :disabled="disabled"
-                    :aria-label="ariaLabel"
+                    :aria-label="fieldLabel"
                     :aria-invalid="invalid"
                     data-slot="date-picker-trigger"
                     :class="

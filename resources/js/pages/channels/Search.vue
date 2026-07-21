@@ -728,7 +728,7 @@ function snippetHtml(snippet: string): string {
                                 <DatePicker
                                     :model-value="after"
                                     :placeholder="$t('Pick a date')"
-                                    :aria-label="$t('After')"
+                                    :field-label="$t('After')"
                                     :max="before"
                                     class="w-full text-xs"
                                     data-test="facet-date-after"
@@ -744,7 +744,7 @@ function snippetHtml(snippet: string): string {
                                 <DatePicker
                                     :model-value="before"
                                     :placeholder="$t('Pick a date')"
-                                    :aria-label="$t('Before')"
+                                    :field-label="$t('Before')"
                                     :min="after"
                                     class="w-full text-xs"
                                     data-test="facet-date-before"
