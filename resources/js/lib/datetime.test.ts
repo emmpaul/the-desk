@@ -15,6 +15,26 @@ import { formatNumber } from './numbers';
  */
 const INSTANT = '2026-07-10T15:30:00Z';
 
+/**
+ * Run `assertions` with the runtime's local zone pinned to `timeZone`, restoring
+ * the previous setting afterwards — including the unset case, where assigning
+ * `undefined` back would leave the literal string "undefined" behind.
+ */
+function inTimeZone(timeZone: string, assertions: () => void): void {
+    const previous = process.env.TZ;
+    process.env.TZ = timeZone;
+
+    try {
+        assertions();
+    } finally {
+        if (previous === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = previous;
+        }
+    }
+}
+
 describe('formatTimeOfDay', () => {
     it('renders the time in the given zone', () => {
         expect(formatTimeOfDay(INSTANT, 'UTC')).toContain('3:30');
@@ -49,28 +69,25 @@ describe('formatCalendarDate', () => {
      * saw the chip name the day *before* the one the results were filtered from.
      */
     it('keeps a bare calendar day stable in a behind-UTC time zone', () => {
-        const zone = process.env.TZ;
-        process.env.TZ = 'America/Los_Angeles';
-
-        try {
+        inTimeZone('America/Los_Angeles', () => {
             expect(formatCalendarDate('2026-01-01', 'en-US')).toBe('Jan 1');
-        } finally {
-            process.env.TZ = zone;
-        }
+        });
     });
 
+    /**
+     * An instant just after UTC midnight, read in a behind-UTC zone, still falls
+     * on the previous local day — so it fails loudly if a full timestamp were
+     * ever mistaken for a bare day and re-anchored to local midnight.
+     */
     it('leaves Date objects and full timestamps on their existing behaviour', () => {
-        const zone = process.env.TZ;
-        process.env.TZ = 'UTC';
+        const boundary = '2026-07-10T00:30:00Z';
 
-        try {
-            expect(formatCalendarDate(new Date(INSTANT), 'en-US')).toBe(
-                'Jul 10',
+        inTimeZone('America/Los_Angeles', () => {
+            expect(formatCalendarDate(new Date(boundary), 'en-US')).toBe(
+                'Jul 9',
             );
-            expect(formatCalendarDate(INSTANT, 'en-US')).toBe('Jul 10');
-        } finally {
-            process.env.TZ = zone;
-        }
+            expect(formatCalendarDate(boundary, 'en-US')).toBe('Jul 9');
+        });
     });
 });
 
@@ -90,15 +107,10 @@ describe('formatIsoDay', () => {
      * Run in a behind-UTC zone, since the bug is invisible at or ahead of UTC.
      */
     it('keeps the day stable in a behind-UTC time zone', () => {
-        const zone = process.env.TZ;
-        process.env.TZ = 'America/Los_Angeles';
-
-        try {
+        inTimeZone('America/Los_Angeles', () => {
             // The naive `new Date('2026-01-01')` would render "Dec 31, 2025" here.
             expect(formatIsoDay('2026-01-01', 'en-US')).toBe('Jan 1, 2026');
-        } finally {
-            process.env.TZ = zone;
-        }
+        });
     });
 });
 
