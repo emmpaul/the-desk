@@ -20,6 +20,12 @@
 # Playwright browsers into the app container and brings `reverb` (and, via its
 # own depends_on, `redis`) up — four containers in total.
 #
+# Because the worktree's .env is copied from the main checkout, it can name
+# services those four don't include (the opt-in `sso` profile's ldap/oidc,
+# mailpit, meilisearch); write_env points those settings somewhere harmless so
+# the isolated instance is usable rather than half-wired. The database it starts
+# on is empty, so the bootstrap also migrates and seeds it.
+#
 # Subcommands:
 #   create <NNN> [base]   Create (or re-enter) an isolated worktree for issue NNN.
 #                         Prints the worktree's absolute path on stdout so it is
@@ -54,6 +60,12 @@ SLOTS="${WORKTREE_SLOTS:-10}"
 PORT_BASE="${WORKTREE_PORT_BASE:-20000}"
 DEFAULT_BASE="${WORKTREE_BASE:-master}"
 COMPOSER_IMAGE="${WORKTREE_COMPOSER_IMAGE:-laravelsail/php84-composer:latest}"
+
+# The compose services a worktree ever brings up: `sail up -d laravel.test` with
+# the trimmed depends_on, plus reverb pulling redis in through its own. Every
+# other service in compose.yaml stays down, so the generated .env must not point
+# at one (see write_env); tests/Unit/WorktreeScriptTest.php holds that line.
+WORKTREE_STARTED_SERVICES="laravel.test pgsql reverb redis"
 
 REGISTRY_DIR="${HOME}/.the-desk"
 REGISTRY_FILE="${REGISTRY_DIR}/worktrees.json"
@@ -417,6 +429,8 @@ cmd_create() {
         (cd "$path" && ./vendor/bin/sail artisan key:generate --force)
     fi
 
+    migrate_and_seed "$path"
+
     log "installing JS dependencies via Sail (Linux-only native bindings)"
     (cd "$path" && ./vendor/bin/sail npm install --no-progress)
 
@@ -457,6 +471,27 @@ cmd_create() {
 # to 0, which means inside node_modules rather than a shared ~/.cache), so ask
 # Playwright itself where the build belongs instead of hardcoding a directory.
 PLAYWRIGHT_PROBE='loc=$(npx playwright install --dry-run chromium 2>/dev/null | sed -n "s/^ *Install location: *//p" | head -1); [ -n "$loc" ] && [ -d "$loc" ]'
+
+# Each worktree gets its own Postgres volume, so the bootstrap starts on an empty
+# database and the login form has no account to accept — signing in to the
+# isolated instance is the point (issue #680). Migrations run on every entry so a
+# rebased worktree picks up new ones; the seed is guarded by its own sentinel
+# because WorkspaceSeeder builds a fresh fixture workspace on each run.
+migrate_and_seed() {
+    local path="$1"
+
+    log "running database migrations"
+    (cd "$path" && ./vendor/bin/sail artisan migrate --force)
+
+    if [ -f "${path}/.worktree-seeded" ]; then
+        log "database already seeded — skipping"
+        return 0
+    fi
+
+    log "seeding the demo workspace"
+    (cd "$path" && ./vendor/bin/sail artisan db:seed --force)
+    touch "${path}/.worktree-seeded"
+}
 
 install_playwright_browsers() {
     local path="$1"
@@ -506,6 +541,38 @@ write_env() {
     upsert_env "${path}/.env" DEMO_MODE false
     upsert_env "${path}/.env" REGISTRATION_ENABLED true
     upsert_env "${path}/.env" AUTH_SSO_ONLY false
+
+    detach_unstarted_services "${path}/.env"
+}
+
+# Point every setting that names a compose service away from the ones a worktree
+# never starts (WORKTREE_STARTED_SERVICES).
+#
+# The main checkout's .env is copied verbatim, so a developer running the opt-in
+# `sso` profile hands the worktree LDAP_HOST=ldap with no ldap container behind
+# it — and Fortify then fails EVERY password login with "Can't contact LDAP
+# server", which reads as an app bug rather than a bootstrap one (issue #680).
+# The same trap is set by MAIL_HOST=mailpit and MEILISEARCH_HOST, so each one is
+# disabled the way its config already supports: blank hosts switch SSO off
+# (config/sso.php gates on `filled()`), and mail/search fall back to drivers that
+# need no container.
+detach_unstarted_services() {
+    local file="$1"
+
+    # Nothing should re-enable the profile services either, whatever the main
+    # checkout was running.
+    upsert_env "$file" COMPOSE_PROFILES ""
+
+    upsert_env "$file" LDAP_HOST ""
+    upsert_env "$file" SSO_OIDC_ISSUER ""
+    upsert_env "$file" SSO_OIDC_CLIENT_ID ""
+    upsert_env "$file" SSO_OIDC_DISCOVERY_URL ""
+
+    upsert_env "$file" MAIL_MAILER log
+    upsert_env "$file" MAIL_HOST ""
+
+    upsert_env "$file" SCOUT_DRIVER collection
+    upsert_env "$file" MEILISEARCH_HOST ""
 }
 
 write_override() {
