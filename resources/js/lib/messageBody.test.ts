@@ -15,6 +15,8 @@ const alice: Mention = {
     name: 'Alice',
 };
 
+const devs = { id: 'b1c2d3e4-f5a6-7890-1234-567890abcdef' };
+
 const emojiMap: CustomEmojiMap = {
     shipit: 'https://cdn.test/shipit.png',
     'party-otter': 'https://cdn.test/party-otter.png',
@@ -301,6 +303,128 @@ describe('DOMPurify sanitization boundary', () => {
     });
 });
 
+describe('group mentions', () => {
+    it('splits a resolved group mention out as its own segment', () => {
+        expect(
+            tokenizeMessageBody(
+                `ping @[dev-team](group:${devs.id}) now`,
+                [],
+                {},
+                [devs],
+            ),
+        ).toEqual([
+            { kind: 'html', html: 'ping ' },
+            { kind: 'groupMention', id: devs.id, name: 'dev-team' },
+            { kind: 'html', html: ' now' },
+        ]);
+    });
+
+    it('falls back to plain text for a group that no longer exists', () => {
+        expect(
+            tokenizeMessageBody(
+                `ping @[dev-team](group:${devs.id})`,
+                [],
+                {},
+                [],
+            ),
+        ).toEqual([
+            { kind: 'html', html: 'ping ' },
+            { kind: 'html', html: '@dev-team' },
+        ]);
+    });
+
+    it('does not resolve a group id against the people mentioned', () => {
+        expect(
+            tokenizeMessageBody(
+                `@[dev-team](group:${alice.id})`,
+                [alice],
+                {},
+                [],
+            ),
+        ).toEqual([{ kind: 'html', html: '@dev-team' }]);
+    });
+
+    it('does not resolve a person id against the workspace groups', () => {
+        expect(
+            tokenizeMessageBody(`@[Alice](${devs.id})`, [], {}, [devs]),
+        ).toEqual([{ kind: 'html', html: '@Alice' }]);
+    });
+
+    it('tokenizes a person and a group in the same run', () => {
+        expect(
+            tokenizeMessageBody(
+                `@[Alice](${alice.id}) & @[dev-team](group:${devs.id})`,
+                [alice],
+                {},
+                [devs],
+            ),
+        ).toEqual([
+            { kind: 'mention', id: alice.id, name: 'Alice' },
+            { kind: 'html', html: ' &amp; ' },
+            { kind: 'groupMention', id: devs.id, name: 'dev-team' },
+        ]);
+    });
+
+    it('does not resolve a group mention inside inline code', () => {
+        expect(
+            tokenizeMessageBody(`\`@[dev-team](group:${devs.id})\``, [], {}, [
+                devs,
+            ]),
+        ).toEqual([
+            {
+                kind: 'html',
+                html: `<code>@[dev-team](group:${devs.id})</code>`,
+            },
+        ]);
+    });
+
+    it('carries the surrounding marks onto the group segment', () => {
+        expect(
+            tokenizeMessageBody(`**@[dev-team](group:${devs.id})**`, [], {}, [
+                devs,
+            ]),
+        ).toEqual([
+            {
+                kind: 'groupMention',
+                id: devs.id,
+                name: 'dev-team',
+                marks: ['strong'],
+            },
+        ]);
+    });
+
+    it('renders a resolved group as a pill in its own hue', () => {
+        const html = renderMessageBody(
+            `@[dev-team](group:${devs.id})`,
+            [],
+            {},
+            [devs],
+        );
+
+        expect(html).toContain('@dev-team');
+        expect(html).toContain('text-violet-700');
+    });
+
+    it('renders a bold group pill wrapped in <strong>', () => {
+        expect(
+            renderMessageBody(`**@[dev-team](group:${devs.id})**`, [], {}, [
+                devs,
+            ]),
+        ).toMatch(/^<strong><span[^>]*>@dev-team<\/span><\/strong>$/);
+    });
+
+    it('escapes a group label before putting it in the pill', () => {
+        const html = renderMessageBody(
+            `@[<img src=x>](group:${devs.id})`,
+            [],
+            {},
+            [devs],
+        );
+
+        expect(html).not.toContain('<img');
+    });
+});
+
 describe('messageBodyPreview', () => {
     it('strips inline mark syntax to clean text', () => {
         expect(messageBodyPreview('a **b** _c_ ~~d~~')).toBe('a b c d');
@@ -315,6 +439,12 @@ describe('messageBodyPreview', () => {
     it('still collapses a mention token to @Name', () => {
         expect(messageBodyPreview(`hi **@[Alice](${alice.id})**`)).toBe(
             'hi @Alice',
+        );
+    });
+
+    it('collapses a group token to its handle', () => {
+        expect(messageBodyPreview(`hi @[dev-team](group:${devs.id})`)).toBe(
+            'hi @dev-team',
         );
     });
 });

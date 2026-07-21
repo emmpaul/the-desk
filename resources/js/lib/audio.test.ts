@@ -255,6 +255,26 @@ describe('decodeWaveformPeaks', () => {
 
         await expect(decodeWaveformPeaks('blob:four', 8)).resolves.toEqual([]);
     });
+
+    it('decodes a clip served from our own origin', async () => {
+        const { fetchSpy } = stubAudio([0, 1]);
+        vi.stubGlobal('location', { origin: 'https://desk.test' });
+
+        await expect(
+            decodeWaveformPeaks('https://desk.test/a/1/download', 2),
+        ).resolves.toEqual([0, 1]);
+        expect(fetchSpy).toHaveBeenCalled();
+    });
+
+    it('never fetches a third-party url just to draw a waveform', async () => {
+        const { fetchSpy } = stubAudio([0, 1]);
+        vi.stubGlobal('location', { origin: 'https://desk.test' });
+
+        await expect(
+            decodeWaveformPeaks('https://evil.test/clip.mp3', 8),
+        ).resolves.toEqual([]);
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
 });
 
 describe('isVoiceRecordingSupported', () => {

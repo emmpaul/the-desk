@@ -278,7 +278,9 @@ describe('AudioPlayer', () => {
 
     it('draws a decoded waveform, filling the played portion', async () => {
         stubDecode([1, 0.5, 0.25, 0]);
-        mount({ src: 'https://desk.test/i.webm', filename: null, bars: 4 });
+        // Same-origin, like a real attachment's authorized download route —
+        // peaks are only decoded from our own origin (or a local blob).
+        mount({ src: '/attachments/i/download', filename: null, bars: 4 });
 
         await vi.waitFor(() => {
             expect(

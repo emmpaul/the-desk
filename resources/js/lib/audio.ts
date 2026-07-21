@@ -180,6 +180,32 @@ export function waveformPeaks(
 const peakCache = new Map<string, number[]>();
 
 /**
+ * Whether a clip's bytes may be fetched for decoding: a local object URL the
+ * page itself minted, or our own origin (where an attachment's authorized
+ * download route lives). Decoding is a read of bytes the browser is about to
+ * play anyway, but pinning the source keeps a hotlinked third-party URL — a
+ * remote attachment source, say — from being fetched just to draw a waveform.
+ * Mirrors the `connect-src 'self' blob:` the CSP already enforces.
+ */
+function isDecodableSource(src: string): boolean {
+    if (src.startsWith('blob:')) {
+        return true;
+    }
+
+    const origin = globalThis.location?.origin;
+
+    if (!origin) {
+        return false;
+    }
+
+    try {
+        return new URL(src, origin).origin === origin;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Decode a clip's waveform client-side. Any failure — an unsupported container,
  * a network hiccup, a browser without Web Audio — yields no peaks, and the
  * player falls back to a plain progress bar rather than breaking playback.
@@ -199,6 +225,10 @@ export async function decodeWaveformPeaks(
         typeof AudioContext === 'undefined' ? undefined : AudioContext;
 
     if (!AudioContextCtor || typeof fetch !== 'function') {
+        return [];
+    }
+
+    if (!isDecodableSource(src)) {
         return [];
     }
 
