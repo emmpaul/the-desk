@@ -155,7 +155,12 @@ function toggle(): void {
         return;
     }
 
-    void element.play();
+    // A rejected play() is routine — an autoplay policy, a container the
+    // browser declines to decode — and must not surface as an unhandled
+    // rejection. The `play` event never fires, so the toggle stays on "Play".
+    element.play().catch(() => {
+        isPlaying.value = false;
+    });
 }
 
 /** Move the playhead to a fraction of the clip, clamped to its bounds. */

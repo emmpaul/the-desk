@@ -214,6 +214,23 @@ describe('AudioPlayer', () => {
         expect(audioElement().pause).toHaveBeenCalled();
     });
 
+    it('stays on Play when the browser refuses to start playback', async () => {
+        Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+            configurable: true,
+            value: vi.fn(() => Promise.reject(new Error('NotAllowedError'))),
+        });
+        mount({ src: 'https://desk.test/l.mp3', filename: 'jingle.mp3' });
+
+        const toggle = host?.querySelector<HTMLElement>(
+            '[data-test="audio-player-toggle"]',
+        );
+        toggle?.click();
+        await nextTick();
+        await nextTick();
+
+        expect(toggle?.getAttribute('aria-label')).toBe('Play');
+    });
+
     it('seeks with the keyboard from the scrubber', async () => {
         mount({ src: 'https://desk.test/g.mp3', filename: 'jingle.mp3' });
 
