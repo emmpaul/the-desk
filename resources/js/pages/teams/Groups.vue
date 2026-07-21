@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { Plus, Search, Users, X } from '@lucide/vue';
+import { Pencil, Plus, Search, Trash2, Users, X } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -311,27 +311,32 @@ function confirmRemoval(): void {
                         ? $t(':count member', { count: group.membersCount })
                         : $t(':count members', { count: group.membersCount })
                 }}</span>
+                <!-- Icon actions rather than inline text links: the destructive
+                     token at 12px does not clear 4.5:1 on `bg-card` in the dark
+                     theme, while an icon only owes the 3:1 graphics threshold. -->
                 <Button
                     v-if="permissions.canManageUserGroups"
-                    variant="link"
-                    size="none"
+                    variant="ghost"
+                    size="icon-sm"
                     type="button"
                     :data-test="`group-edit-${group.slug}`"
-                    class="shrink-0 text-xs font-semibold"
+                    :aria-label="$t('Edit :name', { name: group.name })"
+                    class="shrink-0 rounded-full"
                     @click="openEditor(group)"
                 >
-                    {{ $t('Edit') }}
+                    <Pencil class="size-4" />
                 </Button>
                 <Button
                     v-if="permissions.canManageUserGroups"
-                    variant="linkDestructive"
-                    size="none"
+                    variant="ghost"
+                    size="icon-sm"
                     type="button"
                     :data-test="`group-remove-${group.slug}`"
-                    class="shrink-0 text-xs font-semibold"
+                    :aria-label="$t('Delete :name', { name: group.name })"
+                    class="shrink-0 rounded-full text-destructive"
                     @click="pendingRemoval = group"
                 >
-                    {{ $t('Delete') }}
+                    <Trash2 class="size-4" />
                 </Button>
             </li>
         </ul>

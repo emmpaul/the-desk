@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserGroup;
 use App\Support\MessagePlainText;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 
 /**
  * Create a team with its owner already a member of #general.
@@ -209,6 +210,57 @@ test('a group mention counts toward the sidebar mention badge like a direct one'
     $entry = collect($response->viewData('page')['props']['channels'])->firstWhere('slug', $general->slug);
 
     expect($entry['mentionCount'])->toBe(1);
+});
+
+test('a group mention makes the thread show up in the mentioned member inbox', function (): void {
+    [$owner, $team, $general] = groupMentionTeam();
+    $ada = groupTeamMember($team, 'Ada Lovelace');
+    $group = userGroupWith($team, 'dev-team', [$ada]);
+
+    $root = postGroupMessage($owner, $team, $general, 'thoughts?');
+
+    $this->actingAs($owner)
+        ->post(route('channels.messages.store', ['team' => $team->slug, 'channel' => $general->slug]), [
+            'body' => 'asking '.groupToken($group),
+            'client_uuid' => (string) Str::uuid7(),
+            'thread_root_id' => $root->id,
+        ])
+        ->assertRedirect();
+
+    // Following a thread is derived from the mention rows, so a fanned-out group
+    // mention pulls each member into the thread exactly as naming them would.
+    $this->actingAs($ada)
+        ->get(route('channels.threads.index', ['team' => $team->slug]))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('threads.data', 1)
+            ->where('threads.data.0.root.id', $root->id)
+        );
+});
+
+test('the workspace groups ride along on every in-workspace request', function (): void {
+    [$owner, $team, $general] = groupMentionTeam();
+    $ada = groupTeamMember($team, 'Ada Lovelace');
+    userGroupWith($team, 'dev-team', [$ada]);
+
+    $this->actingAs($owner)
+        ->get(route('channels.show', ['team' => $team->slug, 'channel' => $general->slug]))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('userGroups', 1)
+            ->where('userGroups.0.slug', 'dev-team')
+            ->where('userGroups.0.membersCount', 1)
+            // The roster stays off the shared payload: resolving a pill and
+            // listing the menu only need the handle and the count.
+            ->where('userGroups.0.members', [])
+        );
+});
+
+test('the shared groups payload is empty off the workspace', function (): void {
+    [$owner, $team] = groupMentionTeam();
+    userGroupWith($team, 'dev-team');
+
+    $this->actingAs($owner)
+        ->get(route('teams.edit', $team))
+        ->assertInertia(fn (Assert $page): Assert => $page->where('userGroups', []));
 });
 
 test('a group mention is unwrapped to its handle for search indexing', function (): void {
