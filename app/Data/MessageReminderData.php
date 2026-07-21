@@ -19,6 +19,7 @@ class MessageReminderData extends Data
         public string $authorName,
         public string $body,
         public bool $isDeleted,
+        public bool $isAccessible,
     ) {}
 
     /**
@@ -30,8 +31,15 @@ class MessageReminderData extends Data
      * quote and a working link back to the message. A since-deleted message
      * blanks its body, leaving only the `isDeleted` flag for a "message deleted"
      * stub — its channel and author still resolve so the link stays valid.
+     *
+     * `$isAccessible` carries the caller's `view` check on the channel, which
+     * has to be re-evaluated on every read because a viewer can lose access long
+     * after the reminder was set. When it is false the row survives — clearing it
+     * stays the owner's call, and regaining access restores it intact — but
+     * everything the viewer may no longer see is blanked: the body, the author,
+     * the channel name, and the channel slug the jump link is built from.
      */
-    public static function fromMessageReminder(MessageReminder $reminder): self
+    public static function fromMessageReminder(MessageReminder $reminder, bool $isAccessible = true): self
     {
         $message = $reminder->message;
         $channel = $message->channel;
@@ -42,11 +50,12 @@ class MessageReminderData extends Data
             messageId: $message->id,
             remindAt: $reminder->remind_at->toIso8601String(),
             teamSlug: $channel->team->slug,
-            channelSlug: $channel->slug,
-            channelName: $channel->name,
-            authorName: $message->user->name,
-            body: $isDeleted ? '' : $message->body,
+            channelSlug: $isAccessible ? $channel->slug : '',
+            channelName: $isAccessible ? $channel->name : null,
+            authorName: $isAccessible ? $message->user->name : '',
+            body: $isDeleted || ! $isAccessible ? '' : $message->body,
             isDeleted: $isDeleted,
+            isAccessible: $isAccessible,
         );
     }
 }

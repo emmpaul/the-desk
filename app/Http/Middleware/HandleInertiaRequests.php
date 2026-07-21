@@ -28,6 +28,7 @@ use App\Support\UpdateChecker;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Middleware;
 use Laravel\Fortify\Features;
@@ -344,6 +345,12 @@ class HandleInertiaRequests extends Middleware
      * row renders a quote and a working link back. Ordered by due time. Empty off
      * the channel workspace, where the surfaces are absent.
      *
+     * Visibility is re-checked here with the same `view` gate the write path
+     * uses, because access can be revoked long after the reminder was set. A row
+     * whose channel is no longer viewable is redacted rather than dropped, so the
+     * owner can still clear it and regaining access restores it. The verdict is
+     * memoised per channel — several reminders often share one.
+     *
      * @return array<int, MessageReminderData>
      */
     protected function remindersForSidebar(Request $request, ?User $user, MessageReminderStatus $status): array
@@ -362,7 +369,15 @@ class HandleInertiaRequests extends Middleware
             ->oldest('remind_at')
             ->get();
 
-        return MessageReminderData::collect($reminders, 'array');
+        /** @var array<string, bool> $viewable */
+        $viewable = [];
+
+        return $reminders->map(function (MessageReminder $reminder) use ($user, &$viewable): MessageReminderData {
+            $channel = $reminder->message->channel;
+            $viewable[$channel->id] ??= Gate::forUser($user)->allows('view', $channel);
+
+            return MessageReminderData::fromMessageReminder($reminder, $viewable[$channel->id]);
+        })->all();
     }
 
     /**
