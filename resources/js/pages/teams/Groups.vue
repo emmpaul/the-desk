@@ -186,7 +186,9 @@ function confirmRemoval(): void {
         destroy({ team: props.team.slug, group: group.id }).url,
         {
             preserveScroll: true,
-            onFinish: () => {
+            // Closed only once the delete lands: a failed request leaves the
+            // dialog open rather than dismissing it as though it had worked.
+            onSuccess: () => {
                 pendingRemoval.value = null;
             },
         },
@@ -421,6 +423,7 @@ function confirmRemoval(): void {
                             size="none"
                             type="button"
                             class="rounded-full p-1"
+                            :disabled="membershipForm.processing"
                             :aria-label="
                                 $t('Remove :name from the group', {
                                     name: member.name,
@@ -452,6 +455,7 @@ function confirmRemoval(): void {
                             variant="ghost"
                             type="button"
                             class="w-full justify-start gap-2 rounded-lg text-sm"
+                            :disabled="membershipForm.processing"
                             :data-test="`group-member-add-${member.id}`"
                             @click="addToGroup(member)"
                         >
