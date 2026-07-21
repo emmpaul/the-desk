@@ -9,6 +9,7 @@ use App\Data\MessageReminderData;
 use App\Data\SlashCommandData;
 use App\Data\UpdateStatusData;
 use App\Data\UserData;
+use App\Data\UserGroupData;
 use App\Enums\MessageReminderStatus;
 use App\Enums\MessageType;
 use App\Enums\SidebarPosition;
@@ -20,12 +21,14 @@ use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use App\SlashCommands\SlashCommandRegistry;
+use App\Support\FrequentEmoji;
 use App\Support\ReverbConfig;
 use App\Support\TranslationCatalog;
 use App\Support\UpdateChecker;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Middleware;
 use Laravel\Fortify\Features;
@@ -176,6 +179,17 @@ class HandleInertiaRequests extends Middleware
             // bodies and reaction pills can resolve `:name:` shortcodes to images.
             // A revoked emoji is simply absent, so its token falls back to text.
             'customEmojis' => fn (): array => $this->customEmojisForWorkspace($request, $user),
+            // The viewer's five most-used emoji in their current workspace,
+            // feeding the hover bar's quick-react cluster and the picker's
+            // "Frequently used" strip. Derived from reaction history per visit
+            // (frequently-used is slow-moving, so it is eventually consistent —
+            // a live reaction doesn't re-rank until the next Inertia visit).
+            'frequentEmojis' => fn (): array => FrequentEmoji::forUser($user),
+            // The current team's mentionable user groups, feeding the composer's
+            // `@` menu and the anti-spoof check that decides whether a
+            // `group:<id>` token renders as a pill or as plain text. A deleted
+            // group is simply absent, so its token falls back to text.
+            'userGroups' => fn (): array => $this->userGroupsForWorkspace($request, $user),
             // The composer's slash-command autocomplete manifest, built from the
             // registry with copy already translated under the active locale.
             // Server-authoritative: a newly registered command appears in
@@ -331,6 +345,12 @@ class HandleInertiaRequests extends Middleware
      * row renders a quote and a working link back. Ordered by due time. Empty off
      * the channel workspace, where the surfaces are absent.
      *
+     * Visibility is re-checked here with the same `view` gate the write path
+     * uses, because access can be revoked long after the reminder was set. A row
+     * whose channel is no longer viewable is redacted rather than dropped, so the
+     * owner can still clear it and regaining access restores it. The verdict is
+     * memoised per channel — several reminders often share one.
+     *
      * @return array<int, MessageReminderData>
      */
     protected function remindersForSidebar(Request $request, ?User $user, MessageReminderStatus $status): array
@@ -349,7 +369,15 @@ class HandleInertiaRequests extends Middleware
             ->oldest('remind_at')
             ->get();
 
-        return MessageReminderData::collect($reminders, 'array');
+        /** @var array<string, bool> $viewable */
+        $viewable = [];
+
+        return $reminders->map(function (MessageReminder $reminder) use ($user, &$viewable): MessageReminderData {
+            $channel = $reminder->message->channel;
+            $viewable[$channel->id] ??= Gate::forUser($user)->allows('view', $channel);
+
+            return MessageReminderData::fromMessageReminder($reminder, $viewable[$channel->id]);
+        })->all();
     }
 
     /**
@@ -369,6 +397,24 @@ class HandleInertiaRequests extends Middleware
         }
 
         return CustomEmojiData::mapForTeam($team);
+    }
+
+    /**
+     * The team-in-the-URL's mentionable user groups, feeding the composer's `@`
+     * menu and the group-pill resolution in message bodies. Empty off the
+     * channel workspace, where neither surface renders.
+     *
+     * @return array<int, UserGroupData>
+     */
+    protected function userGroupsForWorkspace(Request $request, ?User $user): array
+    {
+        $team = $request->route('team');
+
+        if (! $user || ! $team instanceof Team || ! $this->isWorkspaceRoute($request)) {
+            return [];
+        }
+
+        return UserGroupData::mentionableForTeam($team);
     }
 
     /**

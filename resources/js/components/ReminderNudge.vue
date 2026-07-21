@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, X } from '@lucide/vue';
+import { AlarmClock, Lock, X } from '@lucide/vue';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { useInitials } from '@/composables/useInitials';
@@ -63,12 +63,17 @@ const channelLabel = computed(() =>
                 aria-hidden="true"
                 class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15 text-[10px] font-semibold"
             >
-                {{ getInitials(reminder.authorName) }}
+                <Lock v-if="!reminder.isAccessible" class="size-3.5" />
+                <template v-else>{{
+                    getInitials(reminder.authorName)
+                }}</template>
             </div>
             <div class="flex min-w-0 flex-col gap-0.5">
                 <div class="flex items-baseline gap-1.5">
                     <span class="text-[13px] font-semibold">{{
-                        reminder.authorName
+                        reminder.isAccessible
+                            ? reminder.authorName
+                            : $t('No longer available')
                     }}</span>
                     <span
                         v-if="channelLabel"
@@ -79,7 +84,14 @@ const channelLabel = computed(() =>
                     >
                 </div>
                 <span
-                    v-if="reminder.isDeleted"
+                    v-if="!reminder.isAccessible"
+                    class="text-[13px] text-primary-foreground/70 italic"
+                    >{{
+                        $t('You no longer have access to this channel.')
+                    }}</span
+                >
+                <span
+                    v-else-if="reminder.isDeleted"
                     class="text-[13px] text-primary-foreground/50 italic"
                     >{{ $t('This message was deleted.') }}</span
                 >
@@ -92,7 +104,10 @@ const channelLabel = computed(() =>
         </div>
 
         <div class="flex items-center gap-2.5">
+            <!-- With no channel access left there is nothing to jump to and
+                 nothing worth deferring: only acknowledging remains. -->
             <Button
+                v-if="reminder.isAccessible"
                 variant="unstyled"
                 size="none"
                 type="button"
@@ -103,6 +118,7 @@ const channelLabel = computed(() =>
                 {{ $t('Open message') }}
             </Button>
             <Button
+                v-if="reminder.isAccessible"
                 variant="unstyled"
                 size="none"
                 type="button"

@@ -2,6 +2,7 @@
 import { Forward } from '@lucide/vue';
 import { computed } from 'vue';
 import { useCustomEmojis } from '@/composables/useCustomEmojis';
+import { useUserGroups } from '@/composables/useUserGroups';
 import { renderMessageBody } from '@/lib/messageBody';
 import type { Mention } from '@/types';
 
@@ -15,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const { map: customEmojis } = useCustomEmojis();
+const { groups: userGroups } = useUserGroups();
 
 /**
  * The forwarded body, rendered with its own mentions; empty for a deleted
@@ -23,7 +25,12 @@ const { map: customEmojis } = useCustomEmojis();
 const rendered = computed(() =>
     props.isDeleted
         ? ''
-        : renderMessageBody(props.body, props.mentions, customEmojis.value),
+        : renderMessageBody(
+              props.body,
+              props.mentions,
+              customEmojis.value,
+              userGroups.value,
+          ),
 );
 </script>
 

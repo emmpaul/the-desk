@@ -14,6 +14,7 @@ import {
     ShieldCheck,
     SmilePlus,
     UserPlus,
+    Users,
     X,
 } from '@lucide/vue';
 import { computed, ref } from 'vue';
@@ -49,6 +50,7 @@ import { index as analyticsIndex } from '@/routes/teams/analytics';
 import { index as auditIndex } from '@/routes/teams/audit';
 import { index as auditExportsIndex } from '@/routes/teams/audit-exports';
 import { index as emojisIndex } from '@/routes/teams/emojis';
+import { index as groupsIndex } from '@/routes/teams/groups';
 import { index as integrationsIndex } from '@/routes/teams/integrations';
 import { resend as resendInvitationRoute } from '@/routes/teams/invitations';
 import {
@@ -592,6 +594,7 @@ const confirmTransferOwnership = (member: TeamMember) => {
                 permissions.canViewAnalytics ||
                 permissions.canViewAudit ||
                 permissions.canViewSecurityLog ||
+                permissions.canManageUserGroups ||
                 showIntegrationsLink
             "
             class="border-b border-border py-6"
@@ -609,6 +612,26 @@ const confirmTransferOwnership = (member: TeamMember) => {
                         </div>
                         <div class="truncate text-xs text-muted-foreground">
                             {{ $t('Named emoji for messages and reactions') }}
+                        </div>
+                    </div>
+                    <ChevronRight
+                        class="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                    />
+                </Link>
+
+                <Link
+                    v-if="permissions.canManageUserGroups"
+                    :href="groupsIndex(team.slug)"
+                    data-test="manage-groups-link"
+                    class="flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-brass-border"
+                >
+                    <Users class="h-4 w-4 shrink-0 text-brass" />
+                    <div class="min-w-0">
+                        <div class="text-sm font-semibold">
+                            {{ $t('User groups') }}
+                        </div>
+                        <div class="truncate text-xs text-muted-foreground">
+                            {{ $t('Mentionable aliases for a set of people') }}
                         </div>
                     </div>
                     <ChevronRight

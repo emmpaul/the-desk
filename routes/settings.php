@@ -29,6 +29,7 @@ use App\Http\Controllers\Teams\SecurityLogController;
 use App\Http\Controllers\Teams\TeamController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Controllers\Teams\TeamMemberController;
+use App\Http\Controllers\Teams\UserGroupController;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -116,6 +117,17 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::post('settings/teams/{team}/emojis', [CustomEmojiController::class, 'store'])->name('teams.emojis.store');
         Route::delete('settings/teams/{team}/emojis/{emoji}', [CustomEmojiController::class, 'destroy'])
             ->name('teams.emojis.destroy');
+
+        Route::get('settings/teams/{team}/groups', [UserGroupController::class, 'index'])->name('teams.groups.index');
+        Route::post('settings/teams/{team}/groups', [UserGroupController::class, 'store'])->name('teams.groups.store');
+        Route::patch('settings/teams/{team}/groups/{group}', [UserGroupController::class, 'update'])
+            ->name('teams.groups.update');
+        Route::delete('settings/teams/{team}/groups/{group}', [UserGroupController::class, 'destroy'])
+            ->name('teams.groups.destroy');
+        Route::post('settings/teams/{team}/groups/{group}/members', [UserGroupController::class, 'storeMember'])
+            ->name('teams.groups.members.store');
+        Route::delete('settings/teams/{team}/groups/{group}/members/{user}', [UserGroupController::class, 'destroyMember'])
+            ->name('teams.groups.members.destroy');
 
         Route::get('settings/teams/{team}/members/{user}', [TeamMemberController::class, 'show'])->name('teams.members.show');
         Route::get('settings/teams/{team}/members/{user}/card', [TeamMemberController::class, 'card'])->name('teams.members.card');

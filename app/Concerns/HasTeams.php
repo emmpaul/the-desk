@@ -182,6 +182,7 @@ trait HasTeams
             canViewAnalytics: ! $team->is_personal && ($role?->isAtLeast(TeamRole::Admin) ?? false),
             canManageEmojis: ! $team->is_personal && ($role?->isAtLeast(TeamRole::Admin) ?? false),
             canManageIntegrations: ! $team->is_personal && ($role?->hasPermission(TeamPermission::ManageIntegrations) ?? false),
+            canManageUserGroups: ! $team->is_personal && ($role?->hasPermission(TeamPermission::ManageUserGroups) ?? false),
         );
     }
 
@@ -191,6 +192,19 @@ trait HasTeams
             ->when($excluding, fn ($query) => $query->where('teams.id', '!=', $excluding->id))
             ->orderByRaw('LOWER(teams.name)')
             ->first();
+    }
+
+    /**
+     * Drop the user from every mentionable group of the given team.
+     *
+     * Group membership presupposes workspace membership, so this runs wherever a
+     * membership ends — a later group mention must not reach someone who has
+     * left. The pivot itself only cascades on user *deletion*, which is a
+     * different thing entirely.
+     */
+    public function leaveUserGroups(Team $team): void
+    {
+        $this->userGroups()->detach($team->userGroups()->pluck('id'));
     }
 
     /**
