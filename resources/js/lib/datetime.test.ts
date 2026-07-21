@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     formatDateTime,
+    formatIsoDay,
     formatLocalTime,
     formatRelativeTime,
     formatTimeOfDay,
@@ -37,6 +38,27 @@ describe('formatDateTime', () => {
     it('rolls over to the next day in a far-ahead zone', () => {
         expect(formatDateTime(INSTANT, 'Asia/Tokyo')).toContain('11');
         expect(formatDateTime(INSTANT, 'Asia/Tokyo')).toContain('12:30');
+    });
+});
+
+describe('formatIsoDay', () => {
+    it('renders a calendar day with its month and year', () => {
+        expect(formatIsoDay('2026-07-10')).toBe('Jul 10, 2026');
+    });
+
+    it('follows the requested locale', () => {
+        expect(formatIsoDay('2026-07-10', 'fr')).toContain('juil');
+    });
+
+    /**
+     * A bare `YYYY-MM-DD` is parsed as UTC midnight by `new Date()`, which reads
+     * as the previous day in any behind-UTC zone. The helper anchors the day to
+     * local midnight instead, so a calendar day never shifts under the reader.
+     */
+    it('keeps the day stable regardless of the runtime time zone', () => {
+        expect(formatIsoDay('2026-01-01')).toContain('1');
+        expect(formatIsoDay('2026-01-01')).toContain('2026');
+        expect(formatIsoDay('2026-01-01')).toContain('Jan');
     });
 });
 
