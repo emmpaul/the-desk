@@ -9,6 +9,7 @@ use App\Data\MessageReminderData;
 use App\Data\SlashCommandData;
 use App\Data\UpdateStatusData;
 use App\Data\UserData;
+use App\Data\UserGroupData;
 use App\Enums\MessageReminderStatus;
 use App\Enums\MessageType;
 use App\Enums\SidebarPosition;
@@ -176,6 +177,11 @@ class HandleInertiaRequests extends Middleware
             // bodies and reaction pills can resolve `:name:` shortcodes to images.
             // A revoked emoji is simply absent, so its token falls back to text.
             'customEmojis' => fn (): array => $this->customEmojisForWorkspace($request, $user),
+            // The current team's mentionable user groups, feeding the composer's
+            // `@` menu and the anti-spoof check that decides whether a
+            // `group:<id>` token renders as a pill or as plain text. A deleted
+            // group is simply absent, so its token falls back to text.
+            'userGroups' => fn (): array => $this->userGroupsForWorkspace($request, $user),
             // The composer's slash-command autocomplete manifest, built from the
             // registry with copy already translated under the active locale.
             // Server-authoritative: a newly registered command appears in
@@ -369,6 +375,24 @@ class HandleInertiaRequests extends Middleware
         }
 
         return CustomEmojiData::mapForTeam($team);
+    }
+
+    /**
+     * The team-in-the-URL's mentionable user groups, feeding the composer's `@`
+     * menu and the group-pill resolution in message bodies. Empty off the
+     * channel workspace, where neither surface renders.
+     *
+     * @return array<int, UserGroupData>
+     */
+    protected function userGroupsForWorkspace(Request $request, ?User $user): array
+    {
+        $team = $request->route('team');
+
+        if (! $user || ! $team instanceof Team || ! $this->isWorkspaceRoute($request)) {
+            return [];
+        }
+
+        return UserGroupData::mentionableForTeam($team);
     }
 
     /**

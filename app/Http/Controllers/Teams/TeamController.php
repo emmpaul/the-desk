@@ -159,6 +159,8 @@ class TeamController extends Controller
             ->where('user_id', $user->id)
             ->delete();
 
+        $user->leaveUserGroups($team);
+
         if ($fallbackTeam) {
             $user->switchTeam($fallbackTeam);
         }

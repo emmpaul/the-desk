@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/hover-card';
 import UserHoverCard from '@/components/UserHoverCard.vue';
 import { useCustomEmojis } from '@/composables/useCustomEmojis';
+import { useUserGroups } from '@/composables/useUserGroups';
 import { useInitials } from '@/composables/useInitials';
 import { NEAR_BOTTOM_THRESHOLD } from '@/composables/useScrollPin';
 import { useTimelineVirtualizer } from '@/composables/useTimelineVirtualizer';
@@ -242,6 +243,7 @@ const { getInitials } = useInitials();
 const { t } = useTranslations();
 
 const { map: customEmojis } = useCustomEmojis();
+const { groups: userGroups } = useUserGroups();
 
 const page = usePage();
 
@@ -266,6 +268,7 @@ function bodySegments(message: Message): MessageBodySegment[] {
         message.body,
         message.mentions,
         customEmojis.value,
+        userGroups.value,
     );
 }
 
@@ -1090,6 +1093,22 @@ function confirmDelete(): void {
                                                     >@{{ segment.name }}</span
                                                 >
                                             </UserHoverCard>
+                                        </InlineMarks>
+                                        <InlineMarks
+                                            v-else-if="
+                                                segment.kind === 'groupMention'
+                                            "
+                                            :marks="segment.marks"
+                                        >
+                                            <!-- A group has no profile to hover,
+                                                 so the pill is inert: its own hue
+                                                 is what marks it as reaching more
+                                                 than one person. -->
+                                            <span
+                                                data-test="message-group-mention"
+                                                class="rounded bg-violet-500/10 px-1 py-0.5 font-medium text-violet-700 dark:bg-violet-400/15 dark:text-violet-300"
+                                                >@{{ segment.name }}</span
+                                            >
                                         </InlineMarks>
                                         <InlineMarks
                                             v-else-if="segment.kind === 'emoji'"

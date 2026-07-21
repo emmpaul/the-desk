@@ -195,6 +195,19 @@ trait HasTeams
     }
 
     /**
+     * Drop the user from every mentionable group of the given team.
+     *
+     * Group membership presupposes workspace membership, so this runs wherever a
+     * membership ends — a later group mention must not reach someone who has
+     * left. The pivot itself only cascades on user *deletion*, which is a
+     * different thing entirely.
+     */
+    public function leaveUserGroups(Team $team): void
+    {
+        $this->userGroups()->detach($team->userGroups()->pluck('id'));
+    }
+
+    /**
      * Determine if the user has the given permission on the team.
      */
     public function hasTeamPermission(Team $team, TeamPermission $permission): bool

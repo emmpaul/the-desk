@@ -45,6 +45,7 @@ declare module '@inertiajs/core' {
             teamMembers?: PersonRef[];
             channelSections?: ChannelSection[];
             customEmojis?: Record<string, string>;
+            userGroups?: App.Data.UserGroupData[];
             slashCommands?: App.Data.SlashCommandData[];
             collapsedChannelSections?: string[];
             hasUnreadThreads?: boolean;
