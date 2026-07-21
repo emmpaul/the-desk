@@ -70,21 +70,21 @@ function liveApiOperations(): array
 }
 
 /**
- * The documented surface as `"<method> <path>" => "<scope>"`, reading the scope
- * out of each operation's `bearerAuth` security requirement.
+ * The documented surface as `"<method> <path>" => "<scope>"`.
+ *
+ * OpenAPI 3.1 requires the security requirement array to be empty for any
+ * scheme that is not `oauth2`/`openIdConnect`, so the scope cannot live in the
+ * `bearerAuth` entry — it is carried in the `x-required-scope` extension.
  *
  * @param  array<string, mixed>  $spec
  * @return array<string, string|null>
  */
 function documentedApiOperations(array $spec): array
 {
-    $operations = [];
-
-    foreach ($spec['paths'] as $path => $methods) {
-        foreach ($methods as $method => $operation) {
-            $operations[$method.' '.$path] = $operation['security'][0]['bearerAuth'][0] ?? null;
-        }
-    }
+    $operations = array_map(
+        static fn (array $operation): ?string => $operation['x-required-scope'] ?? null,
+        specOperations($spec),
+    );
 
     ksort($operations);
 
@@ -94,15 +94,19 @@ function documentedApiOperations(array $spec): array
 /**
  * Every operation object in the document, keyed by `"<method> <path>"`.
  *
+ * A path item may also carry non-operation keys (`summary`, `parameters`, …),
+ * so only the HTTP verbs OpenAPI defines are treated as operations.
+ *
  * @param  array<string, mixed>  $spec
  * @return array<string, array<string, mixed>>
  */
 function specOperations(array $spec): array
 {
+    $verbs = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
     $operations = [];
 
-    foreach ($spec['paths'] as $path => $methods) {
-        foreach ($methods as $method => $operation) {
+    foreach ($spec['paths'] as $path => $pathItem) {
+        foreach (array_intersect_key($pathItem, array_flip($verbs)) as $method => $operation) {
             $operations[$method.' '.$path] = $operation;
         }
     }
@@ -162,6 +166,27 @@ test('the spec describes the bearer token security scheme the API authenticates 
         ->and($scheme['scheme'])->toBe('bearer');
 });
 
+test('every operation requires the bearer scheme with the empty array 3.1 mandates', function () use ($spec): void {
+    foreach (specOperations($spec()) as $name => $operation) {
+        expect($operation['security'])->toBe([['bearerAuth' => []]], $name.' must require bearerAuth with no in-band scopes');
+    }
+});
+
+test('every operation repeats its required scope in its description', function () use ($spec): void {
+    // The rendered reference does not surface `x-required-scope`, so the scope
+    // is restated at the top of the description. Pinning the two together keeps
+    // the human-readable copy from drifting from the machine-readable one.
+    $missing = array_keys(array_filter(
+        specOperations($spec()),
+        static fn (array $operation): bool => ! str_contains(
+            (string) $operation['description'],
+            '**Required scope:** `'.$operation['x-required-scope'].'`',
+        ),
+    ));
+
+    expect($missing)->toBeEmpty('these operations must state their scope: '.implode(', ', $missing));
+});
+
 test('every operation carries an operationId, a summary and a tag', function () use ($spec): void {
     foreach (specOperations($spec()) as $name => $operation) {
         expect(array_keys($operation))->toContain('operationId', 'summary', 'tags')
@@ -208,21 +233,27 @@ test('every operation that accepts a body documents the validation failure', fun
 });
 
 test('every path parameter the template declares is described', function () use ($spec): void {
-    foreach ($spec()['paths'] as $path => $methods) {
-        preg_match_all('/\{(\w+)}/', (string) $path, $matches);
+    $document = $spec();
 
-        foreach ($methods as $method => $operation) {
-            $described = array_column(
-                array_filter($operation['parameters'] ?? [], static fn (array $parameter): bool => ($parameter['in'] ?? null) === 'path'),
-                'name',
-            );
+    foreach (specOperations($document) as $name => $operation) {
+        $path = Str::after($name, ' ');
 
-            sort($described);
-            $expected = $matches[1];
-            sort($expected);
+        preg_match_all('/\{(\w+)}/', $path, $matches);
 
-            expect($described)->toBe($expected, $method.' '.$path.' must describe each path parameter');
-        }
+        // A path item may hoist parameters shared by all its operations, so the
+        // two levels are merged before the comparison.
+        $parameters = [...$document['paths'][$path]['parameters'] ?? [], ...$operation['parameters'] ?? []];
+
+        $described = array_unique(array_column(
+            array_filter($parameters, static fn (array $parameter): bool => ($parameter['in'] ?? null) === 'path'),
+            'name',
+        ));
+
+        sort($described);
+        $expected = $matches[1];
+        sort($expected);
+
+        expect($described)->toBe($expected, $name.' must describe each path parameter');
     }
 });
 

@@ -21,9 +21,10 @@ future `v2` never breaks a `v1` client.
 
 ## Machine-readable spec
 
-The API is described by an **OpenAPI 3.1** document, published at
-[`/openapi.yaml`](/openapi.yaml). Point a generator at it to get a typed client
-in your language, or import it into Postman or Insomnia:
+The API is described by an **OpenAPI 3.1** document, published on this site at
+[`/openapi.yaml`](/openapi.yaml) (not on your own instance). Point a generator
+at it to get a typed client in your language, or import it into Postman or
+Insomnia:
 
 ```bash
 curl -O https://the-desk.emmanuelpaul.com/openapi.yaml

@@ -104,7 +104,10 @@ test('the docs job lints the openapi spec against the 3.1 schema', function () u
 test('the docs project provides the openapi lint script and its linter', function () use ($docsPath): void {
     $package = json_decode((string) file_get_contents($docsPath('package.json')), true);
 
-    expect($package['scripts'])->toHaveKey('openapi:lint')
+    // The script must actually validate the spec: a placeholder that merely
+    // exists under the right key would satisfy the workflow gate above while
+    // checking nothing.
+    expect($package['scripts']['openapi:lint'] ?? '')->toBe('redocly lint public/openapi.yaml')
         ->and($package['devDependencies'] ?? [])->toHaveKey('@redocly/cli');
 });
 

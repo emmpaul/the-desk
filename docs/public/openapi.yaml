@@ -61,13 +61,16 @@ paths:
       operationId: listChannels
       summary: List channels
       description: |
+        **Required scope:** `channels:read`
+
         Lists the channels the token's subject may view within its acting team,
         ordered by name. A bot sees only the channels it belongs to; a personal
         access token sees what the person sees in the app — every public channel
         in the team plus the private ones they belong to.
       tags: [Channels]
       security:
-        - bearerAuth: ['channels:read']
+        - bearerAuth: []
+      x-required-scope: channels:read
       responses:
         '200':
           description: The channels the subject may view.
@@ -90,12 +93,15 @@ paths:
       operationId: createChannel
       summary: Create a channel
       description: |
+        **Required scope:** `channels:write`
+
         Creates a channel in the subject's acting team and seeds the subject as
         its first member. A leading `#` in the name is stripped; a name that
         slugs to an existing channel in the team is rejected with `422`.
       tags: [Channels]
       security:
-        - bearerAuth: ['channels:write']
+        - bearerAuth: []
+      x-required-scope: channels:write
       requestBody:
         required: true
         content:
@@ -132,9 +138,12 @@ paths:
     get:
       operationId: showChannel
       summary: Show a channel
+      description: |
+        **Required scope:** `channels:read`
       tags: [Channels]
       security:
-        - bearerAuth: ['channels:read']
+        - bearerAuth: []
+      x-required-scope: channels:read
       parameters:
         - name: channel
           in: path
@@ -160,13 +169,16 @@ paths:
       operationId: archiveChannel
       summary: Archive a channel
       description: |
+        **Required scope:** `channels:write`
+
         Archives a channel, making it read-only. A bot may archive only a
         channel it created, and never `#general`, a direct message, or an
         already-archived channel. A personal access token defers to the same
         rule the app applies: the channel's creator, or a team admin or above.
       tags: [Channels]
       security:
-        - bearerAuth: ['channels:write']
+        - bearerAuth: []
+      x-required-scope: channels:write
       parameters:
         - name: channel
           in: path
@@ -191,10 +203,14 @@ paths:
     get:
       operationId: listMessages
       summary: List a channel's messages
-      description: A page of the channel's messages, newest first, 50 per page.
+      description: |
+        **Required scope:** `messages:read`
+
+        A page of the channel's messages, newest first, 50 per page.
       tags: [Messages]
       security:
-        - bearerAuth: ['messages:read']
+        - bearerAuth: []
+      x-required-scope: messages:read
       parameters:
         - name: channel
           in: path
@@ -235,12 +251,15 @@ paths:
       operationId: postMessage
       summary: Post a message
       description: |
+        **Required scope:** `messages:write`
+
         Posts a message to the channel as the token's subject. Supply
         `client_uuid` to make the call idempotent: resending the same uuid
         resolves to the message already created rather than a duplicate.
       tags: [Messages]
       security:
-        - bearerAuth: ['messages:write']
+        - bearerAuth: []
+      x-required-scope: messages:write
       parameters:
         - name: channel
           in: path
@@ -300,9 +319,12 @@ paths:
     get:
       operationId: showMessage
       summary: Show a message
+      description: |
+        **Required scope:** `messages:read`
       tags: [Messages]
       security:
-        - bearerAuth: ['messages:read']
+        - bearerAuth: []
+      x-required-scope: messages:read
       parameters:
         - name: channel
           in: path
@@ -333,10 +355,14 @@ paths:
     patch:
       operationId: editMessage
       summary: Edit a message
-      description: Only the message's own author may edit it.
+      description: |
+        **Required scope:** `messages:write`
+
+        Only the message's own author may edit it.
       tags: [Messages]
       security:
-        - bearerAuth: ['messages:write']
+        - bearerAuth: []
+      x-required-scope: messages:write
       parameters:
         - name: channel
           in: path
@@ -381,12 +407,15 @@ paths:
       operationId: deleteMessage
       summary: Delete a message
       description: |
+        **Required scope:** `messages:write`
+
         Deletes a message, leaving a tombstone in the channel so the
         conversation keeps its shape. Only the message's own author may delete
         it.
       tags: [Messages]
       security:
-        - bearerAuth: ['messages:write']
+        - bearerAuth: []
+      x-required-scope: messages:write
       parameters:
         - name: channel
           in: path
@@ -415,12 +444,15 @@ paths:
       operationId: addReaction
       summary: Add a reaction
       description: |
+        **Required scope:** `reactions:write`
+
         Adds the subject's reaction to a message. Idempotent — re-adding a
         reaction the subject already left is a no-op. System messages cannot be
         reacted to.
       tags: [Reactions]
       security:
-        - bearerAuth: ['reactions:write']
+        - bearerAuth: []
+      x-required-scope: reactions:write
       parameters:
         - name: channel
           in: path
@@ -463,11 +495,14 @@ paths:
       operationId: removeReaction
       summary: Remove a reaction
       description: |
+        **Required scope:** `reactions:write`
+
         Removes the subject's reaction from a message. Idempotent — removing a
         reaction that is not there is a no-op.
       tags: [Reactions]
       security:
-        - bearerAuth: ['reactions:write']
+        - bearerAuth: []
+      x-required-scope: reactions:write
       parameters:
         - name: channel
           in: path
@@ -502,10 +537,14 @@ paths:
     get:
       operationId: listChannelMembers
       summary: List a channel's members
-      description: The channel's members, ordered by name.
+      description: |
+        **Required scope:** `members:read`
+
+        The channel's members, ordered by name.
       tags: [Members]
       security:
-        - bearerAuth: ['members:read']
+        - bearerAuth: []
+      x-required-scope: members:read
       parameters:
         - name: channel
           in: path
@@ -536,13 +575,16 @@ paths:
       operationId: addChannelMember
       summary: Add a channel member
       description: |
+        **Required scope:** `members:write`
+
         Adds a team member to a private channel. A bot may do this on any
         private channel it belongs to; a personal access token defers to the
         same rule the app applies — an existing member of the private channel,
         or a team admin or above.
       tags: [Members]
       security:
-        - bearerAuth: ['members:write']
+        - bearerAuth: []
+      x-required-scope: members:write
       parameters:
         - name: channel
           in: path
@@ -581,11 +623,14 @@ paths:
       operationId: removeChannelMember
       summary: Remove a channel member
       description: |
+        **Required scope:** `members:write`
+
         Removes a member from a private channel. A member who is not in the
         channel is answered with `404`.
       tags: [Members]
       security:
-        - bearerAuth: ['members:write']
+        - bearerAuth: []
+      x-required-scope: members:write
       parameters:
         - name: channel
           in: path
@@ -613,10 +658,14 @@ paths:
     get:
       operationId: listWebhookSubscriptions
       summary: List webhook subscriptions
-      description: The workspace's outgoing-webhook subscriptions, newest first.
+      description: |
+        **Required scope:** `webhooks:read`
+
+        The workspace's outgoing-webhook subscriptions, newest first.
       tags: [Webhooks]
       security:
-        - bearerAuth: ['webhooks:read']
+        - bearerAuth: []
+      x-required-scope: webhooks:read
       responses:
         '200':
           description: The workspace's subscriptions.
@@ -639,12 +688,15 @@ paths:
       operationId: createWebhookSubscription
       summary: Create a webhook subscription
       description: |
+        **Required scope:** `webhooks:write`
+
         Registers an outgoing-webhook subscription in the workspace. The signing
         secret is returned in plaintext here **exactly once** and never again —
         store it now; it is what you verify delivery signatures with.
       tags: [Webhooks]
       security:
-        - bearerAuth: ['webhooks:write']
+        - bearerAuth: []
+      x-required-scope: webhooks:write
       requestBody:
         required: true
         content:
@@ -661,8 +713,9 @@ paths:
                   format: uri
                   maxLength: 2048
                   description: |
-                    A publicly reachable HTTPS endpoint. Loopback and private
-                    network addresses are rejected.
+                    A publicly reachable `http://` or `https://` endpoint.
+                    Loopback, private, link-local, and cloud-metadata addresses
+                    are rejected.
                   examples: ['https://hooks.example.com/the-desk']
                 events:
                   type: array
@@ -702,10 +755,14 @@ paths:
     get:
       operationId: showWebhookSubscription
       summary: Show a webhook subscription
-      description: The subscription, with its 20 most recent delivery attempts.
+      description: |
+        **Required scope:** `webhooks:read`
+
+        The subscription, with its 20 most recent delivery attempts.
       tags: [Webhooks]
       security:
-        - bearerAuth: ['webhooks:read']
+        - bearerAuth: []
+      x-required-scope: webhooks:read
       parameters:
         - name: webhookSubscription
           in: path
@@ -741,10 +798,14 @@ paths:
     delete:
       operationId: revokeWebhookSubscription
       summary: Revoke a webhook subscription
-      description: Deletes the subscription, stopping all future delivery.
+      description: |
+        **Required scope:** `webhooks:write`
+
+        Deletes the subscription, stopping all future delivery.
       tags: [Webhooks]
       security:
-        - bearerAuth: ['webhooks:write']
+        - bearerAuth: []
+      x-required-scope: webhooks:write
       parameters:
         - name: webhookSubscription
           in: path
@@ -768,8 +829,12 @@ components:
       scheme: bearer
       description: |
         A bot token or personal access token minted from **Team settings →
-        Integrations**, sent as `Authorization: Bearer <token>`. The scopes
-        listed on each operation are the abilities the token must carry.
+        Integrations**, sent as `Authorization: Bearer <token>`.
+
+        OpenAPI 3.1 requires the security requirement array to be empty for a
+        scheme that is not `oauth2` or `openIdConnect`, so the one scope each
+        operation demands is carried in its `x-required-scope` extension (and
+        repeated at the top of its description).
 
   schemas:
     ChannelVisibility:
