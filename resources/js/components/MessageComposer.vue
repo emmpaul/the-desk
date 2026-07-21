@@ -10,6 +10,7 @@ import {
     Pencil,
     Plus,
     Strikethrough,
+    Users,
     X,
 } from '@lucide/vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -33,6 +34,7 @@ import type {
     SendCallbacks,
 } from '@/composables/useMessageActions';
 import { useTranslations } from '@/composables/useTranslations';
+import { useUserGroups } from '@/composables/useUserGroups';
 import { formatFileSize } from '@/lib/attachments';
 import {
     isComposerEditTrigger,
@@ -150,6 +152,7 @@ const emit = defineEmits<{
 }>();
 
 const { getInitials } = useInitials();
+const { search: searchGroups } = useUserGroups();
 const { t } = useTranslations();
 
 const body = ref(props.initialBody ?? '');
@@ -310,9 +313,12 @@ watch(
 );
 
 /**
- * Well-formed mention token: `@[Display Name](user-id)`. The parser on the
- * server resolves the id; here it lets us collect the mentions being sent and
- * recognise a completed token so it never re-triggers the autocomplete.
+ * Well-formed *person* mention token: `@[Display Name](user-id)`. The parser on
+ * the server resolves the id; here it lets us collect the mentions being sent
+ * and recognise a completed token so it never re-triggers the autocomplete. A
+ * group token carries a `group:` prefix, so it deliberately does not match —
+ * the optimistic row lists people, and the group's fan-out is resolved
+ * server-side at post time.
  */
 const MENTION_TOKEN = /@\[[^\]]+\]\(([0-9a-fA-F-]{36})\)/g;
 
@@ -324,7 +330,27 @@ const MENTION_QUERY = /(?:^|\s)@([^\s@[\]()]*)$/;
 
 const MAX_SUGGESTIONS = 8;
 
-const suggestions = ref<Mention[]>([]);
+/**
+ * How many of those slots user groups may claim. Capped so the menu stays a
+ * people-picker first, but never so low that a matching group is crowded out.
+ */
+const MAX_GROUP_SUGGESTIONS = 3;
+
+/**
+ * One row of the `@` menu: a person, or a user group that fans the mention out
+ * to everyone in it. Both live in one list so the keyboard model, the active
+ * index, and the ARIA wiring stay single-source.
+ */
+type MentionSuggestion =
+    | { kind: 'user'; id: string; label: string; member: Mention }
+    | {
+          kind: 'group';
+          id: string;
+          label: string;
+          group: App.Data.UserGroupData;
+      };
+
+const suggestions = ref<MentionSuggestion[]>([]);
 const activeIndex = ref(0);
 const menuOpen = ref(false);
 
@@ -359,9 +385,35 @@ function refreshSuggestions(): void {
 
     const needle = active.query.toLowerCase();
 
-    suggestions.value = props.members
+    // People first, then groups: naming an individual is the far more common
+    // intent, and a group reaching several people should never be the row the
+    // caret lands on by default.
+    const people: MentionSuggestion[] = props.members
         .filter((member) => member.name.toLowerCase().includes(needle))
-        .slice(0, MAX_SUGGESTIONS);
+        .map((member) => ({
+            kind: 'user',
+            id: member.id,
+            label: member.name,
+            member,
+        }));
+
+    const groups: MentionSuggestion[] = searchGroups(needle).map((group) => ({
+        kind: 'group',
+        id: group.id,
+        label: group.slug,
+        group,
+    }));
+
+    // Groups get reserved slots at the tail rather than whatever the people list
+    // leaves over: a plain `[...people, ...groups].slice(MAX)` would hide a
+    // matching group entirely behind eight matching names, making it
+    // unreachable from the menu.
+    const groupSlots = Math.min(groups.length, MAX_GROUP_SUGGESTIONS);
+
+    suggestions.value = [
+        ...people.slice(0, MAX_SUGGESTIONS - groupSlots),
+        ...groups.slice(0, groupSlots),
+    ];
     activeIndex.value = 0;
     menuOpen.value = suggestions.value.length > 0;
 }
@@ -371,7 +423,7 @@ function moveActive(delta: number): void {
     activeIndex.value = (activeIndex.value + delta + count) % count;
 }
 
-function selectMember(member: Mention): void {
+function selectSuggestion(suggestion: MentionSuggestion): void {
     const el = textarea.value;
     const caret = el ? el.selectionStart : body.value.length;
     const active = activeQuery();
@@ -382,7 +434,12 @@ function selectMember(member: Mention): void {
 
     const before = body.value.slice(0, active.start);
     const after = body.value.slice(caret);
-    const token = `@[${member.name}](${member.id}) `;
+    // The `group:` prefix is what tells the server (and the renderer) to expand
+    // the token to a whole group rather than resolve one person.
+    const token =
+        suggestion.kind === 'group'
+            ? `@[${suggestion.label}](group:${suggestion.id}) `
+            : `@[${suggestion.label}](${suggestion.id}) `;
 
     body.value = before + token + after;
     menuOpen.value = false;
@@ -402,10 +459,10 @@ function selectMember(member: Mention): void {
 }
 
 function selectActive(): void {
-    const member = suggestions.value[activeIndex.value];
+    const suggestion = suggestions.value[activeIndex.value];
 
-    if (member) {
-        selectMember(member);
+    if (suggestion) {
+        selectSuggestion(suggestion);
     }
 }
 
@@ -1189,9 +1246,9 @@ function onKeydown(event: KeyboardEvent): void {
                 class="absolute bottom-full left-0 z-10 mb-2 max-h-60 w-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md"
             >
                 <li
-                    v-for="(member, index) in suggestions"
+                    v-for="(suggestion, index) in suggestions"
                     :id="`mention-option-${index}`"
-                    :key="member.id"
+                    :key="`${suggestion.kind}-${suggestion.id}`"
                     data-test="mention-option"
                     role="option"
                     tabindex="-1"
@@ -1202,16 +1259,41 @@ function onKeydown(event: KeyboardEvent): void {
                             ? 'bg-accent text-accent-foreground'
                             : 'hover:bg-accent/60'
                     "
-                    @mousedown.prevent="selectMember(member)"
+                    @mousedown.prevent="selectSuggestion(suggestion)"
                     @mouseenter="activeIndex = index"
                 >
                     <span
+                        v-if="suggestion.kind === 'group'"
+                        class="flex size-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-700 select-none dark:bg-violet-400/15 dark:text-violet-300"
+                        aria-hidden="true"
+                    >
+                        <Users class="size-3.5" />
+                    </span>
+                    <span
+                        v-else
                         class="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[10px] font-semibold text-primary select-none"
                         aria-hidden="true"
                     >
-                        {{ getInitials(member.name) }}
+                        {{ getInitials(suggestion.label) }}
                     </span>
-                    <span class="truncate">{{ member.name }}</span>
+                    <span class="truncate">{{ suggestion.label }}</span>
+                    <!-- The member count is what tells a reader how far this one
+                         mention reaches before they send it. -->
+                    <span
+                        v-if="suggestion.kind === 'group'"
+                        data-test="mention-option-group-count"
+                        class="ml-auto shrink-0 text-[11px] text-muted-foreground"
+                    >
+                        {{
+                            suggestion.group.membersCount === 1
+                                ? $t(':count member', {
+                                      count: suggestion.group.membersCount,
+                                  })
+                                : $t(':count members', {
+                                      count: suggestion.group.membersCount,
+                                  })
+                        }}
+                    </span>
                 </li>
                 <!-- A quiet footnote explaining why bots never appear here — shown
                      only in a channel that actually has a bot. Presentational, so

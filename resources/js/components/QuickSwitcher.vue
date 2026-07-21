@@ -20,6 +20,7 @@ import { getInitials } from '@/composables/useInitials';
 import { useMessageSearch } from '@/composables/useMessageSearch';
 import { useOpenDirectMessage } from '@/composables/useOpenDirectMessage';
 import { useTranslations } from '@/composables/useTranslations';
+import { useUserGroups } from '@/composables/useUserGroups';
 import { formatDateTime } from '@/lib/datetime';
 import { renderMessageBody } from '@/lib/messageBody';
 import { rankPeople } from '@/lib/peopleDirectory';
@@ -127,6 +128,7 @@ watch(open, (isOpen) => {
 const page = usePage();
 
 const { map: customEmojis } = useCustomEmojis();
+const { groups: userGroups } = useUserGroups();
 
 const viewerTimeZone = computed(
     () => page.props.auth.user.timezone ?? undefined,
@@ -319,6 +321,7 @@ function openReminders(): void {
                                         result.message.body,
                                         result.message.mentions,
                                         customEmojis,
+                                        userGroups,
                                     )
                                 "
                             ></span>

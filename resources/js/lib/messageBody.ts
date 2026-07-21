@@ -18,10 +18,13 @@ function escapeHtml(text: string): string {
 
 /**
  * The composer stores each resolved mention as a `@[Display Name](user-id)`
- * token. None of its literal characters are altered by HTML escaping, so the
- * token survives escapeHtml intact and can be matched afterwards.
+ * token, and each user-group mention as `@[handle](group:group-id)`. None of
+ * their literal characters are altered by HTML escaping, so a token survives
+ * escapeHtml intact and can be matched afterwards. The `group:` prefix is what
+ * tells the two apart; its absence is the original user token, so bodies
+ * written before groups existed still resolve.
  */
-const MENTION_PATTERN = /@\[([^\]]+)\]\(([0-9a-fA-F-]{36})\)/g;
+const MENTION_PATTERN = /@\[([^\]]+)\]\((group:)?([0-9a-fA-F-]{36})\)/g;
 
 /**
  * http/https URLs, consuming everything up to whitespace. Any escaped `<`
@@ -99,7 +102,15 @@ export type MessageBodySegment =
     | { kind: 'html'; html: string }
     | { kind: 'link'; href: string; marks?: InlineMark[] }
     | { kind: 'mention'; id: string; name: string; marks?: InlineMark[] }
+    | { kind: 'groupMention'; id: string; name: string; marks?: InlineMark[] }
     | { kind: 'emoji'; name: string; url: string; marks?: InlineMark[] };
+
+/**
+ * The minimum shape needed to resolve a `group:<id>` token: the workspace's
+ * mentionable groups, as shared on every in-workspace request. Structurally
+ * satisfied by `App.Data.UserGroupData`.
+ */
+export type ResolvableGroup = { id: string };
 
 /**
  * The highlighted-pill styling for a resolved mention, shared by the interactive
@@ -108,8 +119,19 @@ export type MessageBodySegment =
 const MENTION_PILL_CLASS =
     'rounded px-1 py-0.5 font-medium text-blue-700 bg-blue-500/10 dark:text-blue-300 dark:bg-blue-400/15';
 
+/**
+ * The same pill in a distinct hue, so a mention that reaches a whole group reads
+ * as different from one that names a single person at a glance.
+ */
+const GROUP_PILL_CLASS =
+    'rounded px-1 py-0.5 font-medium text-violet-700 bg-violet-500/10 dark:text-violet-300 dark:bg-violet-400/15';
+
 function mentionPillHtml(name: string): string {
     return `<span class="${MENTION_PILL_CLASS}">@${escapeHtml(name)}</span>`;
+}
+
+function groupPillHtml(name: string): string {
+    return `<span class="${GROUP_PILL_CLASS}">@${escapeHtml(name)}</span>`;
 }
 
 /** Escape a run of text for HTML and preserve its newlines as `<br>`. */
@@ -130,6 +152,7 @@ function tokenizeTextRun(
     marks: InlineMark[],
     resolved: Set<string>,
     emojiMap: CustomEmojiMap,
+    resolvedGroups: Set<string>,
 ): MessageBodySegment[] {
     const segments: MessageBodySegment[] = [];
 
@@ -174,9 +197,11 @@ function tokenizeTextRun(
     };
 
     /**
-     * Mentions within a run that has no URL. Only ids present in `resolved`
-     * become interactive; any other well-formed token falls back to plain
-     * `@Name` text so a spoofed token can never masquerade as a real mention.
+     * Mentions within a run that has no URL. Only ids present in `resolved` (for
+     * people) or `resolvedGroups` (for user groups) become interactive; any other
+     * well-formed token falls back to plain `@Name` text so a spoofed token can
+     * never masquerade as a real mention. A group deleted since the message was
+     * sent lands in that same fallback.
      */
     const pushInline = (chunk: string): void => {
         const pattern = new RegExp(MENTION_PATTERN.source, 'g');
@@ -184,11 +209,14 @@ function tokenizeTextRun(
         let match: RegExpExecArray | null;
 
         while ((match = pattern.exec(chunk)) !== null) {
-            const [raw, name, id] = match;
+            const [raw, name, prefix, id] = match;
+            const isGroup = prefix !== undefined;
 
             pushEmojiRun(chunk.slice(lastIndex, match.index));
 
-            if (resolved.has(id)) {
+            if (isGroup && resolvedGroups.has(id)) {
+                segments.push(withMarks({ kind: 'groupMention', id, name }));
+            } else if (!isGroup && resolved.has(id)) {
                 segments.push(withMarks({ kind: 'mention', id, name }));
             } else {
                 pushHtml(`@${name}`);
@@ -257,8 +285,10 @@ export function tokenizeMessageBody(
     body: string,
     mentions: Mention[] = [],
     emojiMap: CustomEmojiMap = {},
+    groups: ResolvableGroup[] = [],
 ): MessageBodySegment[] {
     const resolved = new Set(mentions.map((mention) => mention.id));
+    const resolvedGroups = new Set(groups.map((group) => group.id));
     const segments: MessageBodySegment[] = [];
     const tokens = markdown.parseInline(body, {})[0]?.children ?? [];
 
@@ -271,7 +301,13 @@ export function tokenizeMessageBody(
     const flush = (): void => {
         if (buffer !== '') {
             segments.push(
-                ...tokenizeTextRun(buffer, marks, resolved, emojiMap),
+                ...tokenizeTextRun(
+                    buffer,
+                    marks,
+                    resolved,
+                    emojiMap,
+                    resolvedGroups,
+                ),
             );
             buffer = '';
         }
@@ -343,8 +379,9 @@ export function renderMessageBody(
     body: string,
     mentions: Mention[] = [],
     emojiMap: CustomEmojiMap = {},
+    groups: ResolvableGroup[] = [],
 ): string {
-    const html = tokenizeMessageBody(body, mentions, emojiMap)
+    const html = tokenizeMessageBody(body, mentions, emojiMap, groups)
         .map((segment) => {
             if (segment.kind === 'link') {
                 return wrapMarks(linkHtml(segment.href), segment.marks ?? []);
@@ -353,6 +390,13 @@ export function renderMessageBody(
             if (segment.kind === 'mention') {
                 return wrapMarks(
                     mentionPillHtml(segment.name),
+                    segment.marks ?? [],
+                );
+            }
+
+            if (segment.kind === 'groupMention') {
+                return wrapMarks(
+                    groupPillHtml(segment.name),
                     segment.marks ?? [],
                 );
             }

@@ -8,6 +8,7 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useCustomEmojis } from '@/composables/useCustomEmojis';
 import { getInitials } from '@/composables/useInitials';
+import { useUserGroups } from '@/composables/useUserGroups';
 import { formatDateTime } from '@/lib/datetime';
 import { renderMessageBody } from '@/lib/messageBody';
 import type { Message, ThreadInboxItem, ThreadInboxPage } from '@/types';
@@ -45,6 +46,7 @@ function jumpHref(item: ThreadInboxItem): string {
 const page = usePage();
 
 const { map: customEmojis } = useCustomEmojis();
+const { groups: userGroups } = useUserGroups();
 
 const viewerTimeZone = computed(
     () => page.props.auth.user.timezone ?? undefined,
@@ -135,6 +137,7 @@ function formatTimestamp(iso: string): string {
                                                 item.root.body,
                                                 item.root.mentions,
                                                 customEmojis,
+                                                userGroups,
                                             )
                                         "
                                     ></span>
