@@ -3,7 +3,7 @@ import type { ComputedRef, Ref } from 'vue';
 import { toast } from 'vue-sonner';
 import { useTranslations } from '@/composables/useTranslations';
 import { formatFileSize, isImageMime } from '@/lib/attachments';
-import { isAudioMime } from '@/lib/audio';
+import { isPlayableAudio } from '@/lib/audio';
 import { xhrUpload } from '@/lib/uploadAttachment';
 import type { Uploader } from '@/lib/uploadAttachment';
 import { generateUuid } from '@/lib/uuid';
@@ -270,7 +270,10 @@ export function useAttachmentUploads(
 
             const localId = generateUuid();
             const isImage = isImageMime(file.type);
-            const isAudio = isAudioMime(file.type);
+            const isAudio = isPlayableAudio({
+                mimeType: file.type,
+                filename: file.name,
+            });
 
             items.value.push({
                 localId,

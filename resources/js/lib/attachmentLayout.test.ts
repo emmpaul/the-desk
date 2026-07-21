@@ -38,10 +38,12 @@ describe('partitionAttachments', () => {
     });
 
     it('splits every audio attachment out, recorded or dropped', () => {
+        // A recorded clip reaches the client as video/webm — server-side
+        // sniffing cannot tell an audio-only WebM from a video one.
         const clip = attachment({
             id: 'clip',
             filename: 'voice-message-1721318675.webm',
-            mimeType: 'audio/webm;codecs=opus',
+            mimeType: 'video/webm',
         });
         const song = attachment({
             id: 'song',

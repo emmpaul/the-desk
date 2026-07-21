@@ -1400,9 +1400,11 @@ function onKeydown(event: KeyboardEvent): void {
             <div
                 class="flex flex-col overflow-hidden rounded-[26px] border bg-card shadow-[0_3px_12px_rgba(29,26,21,0.08)] dark:shadow-[0_3px_12px_rgba(0,0,0,0.3)]"
                 :class="
-                    editingMessage
-                        ? 'border-brass ring-[3px] ring-brass/20'
-                        : 'border-input focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/20'
+                    recorder.isRecording.value
+                        ? 'border-destructive/50 ring-[3px] ring-destructive/10'
+                        : editingMessage
+                          ? 'border-brass ring-[3px] ring-brass/20'
+                          : 'border-input focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/20'
                 "
                 @mousedown="focusFromCard"
             >

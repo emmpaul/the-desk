@@ -63,6 +63,23 @@ export function isVoiceMessageFilename(filename: string | null): boolean {
 }
 
 /**
+ * Whether an attachment should render as an inline player. The MIME type is the
+ * signal, with one exception: a `MediaRecorder` clip is an audio-only WebM, and
+ * server-side sniffing reports every WebM container as `video/webm` — the bytes
+ * genuinely do not say otherwise. A clip we recorded is recognised by its
+ * filename instead, so it plays rather than offering itself as a download.
+ */
+export function isPlayableAudio(attachment: {
+    mimeType: string;
+    filename: string | null;
+}): boolean {
+    return (
+        isAudioMime(attachment.mimeType) ||
+        isVoiceMessageFilename(attachment.filename)
+    );
+}
+
+/**
  * The file extension for a recorder MIME type. `MediaRecorder` reports its own
  * container (`audio/webm` on Chrome and Firefox, `audio/mp4` on Safari), often
  * with a `;codecs=` suffix, so the clip is named after what was actually

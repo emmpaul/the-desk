@@ -7,6 +7,7 @@ import {
     decodeWaveformPeaks,
     formatClock,
     isAudioMime,
+    isPlayableAudio,
     isVoiceMessageFilename,
     isVoiceRecordingSupported,
     voiceMessageFilename,
@@ -41,6 +42,38 @@ describe('isVoiceMessageFilename', () => {
 
     it('treats a filename-less (remote) attachment as an ordinary one', () => {
         expect(isVoiceMessageFilename(null)).toBe(false);
+    });
+});
+
+describe('isPlayableAudio', () => {
+    it('plays a dropped audio file inline', () => {
+        expect(
+            isPlayableAudio({
+                mimeType: 'audio/mpeg',
+                filename: 'standup-jingle.mp3',
+            }),
+        ).toBe(true);
+    });
+
+    it('plays a recorded clip the server sniffed as video/webm', () => {
+        // A MediaRecorder clip is an audio-only WebM, and the container reads
+        // as video/webm to server-side sniffing — the filename is the only
+        // remaining signal that it is a voice message.
+        expect(
+            isPlayableAudio({
+                mimeType: 'video/webm',
+                filename: 'voice-message-1721318675.webm',
+            }),
+        ).toBe(true);
+    });
+
+    it('leaves an ordinary video or document as a download', () => {
+        expect(
+            isPlayableAudio({ mimeType: 'video/webm', filename: 'demo.webm' }),
+        ).toBe(false);
+        expect(
+            isPlayableAudio({ mimeType: 'application/pdf', filename: 'a.pdf' }),
+        ).toBe(false);
     });
 });
 

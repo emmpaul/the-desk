@@ -148,9 +148,10 @@ describe('MessageAttachments', () => {
 
     it('renders a recorded clip as an inline player with no filename line', async () => {
         const html = await render([
+            // Sniffed as video/webm server-side; the filename marks it audio.
             audio({
                 filename: 'voice-message-1721318675.webm',
-                mimeType: 'audio/webm;codecs=opus',
+                mimeType: 'video/webm',
             }),
         ]);
 

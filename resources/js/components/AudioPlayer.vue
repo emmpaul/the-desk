@@ -73,7 +73,7 @@ onMounted(async () => {
 /**
  * A `MediaRecorder` blob carries no duration in its container, so the element
  * reports `Infinity` until it is seeked past the end — the standard workaround,
- * which then rewinds on the first `timeupdate` that reports a real length.
+ * which then rewinds once a real length lands.
  */
 function onLoadedMetadata(): void {
     const element = audio.value;
@@ -92,23 +92,39 @@ function onLoadedMetadata(): void {
     element.currentTime = 1e101;
 }
 
-function onTimeUpdate(): void {
-    const element = audio.value;
-
-    if (!element) {
-        return;
+/**
+ * Close the duration workaround the moment a real length is reported, whichever
+ * event carries it — browsers differ on whether the forced seek surfaces as a
+ * `durationchange` or as the first `timeupdate`. Returns whether it handled the
+ * event, so ordinary progress tracking can skip the seek's own noise.
+ */
+function resolveDuration(element: HTMLAudioElement): boolean {
+    if (!resolvingDuration) {
+        return false;
     }
 
-    if (resolvingDuration) {
-        if (!Number.isFinite(element.duration)) {
-            return;
-        }
-
+    if (Number.isFinite(element.duration)) {
         resolvingDuration = false;
         duration.value = element.duration;
         element.currentTime = 0;
         currentTime.value = 0;
+    }
 
+    return true;
+}
+
+function onDurationChange(): void {
+    const element = audio.value;
+
+    if (element) {
+        resolveDuration(element);
+    }
+}
+
+function onTimeUpdate(): void {
+    const element = audio.value;
+
+    if (!element || resolveDuration(element)) {
         return;
     }
 
@@ -201,8 +217,12 @@ function isPlayed(index: number): boolean {
 <template>
     <div
         data-test="audio-player"
-        class="flex items-center gap-3 rounded-2xl border border-border bg-card"
-        :class="compact ? 'h-19 w-70 px-3' : 'w-85 max-w-full px-3.5 py-2.5'"
+        class="flex items-center gap-3 rounded-2xl border"
+        :class="
+            compact
+                ? 'h-19 w-70 border-input bg-muted px-3'
+                : 'w-85 max-w-full border-border bg-card px-3.5 py-2.5'
+        "
     >
         <!-- A user-recorded clip or an uploaded audio file has no caption track
              to offer, and none can be synthesised here: transcription is an
@@ -215,6 +235,7 @@ function isPlayed(index: number): boolean {
             preload="metadata"
             class="hidden"
             @loadedmetadata="onLoadedMetadata"
+            @durationchange="onDurationChange"
             @timeupdate="onTimeUpdate"
             @play="isPlaying = true"
             @pause="isPlaying = false"
@@ -227,8 +248,12 @@ function isPlayed(index: number): boolean {
             variant="unstyled"
             data-test="audio-player-toggle"
             :aria-label="isPlaying ? $t('Pause') : $t('Play')"
-            class="flex shrink-0 items-center justify-center bg-primary text-brass hover:bg-primary/90"
-            :class="compact ? 'size-9.5 rounded-[10px]' : 'size-9 rounded-full'"
+            class="flex shrink-0 items-center justify-center"
+            :class="
+                compact
+                    ? 'size-9.5 rounded-[10px] bg-background text-foreground hover:bg-background/80'
+                    : 'size-9 rounded-full bg-primary text-brass hover:bg-primary/90'
+            "
             @click="toggle"
         >
             <component :is="isPlaying ? Pause : Play" class="size-3.5" />
