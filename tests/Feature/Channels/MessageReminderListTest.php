@@ -81,6 +81,82 @@ test('a reminder on a since-deleted message blanks its body but keeps the link',
         );
 });
 
+test('a reminder whose channel the viewer can no longer see is redacted to a stub', function (): void {
+    [$owner, $team] = reminderListTeamWithGeneral();
+
+    $private = Channel::factory()->for($team)->private()->create(['name' => 'war-room']);
+    $membership = $private->channelMembers()->create(['user_id' => $owner->id]);
+    $message = Message::factory()->for($private)->for($owner)->create(['body' => 'secret plan']);
+    $reminder = MessageReminder::factory()->for($owner)->for($message)->create();
+
+    $membership->delete();
+
+    $this->actingAs($owner)
+        ->get(route('channels.show', ['team' => $team->slug, 'channel' => 'general']))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('reminders', 1)
+            ->where('reminders.0.id', $reminder->id)
+            ->where('reminders.0.isAccessible', false)
+            ->where('reminders.0.body', '')
+            ->where('reminders.0.authorName', '')
+            ->where('reminders.0.channelName', null)
+            ->where('reminders.0.channelSlug', '')
+        );
+});
+
+test('regaining access to the channel restores the reminder intact', function (): void {
+    [$owner, $team] = reminderListTeamWithGeneral();
+
+    $private = Channel::factory()->for($team)->private()->create(['name' => 'war-room']);
+    $message = Message::factory()->for($private)->for($owner)->create(['body' => 'secret plan']);
+    MessageReminder::factory()->for($owner)->for($message)->create();
+
+    $private->channelMembers()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)
+        ->get(route('channels.show', ['team' => $team->slug, 'channel' => 'general']))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('reminders.0.isAccessible', true)
+            ->where('reminders.0.body', 'secret plan')
+            ->where('reminders.0.authorName', $owner->name)
+            ->where('reminders.0.channelName', 'war-room')
+        );
+});
+
+test('a reminder in an archived channel stays fully visible', function (): void {
+    [$owner, $team] = reminderListTeamWithGeneral();
+
+    $archived = Channel::factory()->for($team)->archived()->create(['name' => 'retro']);
+    $archived->channelMembers()->create(['user_id' => $owner->id]);
+    $message = Message::factory()->for($archived)->for($owner)->create(['body' => 'still readable']);
+    MessageReminder::factory()->for($owner)->for($message)->create();
+
+    $this->actingAs($owner)
+        ->get(route('channels.show', ['team' => $team->slug, 'channel' => 'general']))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('reminders', 1)
+            ->where('reminders.0.isAccessible', true)
+            ->where('reminders.0.body', 'still readable')
+            ->where('reminders.0.channelName', 'retro')
+        );
+});
+
+test('a fired reminder is redacted the same way as a pending one', function (): void {
+    [$owner, $team] = reminderListTeamWithGeneral();
+
+    $private = Channel::factory()->for($team)->private()->create(['name' => 'war-room']);
+    $message = Message::factory()->for($private)->for($owner)->create(['body' => 'secret plan']);
+    MessageReminder::factory()->for($owner)->for($message)->fired()->create();
+
+    $this->actingAs($owner)
+        ->get(route('channels.show', ['team' => $team->slug, 'channel' => 'general']))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('firedReminders', 1)
+            ->where('firedReminders.0.isAccessible', false)
+            ->where('firedReminders.0.body', '')
+        );
+});
+
 test('reminders are scoped to the current team', function (): void {
     [$owner, $team, $general] = reminderListTeamWithGeneral();
     $message = Message::factory()->for($general)->for($owner)->create(['body' => 'in acme']);

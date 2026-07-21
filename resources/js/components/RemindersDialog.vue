@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, Clock, X } from '@lucide/vue';
+import { AlarmClock, Clock, Lock, X } from '@lucide/vue';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,6 +66,12 @@ function excerpt(reminder: MessageReminder): string {
 }
 
 function openReminder(reminder: MessageReminder): void {
+    // A row whose channel the viewer lost access to renders as a non-interactive
+    // stub, and the server blanked the slug its link would need.
+    if (!reminder.isAccessible) {
+        return;
+    }
+
     emit('open', reminder);
     open.value = false;
 }
@@ -147,11 +153,21 @@ function openReminder(reminder: MessageReminder): void {
                             :data-reminder="reminder.id"
                             class="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
                         >
+                            <!-- An inaccessible row keeps the same shape but drops to a
+                                 plain element: it carries no jump link, and the
+                                 server blanked everything it would have quoted. -->
                             <Button
+                                :as="reminder.isAccessible ? 'button' : 'div'"
                                 variant="unstyled"
                                 size="none"
-                                type="button"
-                                data-test="reminder-open"
+                                :type="
+                                    reminder.isAccessible ? 'button' : undefined
+                                "
+                                :data-test="
+                                    reminder.isAccessible
+                                        ? 'reminder-open'
+                                        : 'reminder-unavailable'
+                                "
                                 class="flex min-w-0 flex-1 items-center gap-3 text-left"
                                 @click="openReminder(reminder)"
                             >
@@ -159,13 +175,23 @@ function openReminder(reminder: MessageReminder): void {
                                     aria-hidden="true"
                                     class="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/10 text-[10px] font-semibold text-primary"
                                 >
-                                    {{ getInitials(reminder.authorName) }}
+                                    <Lock
+                                        v-if="!reminder.isAccessible"
+                                        class="size-3.5"
+                                    />
+                                    <template v-else>{{
+                                        getInitials(reminder.authorName)
+                                    }}</template>
                                 </div>
                                 <div class="flex min-w-0 flex-col gap-0.5">
                                     <div class="flex items-baseline gap-1.5">
                                         <span
                                             class="text-[13px] font-semibold text-foreground"
-                                            >{{ reminder.authorName }}</span
+                                            >{{
+                                                reminder.isAccessible
+                                                    ? reminder.authorName
+                                                    : $t('No longer available')
+                                            }}</span
                                         >
                                         <span
                                             v-if="channelLabel(reminder)"
@@ -181,7 +207,16 @@ function openReminder(reminder: MessageReminder): void {
                                         >
                                     </div>
                                     <span
-                                        v-if="reminder.isDeleted"
+                                        v-if="!reminder.isAccessible"
+                                        class="truncate text-[13px] text-muted-foreground italic"
+                                        >{{
+                                            $t(
+                                                'You no longer have access to this channel.',
+                                            )
+                                        }}</span
+                                    >
+                                    <span
+                                        v-else-if="reminder.isDeleted"
                                         class="truncate text-[13px] text-muted-foreground italic"
                                         >{{
                                             $t('This message was deleted.')

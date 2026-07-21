@@ -262,6 +262,11 @@ export type ScheduledMessage = {
  * link back), and the UTC `remindAt` instant the client renders in the viewer's
  * zone. The workspace shares the viewer's pending rows in `reminders` and the
  * due-and-unacknowledged ones in `firedReminders`.
+ *
+ * `isAccessible` is false once the viewer can no longer view the channel the
+ * message lives in: the server blanks the body, author, channel name and channel
+ * slug, so such a row renders as a stub with no jump link — only a way to clear
+ * it. Regaining access restores the row.
  */
 export type MessageReminder = {
     id: string;
@@ -273,6 +278,7 @@ export type MessageReminder = {
     authorName: string;
     body: string;
     isDeleted: boolean;
+    isAccessible: boolean;
 };
 
 /**
