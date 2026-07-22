@@ -58,7 +58,7 @@ class PostMessageRequest extends FormRequest
                 'uuid',
                 Rule::exists('messages', 'id')
                     ->where('channel_id', $this->channel()->id)
-                    ->where('type', MessageType::Standard->value)
+                    ->whereNotIn('type', MessageType::systemValues())
                     ->whereNull('deleted_at'),
             ],
             // A thread reply must target a live root user message in this same
@@ -70,7 +70,7 @@ class PostMessageRequest extends FormRequest
                 'uuid',
                 Rule::exists('messages', 'id')
                     ->where('channel_id', $this->channel()->id)
-                    ->where('type', MessageType::Standard->value)
+                    ->whereNotIn('type', MessageType::systemValues())
                     ->whereNull('deleted_at')
                     ->whereNull('thread_root_id'),
             ],
