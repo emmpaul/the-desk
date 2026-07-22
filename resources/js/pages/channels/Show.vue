@@ -624,9 +624,16 @@ const stickyDayLabel = computed<string | null>(() => {
  * Debounced and gated on tab focus: a channel is only "read" while the user is
  * actually looking at it, and a burst of arriving messages collapses to one
  * request. The redirect refreshes just the shared `channels` prop.
+ *
+ * The Echo socket id rides along so the resulting `ReadStateAdvanced` broadcast
+ * skips this tab: the response above already brings it fresh counts, and its
+ * own signal would only buy a second, redundant sidebar reload. The reader's
+ * *other* devices still receive it, which is the point of the broadcast.
  */
 const readPost = useDebouncedPost(
     () => {
+        const socketId = echo().socketId();
+
         router.post(
             markChannelRead({
                 team: props.team.slug,
@@ -641,6 +648,7 @@ const readPost = useDebouncedPost(
                 preserveScroll: true,
                 preserveState: true,
                 only: ['channels'],
+                headers: socketId ? { 'X-Socket-ID': socketId } : {},
             },
         );
     },
