@@ -28,6 +28,7 @@ import {
     HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import UserHoverCard from '@/components/UserHoverCard.vue';
+import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useCustomEmojis } from '@/composables/useCustomEmojis';
 import { useInitials } from '@/composables/useInitials';
 import { NEAR_BOTTOM_THRESHOLD } from '@/composables/useScrollPin';
@@ -889,10 +890,18 @@ function confirmDelete(): void {
                             @mention="(member) => emit('mention', member)"
                         >
                             <span
+                                data-test="message-author-name"
                                 class="cursor-pointer text-[14px] font-semibold text-foreground hover:underline"
                                 >{{ item.author.name }}</span
                             >
                         </UserHoverCard>
+                        <!-- The author's status emoji rides beside their name;
+                             the full text lives on the hover card. -->
+                        <UserStatusEmoji
+                            :status="item.author.status"
+                            :name="item.author.name"
+                            class="ml-1.5 align-[-1px] text-[13px]"
+                        />
                         <!-- The uppercase "Bot" tag rides beside a bot author's
                              name; a bot has no presence, so it replaces the
                              Online/Offline announcement rather than adding to it. -->
