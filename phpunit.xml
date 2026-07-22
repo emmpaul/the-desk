@@ -70,6 +70,16 @@
         <env name="SSO_DEFAULT_TEAM_ID" value=""/>
         <env name="SCIM_TOKEN" value=""/>
         <env name="GIPHY_API_KEY" value=""/>
+        <!--
+            Keep the suite independent of a locally-built SSR bundle. Inertia
+            dispatches to the SSR render server whenever a bundle exists at
+            bootstrap/ssr/ (a git-ignored artifact CI never builds). A developer
+            who has run the SSR build then has one on disk, and from that point
+            every Inertia render inside a test fires an outbound POST to
+            127.0.0.1:13714 that pollutes Http::fake(). Forcing SSR off here
+            makes the gate deterministic no matter whether that artifact exists.
+        -->
+        <env name="INERTIA_SSR_ENABLED" value="false"/>
         <!-- Avatars resolve through the image proxy, which fetches the remote
              image server-side. Left enabled, every rendered avatar would make the
              suite reach gravatar.com — and in the browser tests that fetch blocks
