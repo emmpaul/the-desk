@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRenderer, defineComponent, nextTick } from 'vue';
+import { createRenderer, defineComponent, nextTick, reactive } from 'vue';
 
 const reload = vi.fn();
 
-const page = {
+// Reactive like the real usePage() page, so computeds inside the composable
+// re-read a prop the (simulated) profile reload has since replaced.
+const page = reactive({
     props: {
         teamMembers: [] as {
             id: string;
@@ -12,7 +14,7 @@ const page = {
             isDnd?: boolean;
         }[],
     },
-};
+});
 
 /** Roster handlers registered per presence channel, by hook name. */
 type Handlers = {
@@ -154,6 +156,37 @@ describe('useTeamPresence', () => {
 
         expect(api.presenceFor('maya')).toBe('away');
         expect(api.presenceFor('jonas')).toBe('active');
+
+        unmount();
+    });
+
+    it('reports no dnd at all when the teamMembers prop is absent', () => {
+        page.props.teamMembers =
+            undefined as unknown as typeof page.props.teamMembers;
+
+        const { api, unmount } = mount();
+
+        expect(api.isDndFor('maya')).toBe(false);
+
+        unmount();
+    });
+
+    it('re-reads the dnd flag when the profile reload refreshes the prop', () => {
+        page.props.teamMembers = [
+            { id: 'maya', name: 'Maya', presence: 'active', isDnd: false },
+        ];
+
+        const { api, unmount } = mount();
+
+        expect(api.isDndFor('maya')).toBe(false);
+
+        // Stand in for the debounced reload landing fresh props after a
+        // teammate's UserProfileUpdated broadcast.
+        page.props.teamMembers = [
+            { id: 'maya', name: 'Maya', presence: 'active', isDnd: true },
+        ];
+
+        expect(api.isDndFor('maya')).toBe(true);
 
         unmount();
     });

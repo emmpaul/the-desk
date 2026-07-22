@@ -58,6 +58,10 @@ test('a minute inside or outside the window broadcasts nothing', function (): vo
         expect(app(BroadcastDndScheduleEdges::class)->handle())->toBe(0);
     });
 
+    $this->travelTo(Carbon::parse('2026-07-22 12:00:00', 'UTC'), function (): void {
+        expect(app(BroadcastDndScheduleEdges::class)->handle())->toBe(0);
+    });
+
     Event::assertNotDispatched(UserProfileUpdated::class);
 });
 

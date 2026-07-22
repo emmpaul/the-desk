@@ -22,10 +22,12 @@ test('the author payload never leaks the pause instant or the schedule', functio
         'dnd_ends_at' => '07:00',
     ]);
 
-    $payload = UserData::fromUser($user)->toArray();
+    // Scan the whole serialized tree, not just the top-level keys, so a
+    // private field can't hide inside a nested structure.
+    $json = (string) json_encode(UserData::fromUser($user)->toArray());
 
-    expect(array_keys($payload))->not->toContain('dndUntil', 'dndScheduleEnabled', 'dndStartsAt', 'dndEndsAt')
-        ->and(json_encode($payload))->not->toContain('22:00', '07:00');
+    expect($json)->not->toContain('dndUntil', 'dndScheduleEnabled', 'dndStartsAt', 'dndEndsAt', 'scheduleEnabled', 'startsAt', 'endsAt')
+        ->and($json)->not->toContain('22:00', '07:00');
 });
 
 test('a user reads their own full dnd configuration, raw columns hidden', function (): void {

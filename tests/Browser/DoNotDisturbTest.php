@@ -25,7 +25,8 @@ test('a user pauses notifications from the presence menu and resumes in place', 
         // Resuming from the pill collapses the card without closing the menu.
         ->click('@dnd-resume-menu-item')
         ->wait(0.5)
-        ->assertNotPresent('@dnd-paused-card');
+        ->assertNotPresent('@dnd-paused-card')
+        ->assertPresent('@pause-notifications-menu-item');
 
     expect($alice->refresh()->dnd_until)->toBeNull()
         ->and($alice->isDndActive())->toBeFalse();

@@ -46,6 +46,28 @@ test('disabling the schedule keeps the stored window for re-enabling', function 
     Event::assertDispatched(UserProfileUpdated::class);
 });
 
+test('a disable carrying bounds cannot clobber the stored window', function (): void {
+    $user = User::factory()->create([
+        'dnd_schedule_enabled' => true,
+        'dnd_starts_at' => '22:00',
+        'dnd_ends_at' => '07:00',
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('dnd-schedule.update'), [
+            'enabled' => false,
+            'starts_at' => '10:00',
+            'ends_at' => '11:00',
+        ])
+        ->assertRedirect();
+
+    $user->refresh();
+
+    expect($user->dnd_schedule_enabled)->toBeFalse()
+        ->and($user->dnd_starts_at)->toBe('22:00')
+        ->and($user->dnd_ends_at)->toBe('07:00');
+});
+
 test('enabling requires both window bounds', function (): void {
     $user = User::factory()->create();
 

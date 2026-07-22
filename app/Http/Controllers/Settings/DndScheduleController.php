@@ -27,7 +27,10 @@ class DndScheduleController extends Controller
 
         $changes = ['dnd_schedule_enabled' => (bool) $validated['enabled']];
 
-        if (isset($validated['starts_at'], $validated['ends_at'])) {
+        // Bounds are only ever rewritten on an enable: a disable flips the
+        // switch alone, so whatever it happens to carry can't clobber the
+        // stored window the next enable is meant to remember.
+        if ($changes['dnd_schedule_enabled'] && isset($validated['starts_at'], $validated['ends_at'])) {
             $changes['dnd_starts_at'] = $validated['starts_at'];
             $changes['dnd_ends_at'] = $validated['ends_at'];
         }

@@ -72,19 +72,24 @@ function applyInstant(iso: string): void {
 
 /**
  * The instant a fresh dialog opens on: a whole step ahead of now, snapped up
- * onto the grid, so it never opens already invalid. A pause already running
- * seeds the controls with its own lapse instead, ready to be extended.
+ * onto the grid, so it never opens already invalid. A pause still running
+ * seeds the controls with its own lapse instead, ready to be extended — but a
+ * pause that lapsed after these props were built would seed a past instant
+ * with Save already disabled, so a stale one falls back to the default.
  */
 function reset(): void {
     minDate.value = today(effectiveZone.value);
 
     const stepAhead = Date.now() + MINUTE_STEP_MS;
+    const defaultUntil = new Date(
+        Math.ceil(stepAhead / MINUTE_STEP_MS) * MINUTE_STEP_MS,
+    ).toISOString();
+    const runningUntil = page.props.auth.user.dnd?.until;
 
     applyInstant(
-        page.props.auth.user.dnd?.until ??
-            new Date(
-                Math.ceil(stepAhead / MINUTE_STEP_MS) * MINUTE_STEP_MS,
-            ).toISOString(),
+        runningUntil && new Date(runningUntil).getTime() > Date.now()
+            ? runningUntil
+            : defaultUntil,
     );
 }
 
