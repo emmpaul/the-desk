@@ -17,6 +17,7 @@ vi.mock('@/routes/presence', () => ({
 import {
     PRESENCE_CONNECTION_STORAGE_KEY,
     PRESENCE_HEARTBEAT_MS,
+    PRESENCE_REGISTER_DELAY_MS,
     usePresenceReporter,
 } from '@/composables/usePresenceReporter';
 
@@ -97,8 +98,12 @@ afterEach(() => {
 });
 
 describe('usePresenceReporter', () => {
-    it('registers the tab as active as soon as it opens', () => {
+    it('registers the tab as active shortly after it opens, off the load path', () => {
         const { unmount } = mount();
+
+        expect(posts()).toEqual([]);
+
+        vi.advanceTimersByTime(PRESENCE_REGISTER_DELAY_MS);
 
         expect(posts()).toEqual([
             [
@@ -114,6 +119,7 @@ describe('usePresenceReporter', () => {
         store.set(PRESENCE_CONNECTION_STORAGE_KEY, 'existing-tab');
 
         const { unmount } = mount();
+        vi.advanceTimersByTime(PRESENCE_REGISTER_DELAY_MS);
 
         expect(posts()[0][1].connection).toBe('existing-tab');
 
@@ -125,6 +131,7 @@ describe('usePresenceReporter', () => {
         fetchMock.mockClear();
 
         const { unmount } = mount();
+        vi.advanceTimersByTime(PRESENCE_REGISTER_DELAY_MS);
 
         expect(posts()[0][1].connection).toBe('tab-uuid');
 
@@ -153,9 +160,10 @@ describe('usePresenceReporter', () => {
         page.props.presence.awayAfterMinutes = 2;
 
         const { unmount } = mount();
+        vi.advanceTimersByTime(PRESENCE_REGISTER_DELAY_MS);
         fetchMock.mockClear();
 
-        vi.advanceTimersByTime(2 * 60 * 1000);
+        vi.advanceTimersByTime(2 * 60 * 1000 - PRESENCE_REGISTER_DELAY_MS);
 
         expect(posts()).toHaveLength(1);
         expect(posts()[0][1].state).toBe('away');

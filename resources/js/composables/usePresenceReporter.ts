@@ -25,6 +25,17 @@ export const PRESENCE_CONNECTION_STORAGE_KEY = 'desk:presence-connection';
 export const PRESENCE_HEARTBEAT_MS = 5 * 60 * 1000;
 
 /**
+ * How long after mount the tab announces itself.
+ *
+ * Deliberately off the page-load critical path: the register races nothing —
+ * an unregistered tab already reads as active (the fail-open default), so the
+ * only thing this delay postpones is a fresh active tab overriding an older
+ * idle one by a few seconds. Firing it at mount would instead contend with the
+ * Inertia visit and the websocket authorization requests of a loading page.
+ */
+export const PRESENCE_REGISTER_DELAY_MS = 3000;
+
+/**
  * Ignore further activity for this long after handling some.
  *
  * A scroll or a burst of typing fires hundreds of events; all that is needed is
@@ -61,6 +72,7 @@ export function usePresenceReporter(): void {
     let connectionId = '';
     let idle = false;
     let lastActivityAt = 0;
+    let registerTimer: ReturnType<typeof setTimeout> | undefined;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
 
@@ -146,7 +158,11 @@ export function usePresenceReporter(): void {
 
         // Register before the first transition: a freshly opened tab that never
         // reports would leave an older, idle tab of the same account deciding.
-        reportState('active');
+        // Deferred so the request never contends with the page's own loading.
+        registerTimer = setTimeout(
+            () => reportState('active'),
+            PRESENCE_REGISTER_DELAY_MS,
+        );
 
         lastActivityAt = Date.now();
         idleTimer = setTimeout(goIdle, thresholdMs());
@@ -167,6 +183,7 @@ export function usePresenceReporter(): void {
     });
 
     onBeforeUnmount(() => {
+        clearTimeout(registerTimer);
         clearTimeout(idleTimer);
         clearInterval(heartbeat);
 
