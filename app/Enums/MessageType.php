@@ -43,4 +43,20 @@ enum MessageType: string
     {
         return $this === self::MemberJoined || $this === self::MemberLeft;
     }
+
+    /**
+     * The backing values of every system-notice type — the deny-list for
+     * validation rules that reject a system notice as a reply or thread target.
+     * Derived from isSystem() so each type is classified in exactly one place
+     * and a future case joins (or stays off) the list automatically.
+     *
+     * @return list<string>
+     */
+    public static function systemValues(): array
+    {
+        return array_values(array_map(
+            static fn (self $type): string => $type->value,
+            array_filter(self::cases(), static fn (self $type): bool => $type->isSystem()),
+        ));
+    }
 }

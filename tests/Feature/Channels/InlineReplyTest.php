@@ -44,6 +44,26 @@ test('a message can reply to another message in the same channel', function (): 
     ]);
 });
 
+test('a message can reply to a poll inline', function (): void {
+    [$owner, $team, $general] = replyTeamWithGeneral();
+    $poll = Message::factory()->poll()->for($general)->for($owner)->create();
+    $clientUuid = (string) Str::uuid7();
+
+    $this->actingAs($owner)
+        ->post(route('channels.messages.store', ['team' => $team->slug, 'channel' => $general->slug]), [
+            'body' => 'quoting the poll',
+            'client_uuid' => $clientUuid,
+            'reply_to_id' => $poll->id,
+        ])
+        ->assertRedirect(route('channels.show', ['team' => $team->slug, 'channel' => $general->slug]));
+
+    $this->assertDatabaseHas('messages', [
+        'client_uuid' => $clientUuid,
+        'body' => 'quoting the poll',
+        'reply_to_id' => $poll->id,
+    ]);
+});
+
 test('a message without a reply target persists a null reply reference', function (): void {
     [$owner, $team, $general] = replyTeamWithGeneral();
     $clientUuid = (string) Str::uuid7();

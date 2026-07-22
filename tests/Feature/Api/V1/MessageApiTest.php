@@ -55,6 +55,35 @@ it('is idempotent on a repeated client_uuid', function (): void {
     expect(Message::query()->where('channel_id', $this->channel->id)->count())->toBe(1);
 });
 
+it('accepts a poll as the inline-reply and thread-root target', function (): void {
+    $poll = Message::factory()->poll()->for($this->channel)->for($this->bot, 'user')->create();
+
+    Sanctum::actingAs($this->bot, ['messages:write']);
+
+    $this->postJson("/api/v1/channels/{$this->channel->id}/messages", ['body' => 'Quoting the poll', 'reply_to_id' => $poll->id])
+        ->assertCreated();
+
+    $this->postJson("/api/v1/channels/{$this->channel->id}/messages", ['body' => 'Threading off the poll', 'thread_root_id' => $poll->id])
+        ->assertCreated();
+
+    $this->assertDatabaseHas('messages', ['body' => 'Quoting the poll', 'reply_to_id' => $poll->id]);
+    $this->assertDatabaseHas('messages', ['body' => 'Threading off the poll', 'thread_root_id' => $poll->id]);
+});
+
+it('rejects a system notice as the inline-reply or thread-root target', function (): void {
+    $notice = Message::factory()->for($this->channel)->for($this->bot, 'user')->memberJoined()->create();
+
+    Sanctum::actingAs($this->bot, ['messages:write']);
+
+    $this->postJson("/api/v1/channels/{$this->channel->id}/messages", ['body' => 'nope', 'reply_to_id' => $notice->id])
+        ->assertStatus(422)
+        ->assertJsonValidationErrorFor('reply_to_id');
+
+    $this->postJson("/api/v1/channels/{$this->channel->id}/messages", ['body' => 'nope', 'thread_root_id' => $notice->id])
+        ->assertStatus(422)
+        ->assertJsonValidationErrorFor('thread_root_id');
+});
+
 it('rejects an empty message body', function (): void {
     Sanctum::actingAs($this->bot, ['messages:write']);
 

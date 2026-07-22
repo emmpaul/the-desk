@@ -152,6 +152,11 @@ test('joining a team posts no join notice in the onboarding #general channel', f
 
 test('isSystem reflects the message type', function (): void {
     expect(MessageType::Standard->isSystem())->toBeFalse()
+        ->and(MessageType::Poll->isSystem())->toBeFalse()
         ->and(MessageType::MemberJoined->isSystem())->toBeTrue()
         ->and(MessageType::MemberLeft->isSystem())->toBeTrue();
+});
+
+test('systemValues lists exactly the system-notice type values', function (): void {
+    expect(MessageType::systemValues())->toBe(['member_joined', 'member_left']);
 });
