@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isDndActiveNow } from '@/lib/dnd';
+import {
+    isDndActiveNow,
+    quietHoursEndsAt,
+    quietHoursSegments,
+    quietHoursTicks,
+} from '@/lib/dnd';
 
 function dnd(
     overrides: Partial<App.Data.UserDndData> = {},
@@ -157,5 +162,136 @@ describe('isDndActiveNow', () => {
                 at,
             ),
         ).toBe(true);
+    });
+});
+
+describe('quietHoursEndsAt', () => {
+    it('is null outside the window, or with no usable schedule', () => {
+        const schedule = dnd({
+            scheduleEnabled: true,
+            startsAt: '09:00',
+            endsAt: '17:00',
+        });
+
+        expect(
+            quietHoursEndsAt(schedule, 'UTC', new Date('2026-07-22T18:00:00Z')),
+        ).toBeNull();
+        expect(
+            quietHoursEndsAt(dnd(), 'UTC', new Date('2026-07-22T12:00:00Z')),
+        ).toBeNull();
+        expect(quietHoursEndsAt(null, 'UTC')).toBeNull();
+    });
+
+    it('ends a same-day window at its closing time today', () => {
+        const schedule = dnd({
+            scheduleEnabled: true,
+            startsAt: '09:00',
+            endsAt: '17:00',
+        });
+
+        expect(
+            quietHoursEndsAt(
+                schedule,
+                'UTC',
+                new Date('2026-07-22T12:00:00Z'),
+            )?.toISOString(),
+        ).toBe('2026-07-22T17:00:00.000Z');
+    });
+
+    it('ends an overnight window tomorrow when entered before midnight', () => {
+        const schedule = dnd({
+            scheduleEnabled: true,
+            startsAt: '22:00',
+            endsAt: '07:00',
+        });
+
+        expect(
+            quietHoursEndsAt(
+                schedule,
+                'UTC',
+                new Date('2026-07-22T23:30:00Z'),
+            )?.toISOString(),
+        ).toBe('2026-07-23T07:00:00.000Z');
+    });
+
+    it('ends an overnight window today when inside its morning tail', () => {
+        const schedule = dnd({
+            scheduleEnabled: true,
+            startsAt: '22:00',
+            endsAt: '07:00',
+        });
+
+        expect(
+            quietHoursEndsAt(
+                schedule,
+                'UTC',
+                new Date('2026-07-22T06:00:00Z'),
+            )?.toISOString(),
+        ).toBe('2026-07-22T07:00:00.000Z');
+    });
+
+    it('resolves the closing instant in the given zone', () => {
+        const schedule = dnd({
+            scheduleEnabled: true,
+            startsAt: '09:00',
+            endsAt: '17:00',
+        });
+
+        // 14:00 UTC is 10:00 in New York; their 17:00 close is 21:00 UTC.
+        expect(
+            quietHoursEndsAt(
+                schedule,
+                'America/New_York',
+                new Date('2026-07-22T14:00:00Z'),
+            )?.toISOString(),
+        ).toBe('2026-07-22T21:00:00.000Z');
+    });
+});
+
+describe('quietHoursSegments', () => {
+    it('draws awake–quiet–awake for a same-day window', () => {
+        expect(quietHoursSegments('09:00', '17:00')).toEqual([
+            { quiet: false, widthPct: 37.5 },
+            { quiet: true, widthPct: (8 / 24) * 100 },
+            { quiet: false, widthPct: (7 / 24) * 100 },
+        ]);
+    });
+
+    it('draws quiet–awake–quiet for an overnight window', () => {
+        expect(quietHoursSegments('18:00', '09:00')).toEqual([
+            { quiet: true, widthPct: 37.5 },
+            { quiet: false, widthPct: 37.5 },
+            { quiet: true, widthPct: 25 },
+        ]);
+    });
+
+    it('drops zero-width segments at the day edges', () => {
+        expect(quietHoursSegments('00:00', '17:00')).toEqual([
+            { quiet: true, widthPct: (17 / 24) * 100 },
+            { quiet: false, widthPct: (7 / 24) * 100 },
+        ]);
+    });
+});
+
+describe('quietHoursTicks', () => {
+    it('merges the window bounds into the base ticks, sorted', () => {
+        expect(quietHoursTicks('18:00', '09:00')).toEqual([
+            '00',
+            '06',
+            '09',
+            '12',
+            '18',
+            '24',
+        ]);
+    });
+
+    it('keeps the base ticks alone when the bounds already sit on them', () => {
+        expect(quietHoursTicks('18:00', '12:00')).toEqual([
+            '00',
+            '06',
+            '12',
+            '18',
+            '24',
+        ]);
     });
 });

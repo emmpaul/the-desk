@@ -1,3 +1,6 @@
+import { wallTimeToInstant, zonedWallTime } from './scheduleTime';
+import type { WallTime } from './scheduleTime';
+
 /**
  * Client-side twin of `User::isDndActive()` on the server: whether the viewer
  * is in do-not-disturb at a given instant, from the full configuration their
@@ -34,6 +37,125 @@ export function isDndActiveNow(
     }
 
     return wallClock >= dnd.startsAt || wallClock < dnd.endsAt;
+}
+
+/**
+ * The instant the currently-running quiet-hours window closes, or null when
+ * the schedule is off, incomplete, or not covering this instant.
+ *
+ * Feeds the paused card's "quiet hours · until 9:00 AM" line: an overnight
+ * window entered before midnight closes tomorrow, its morning tail closes
+ * today.
+ */
+export function quietHoursEndsAt(
+    dnd: App.Data.UserDndData | null | undefined,
+    timeZone: string | null | undefined,
+    at: Date = new Date(),
+): Date | null {
+    if (
+        !dnd?.scheduleEnabled ||
+        dnd.startsAt === null ||
+        dnd.endsAt === null
+    ) {
+        return null;
+    }
+
+    const wallClock = wallClockIn(timeZone, at);
+    const zone = timeZone ?? deviceZone();
+    const wall = zonedWallTime(zone, at);
+    const [hour, minute] = dnd.endsAt.split(':').map(Number);
+    const closing = { ...wall, hour, minute };
+
+    if (dnd.startsAt <= dnd.endsAt) {
+        if (wallClock < dnd.startsAt || wallClock >= dnd.endsAt) {
+            return null;
+        }
+
+        return wallTimeToInstant(closing, zone);
+    }
+
+    if (wallClock < dnd.endsAt) {
+        return wallTimeToInstant(closing, zone);
+    }
+
+    if (wallClock >= dnd.startsAt) {
+        return wallTimeToInstant(nextCivilDay(closing), zone);
+    }
+
+    return null;
+}
+
+/**
+ * The awake/quiet segments a daily window paints across a 24h strip, left to
+ * right from midnight, each as a percentage of the day. Zero-width segments
+ * are dropped so a bound sitting on midnight doesn't render an empty sliver.
+ */
+export function quietHoursSegments(
+    startsAt: string,
+    endsAt: string,
+): { quiet: boolean; widthPct: number }[] {
+    const start = minutesOfDay(startsAt);
+    const end = minutesOfDay(endsAt);
+
+    const segments =
+        start <= end
+            ? [
+                  { quiet: false, widthPct: pctOfDay(start) },
+                  { quiet: true, widthPct: pctOfDay(end - start) },
+                  { quiet: false, widthPct: pctOfDay(MINUTES_PER_DAY - end) },
+              ]
+            : [
+                  { quiet: true, widthPct: pctOfDay(end) },
+                  { quiet: false, widthPct: pctOfDay(start - end) },
+                  { quiet: true, widthPct: pctOfDay(MINUTES_PER_DAY - start) },
+              ];
+
+    return segments.filter((segment) => segment.widthPct > 0);
+}
+
+/**
+ * The hour labels under the 24h strip: the fixed 00/06/12/18/24 frame with
+ * the window's own bound hours merged in, so the quiet edges are always named.
+ */
+export function quietHoursTicks(startsAt: string, endsAt: string): string[] {
+    const hours = new Set([0, 6, 12, 18, 24]);
+
+    hours.add(Number(startsAt.slice(0, 2)));
+    hours.add(Number(endsAt.slice(0, 2)));
+
+    return [...hours]
+        .sort((a, b) => a - b)
+        .map((hour) => String(hour).padStart(2, '0'));
+}
+
+const MINUTES_PER_DAY = 24 * 60;
+
+function minutesOfDay(bound: string): number {
+    const [hour, minute] = bound.split(':').map(Number);
+
+    return hour * 60 + minute;
+}
+
+function pctOfDay(minutes: number): number {
+    return (minutes / MINUTES_PER_DAY) * 100;
+}
+
+/** Shift a wall-clock reading to the same time on the following civil day. */
+function nextCivilDay(wall: WallTime): WallTime {
+    const shifted = new Date(Date.UTC(wall.year, wall.month - 1, wall.day));
+    shifted.setUTCDate(shifted.getUTCDate() + 1);
+
+    return {
+        ...wall,
+        year: shifted.getUTCFullYear(),
+        month: shifted.getUTCMonth() + 1,
+        day: shifted.getUTCDate(),
+    };
+}
+
+/** The device's own IANA zone, the fallback when the account has none set. */
+function deviceZone(): string {
+    return new Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 /**
