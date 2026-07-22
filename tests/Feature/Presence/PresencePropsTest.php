@@ -9,7 +9,7 @@ test('the idle threshold reaches the browser', function (): void {
 
     $this->actingAs(User::factory()->create())
         ->get(route('profile.edit'))
-        ->assertInertia(fn (Assert $page) => $page->where('presence.awayAfterMinutes', 7));
+        ->assertInertia(fn (Assert $page): Assert => $page->where('presence.awayAfterMinutes', 7));
 });
 
 test('a nonsensical threshold is floored at a minute rather than disabling idle detection', function (): void {
@@ -17,7 +17,7 @@ test('a nonsensical threshold is floored at a minute rather than disabling idle 
 
     $this->actingAs(User::factory()->create())
         ->get(route('profile.edit'))
-        ->assertInertia(fn (Assert $page) => $page->where('presence.awayAfterMinutes', 1));
+        ->assertInertia(fn (Assert $page): Assert => $page->where('presence.awayAfterMinutes', 1));
 });
 
 test('the viewer reads their own presence off the shared auth prop', function (): void {
@@ -25,5 +25,5 @@ test('the viewer reads their own presence off the shared auth prop', function ()
 
     $this->actingAs($user)
         ->get(route('profile.edit'))
-        ->assertInertia(fn (Assert $page) => $page->where('auth.user.presence', 'away'));
+        ->assertInertia(fn (Assert $page): Assert => $page->where('auth.user.presence', 'away'));
 });

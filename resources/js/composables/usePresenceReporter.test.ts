@@ -30,6 +30,7 @@ const { createApp } = createRenderer<object, object>({
     setElementText: () => {},
     parentNode: () => null,
     nextSibling: () => null,
+    patchProp: () => {},
 });
 
 /** Handlers registered on document/window, by event name. */
@@ -242,10 +243,7 @@ describe('usePresenceReporter', () => {
         activity('pagehide');
 
         expect(posts()).toEqual([
-            [
-                '/presence/connection/release',
-                { connection: 'tab-uuid' },
-            ],
+            ['/presence/connection/release', { connection: 'tab-uuid' }],
         ]);
 
         unmount();

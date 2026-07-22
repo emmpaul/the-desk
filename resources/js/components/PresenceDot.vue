@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { cn } from '@/lib/utils';
 import type { RenderedPresence } from '@/lib/presence';
+import { cn } from '@/lib/utils';
 
 const props = withDefaults(
     defineProps<{

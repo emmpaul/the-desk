@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createSSRApp, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
-import PresenceDot from './PresenceDot.vue';
 import type { RenderedPresence } from '@/lib/presence';
+import PresenceDot from './PresenceDot.vue';
 
 function render(
     presence: RenderedPresence,

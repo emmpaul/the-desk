@@ -82,6 +82,7 @@ const { createApp } = createRenderer<object, object>({
     setElementText: () => {},
     parentNode: () => null,
     nextSibling: () => null,
+    patchProp: () => {},
     setScopeId: () => {},
 });
 
@@ -190,7 +191,9 @@ describe('useTeamPresence', () => {
     });
 
     it('prefers a live flip over the state the props were seeded with', () => {
-        page.props.teamMembers = [{ id: 'maya', name: 'Maya', presence: 'away' }];
+        page.props.teamMembers = [
+            { id: 'maya', name: 'Maya', presence: 'away' },
+        ];
 
         const { api, unmount } = mount();
 

@@ -64,7 +64,9 @@ export function usePresenceReporter(): void {
     let heartbeat: ReturnType<typeof setInterval> | undefined;
 
     function thresholdMs(): number {
-        return Math.max(page.props.presence?.awayAfterMinutes ?? 10, 1) * 60_000;
+        return (
+            Math.max(page.props.presence?.awayAfterMinutes ?? 10, 1) * 60_000
+        );
     }
 
     /**
