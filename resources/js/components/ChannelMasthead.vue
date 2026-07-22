@@ -218,7 +218,8 @@ const groupParticipantCount = computed(
                         :presence="dmPresence"
                         :is-dnd="dmDnd"
                         surface-class="bg-card"
-                        class="absolute -right-0.5 -bottom-0.5 size-2.5 ring-2 ring-card"
+                        size="28"
+                        class="ring-card"
                     />
                     <!-- Announced through a screen-reader-only label rather than
                          an aria-label on the role-less dot, which assistive tech
@@ -369,7 +370,8 @@ const groupParticipantCount = computed(
                             :presence="props.presenceFor(member.id)"
                             :is-dnd="props.isDndFor?.(member.id) ?? false"
                             surface-class="bg-card"
-                            class="absolute -right-0.5 -bottom-0.5 size-2 ring-2 ring-card"
+                            size="24"
+                            class="ring-card"
                         />
                     </span>
                     <span

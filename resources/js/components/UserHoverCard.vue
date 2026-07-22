@@ -132,7 +132,8 @@ function onMessage(): void {
                             :presence="presence"
                             :is-dnd="showsDnd"
                             surface-class="bg-popover"
-                            class="absolute right-0 bottom-0 size-3 ring-[2.5px] ring-popover"
+                            size="48"
+                            class="ring-popover"
                         />
                     </div>
                     <div class="min-w-0 flex-1">

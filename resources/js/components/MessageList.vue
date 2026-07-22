@@ -881,7 +881,8 @@ function confirmDelete(): void {
                                     :presence="presenceOf(item.author.id)"
                                     :is-dnd="dndOf(item.author.id)"
                                     surface-class="bg-card"
-                                    class="absolute right-0 bottom-0 size-2.5 ring-2 ring-card"
+                                    size="36"
+                                    class="ring-card"
                                 />
                             </div>
                         </UserHoverCard>
