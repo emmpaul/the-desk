@@ -35,13 +35,16 @@ test('a user pauses notifications from the presence menu and resumes in place', 
 test('a user snoozes the quiet-hours schedule for today from the paused card', function (): void {
     ['owner' => $alice] = browserTeamWithChannel();
 
-    // A window covering the whole day, so the card is showing whenever the
-    // suite happens to run.
+    // A window straddling this very minute, so the card is showing whenever
+    // the suite happens to run — near midnight the bounds wrap, which the
+    // evaluator treats as an overnight window.
+    $now = now('UTC');
+
     $alice->forceFill([
         'timezone' => 'UTC',
         'dnd_schedule_enabled' => true,
-        'dnd_starts_at' => '00:00',
-        'dnd_ends_at' => '23:59',
+        'dnd_starts_at' => $now->subMinutes(10)->format('H:i'),
+        'dnd_ends_at' => $now->addMinutes(10)->format('H:i'),
     ])->save();
 
     $page = signInThroughBrowser($alice)
