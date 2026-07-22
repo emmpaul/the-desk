@@ -9,6 +9,7 @@ const page = {
             id: string;
             name: string;
             presence?: 'active' | 'away';
+            isDnd?: boolean;
         }[],
     },
 };
@@ -153,6 +154,21 @@ describe('useTeamPresence', () => {
 
         expect(api.presenceFor('maya')).toBe('away');
         expect(api.presenceFor('jonas')).toBe('active');
+
+        unmount();
+    });
+
+    it('reads a member dnd flag from the shared teamMembers prop', () => {
+        page.props.teamMembers = [
+            { id: 'maya', name: 'Maya', presence: 'active', isDnd: true },
+            { id: 'jonas', name: 'Jonas', presence: 'active' },
+        ];
+
+        const { api, unmount } = mount();
+
+        expect(api.isDndFor('maya')).toBe(true);
+        expect(api.isDndFor('jonas')).toBe(false);
+        expect(api.isDndFor('missing')).toBe(false);
 
         unmount();
     });

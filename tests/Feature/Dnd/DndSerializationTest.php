@@ -1,7 +1,9 @@
 <?php
 
 use App\Data\UserData;
+use App\Enums\TeamRole;
 use App\Events\UserProfileUpdated;
+use App\Models\Team;
 use App\Models\User;
 
 test('the serialized author payload carries the dnd flag', function (): void {
@@ -49,6 +51,28 @@ test('a lapsed pause reads as absent from the own dnd configuration', function (
     $user = User::factory()->create(['dnd_until' => now()->subMinute()]);
 
     expect($user->toArray()['dnd']['until'])->toBeNull();
+});
+
+test('the hover card names dnd without exposing when it ends', function (): void {
+    $viewer = User::factory()->create();
+    $member = User::factory()->create([
+        'dnd_until' => now()->addHour(),
+        'dnd_schedule_enabled' => true,
+        'dnd_starts_at' => '22:00',
+        'dnd_ends_at' => '07:00',
+    ]);
+    $team = Team::factory()->create();
+
+    $team->members()->attach($viewer, ['role' => TeamRole::Member->value]);
+    $team->members()->attach($member, ['role' => TeamRole::Member->value]);
+
+    $response = $this->actingAs($viewer)
+        ->getJson(route('teams.members.card', [$team, $member]))
+        ->assertOk()
+        ->assertJsonPath('isDnd', true);
+
+    expect($response->json())->not->toHaveKeys(['dndUntil', 'dnd'])
+        ->and($response->content())->not->toContain('22:00', '07:00');
 });
 
 test('the profile broadcast carries the dnd flag to teammates', function (): void {

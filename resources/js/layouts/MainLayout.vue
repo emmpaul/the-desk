@@ -151,7 +151,7 @@ const currentUserId = computed(() => String(page.props.auth.user.id));
 const teamMembers = computed(() => page.props.teamMembers ?? []);
 
 /** Live presence for the current team, driving the dot on each DM row. */
-const { presenceFor } = useTeamPresence(() => currentTeam.value?.id);
+const { presenceFor, isDndFor } = useTeamPresence(() => currentTeam.value?.id);
 
 // Report this tab's own idle state from the layout every authenticated surface
 // mounts, so someone reading a settings page still counts as here.
@@ -1261,6 +1261,10 @@ onMounted(() => {
                                             presenceFor,
                                             page.props.auth.user.presence,
                                         )
+                                    "
+                                    :is-dnd="
+                                        dm.dmUserId != null &&
+                                        isDndFor(dm.dmUserId)
                                     "
                                     :is-self="dm.dmUserId === currentUserId"
                                 />
