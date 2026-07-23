@@ -213,12 +213,15 @@ const rowClass =
             <!-- The pressed message, lifted onto the scrim above the sheet so it
                  stays visible while choosing an action (design m4). Purely a
                  visual echo of the row: the sheet's title already names the
-                 surface, so the card is decorative to a screen reader. -->
+                 surface, so the card is decorative to a screen reader. On a
+                 short (landscape) viewport the sheet's 85dvh cap leaves no
+                 scrim for the card to sit on, so it folds away rather than
+                 poking off the top of the screen. -->
             <div
                 v-if="message"
                 aria-hidden="true"
                 data-test="lifted-message"
-                class="pointer-events-none absolute inset-x-1.5 bottom-full mb-3 rounded-[14px] border border-border bg-card p-3 shadow-[0_12px_32px_rgba(29,26,21,0.3)]"
+                class="pointer-events-none absolute inset-x-1.5 bottom-full mb-3 rounded-[14px] border border-border bg-card p-3 shadow-[0_12px_32px_rgba(29,26,21,0.3)] [@media(max-height:500px)]:hidden"
             >
                 <div class="flex gap-2.5">
                     <Avatar class="size-7.5 shrink-0 text-[10px]">
