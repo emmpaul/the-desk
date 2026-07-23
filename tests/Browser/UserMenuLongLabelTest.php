@@ -43,10 +43,6 @@ test('the presence menu keeps its rows on one line in French', function (): void
     $alice->update(['locale' => AppLocale::French]);
 
     signInThroughBrowser($alice)
-        // The catalog rides the initial response as a `once` prop, so signing in
-        // from the guest login page leaves the client on the English one until a
-        // document load re-inlines it (#764). Drop this refresh when that lands.
-        ->refresh()
         ->click('@sidebar-menu-button')
         ->assertPresent('@pause-notifications-menu-item')
         // Let the dropdown settle past its open/pointer-grace window.
