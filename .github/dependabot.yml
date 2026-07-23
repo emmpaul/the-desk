@@ -1,7 +1,13 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # `/` covers `.github/workflows`. Actions pinned anywhere else are invisible
+    # to dependabot unless their directory is listed too, and the Docker build
+    # actions live in a composite action because `uses:` cannot be templated
+    # with the runner variable (see CONTRIBUTING.md → CI runners).
+    directories:
+      - "/"
+      - "/.github/actions/docker-build"
     # `develop` is the line every ordinary change goes through; `master` only
     # takes promotions from it. Without this, dependabot opens against the
     # repository's default branch — `master` — and the bump ships without ever
