@@ -111,15 +111,15 @@ function choosePreset(preset: QuickPreset): void {
             data-test="message-composer-send"
             :disabled="!canSubmit"
             :aria-label="$t('Send message')"
-            class="flex h-8.5 shrink-0 items-center gap-1.5 px-3 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/5 disabled:opacity-40 md:pr-3 md:pl-4"
+            class="flex h-8.5 shrink-0 items-center gap-1.5 px-3 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/5 disabled:opacity-40 @lg:pr-3 @lg:pl-4"
             @click="emit('send')"
         >
-            <!-- The label is dropped below the breakpoint: the pill has no room
-                 for it, and a locale whose word for "Send" runs longer than the
+            <!-- The label is dropped once the pill is narrow: it has no room for
+                 it, and a locale whose word for "Send" runs longer than the
                  English (fr "Envoyer") would otherwise squeeze the field until
                  its placeholder wrapped. The glyph and the aria-label carry the
                  meaning on their own. -->
-            <span class="hidden md:inline">{{ $t('Send') }}</span>
+            <span class="hidden @lg:inline">{{ $t('Send') }}</span>
             <Send class="size-3.25" />
         </Button>
 

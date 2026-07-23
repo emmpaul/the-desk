@@ -1300,7 +1300,7 @@ function onKeydown(event: KeyboardEvent): void {
          measured live off visualViewport (the layout viewport `svh` sizes
          against does not shrink when the keyboard opens). -->
     <div
-        class="mx-3 mb-2 shrink-0 md:mx-5 md:mb-4"
+        class="@container mx-3 mb-2 shrink-0 md:mx-5 md:mb-4"
         :style="{
             paddingBottom: `calc(env(safe-area-inset-bottom) + ${keyboardInsetPx}px)`,
         }"
@@ -1770,7 +1770,7 @@ function onKeydown(event: KeyboardEvent): void {
                      collapse it to zero width on a phone. -->
                 <div
                     v-else
-                    class="flex flex-wrap items-end gap-2.5 py-2 pr-2 pl-4.5 md:flex-nowrap"
+                    class="flex flex-wrap items-end gap-2.5 py-2 pr-2 pl-4.5 @lg:flex-nowrap"
                 >
                     <textarea
                         ref="textarea"
@@ -1855,8 +1855,8 @@ function onKeydown(event: KeyboardEvent): void {
                             class="shrink-0 items-end gap-2.5"
                             :class="
                                 toolsOpen
-                                    ? 'order-last flex w-full pt-1 md:order-none md:w-auto md:pt-0'
-                                    : 'hidden md:flex'
+                                    ? 'order-last flex w-full pt-1 @lg:order-none @lg:w-auto @lg:pt-0'
+                                    : 'hidden @lg:flex'
                             "
                             data-test="composer-tools"
                         >
@@ -1945,7 +1945,7 @@ function onKeydown(event: KeyboardEvent): void {
                             variant="ghost"
                             size="icon"
                             data-test="composer-tools-toggle"
-                            class="size-8.5 shrink-0 rounded-full text-muted-foreground md:hidden"
+                            class="size-8.5 shrink-0 rounded-full text-muted-foreground @lg:hidden"
                             :aria-expanded="toolsOpen"
                             :aria-label="
                                 toolsOpen

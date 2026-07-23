@@ -106,6 +106,11 @@ test('the channel name is readable however tight the viewport', function (int $w
     'small phone' => [360],
     'iPhone SE' => [375],
     'iPhone 14' => [390],
+    // Tablet portrait is past the breakpoint, so the dock takes its 300px back
+    // and leaves the masthead the room of a large phone. What it can fit is a
+    // question about the pane, not the window, which is why the masthead sizes
+    // itself off its own container rather than the viewport.
+    'tablet portrait' => [768],
 ]);
 
 test('a long channel name truncates rather than pushing the search icon off screen', function (): void {
@@ -227,6 +232,9 @@ test('the composer stays a pill that keeps its field and Send button usable', fu
     'iPhone SE' => [375, 667],
     'iPhone 14' => [390, 844],
     'landscape phone' => [740, 360],
+    // Same reasoning as the masthead: the pill folds its tools away whenever the
+    // pane is narrow, which a tablet's is even though its window is not.
+    'tablet portrait' => [768, 1024],
 ]);
 
 test('the composer pill survives a locale with longer words than the English', function (): void {
