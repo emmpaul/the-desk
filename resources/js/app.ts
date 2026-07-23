@@ -10,6 +10,7 @@ import type { ReverbRuntimeConfig } from '@/lib/echo';
 import { initializeFlashToast } from '@/lib/flashToast';
 import { setMessages, translate } from '@/lib/i18n';
 import type { Messages } from '@/lib/i18n';
+import { initializeLocaleSync } from '@/lib/localeSync';
 import { initializeOverlayInert } from '@/lib/overlayInert';
 import type { TimeFormat } from '@/types';
 
@@ -26,7 +27,8 @@ void createInertiaApp({
     // Seed the translation catalog from the server-shared props before the first
     // render — on both the SSR pass and the client — so the initial paint is
     // already in the active locale (no flash of English on refresh). `translations`
-    // is a once prop, so it rides the initial document only, not every visit.
+    // is a once prop keyed by locale, so it rides the initial document and then
+    // only the visits that change language — `initializeLocaleSync` adopts those.
     // The clock-style preference is seeded the same way, so the first paint's
     // times of day are already on the viewer's chosen clock.
     // Also expose the translation helper as a global `$t` for templates.
@@ -76,6 +78,8 @@ void createInertiaApp({
 });
 
 initializeTheme();
+
+initializeLocaleSync();
 
 initializeFlashToast();
 

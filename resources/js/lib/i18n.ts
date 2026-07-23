@@ -69,10 +69,19 @@ export function translate(
 
 /**
  * Replace the active locale and catalog, e.g. after the user switches language.
+ *
+ * The single choke point for a locale change on the client, so it also restamps
+ * `<html lang>`: the Blade shell only writes that on a document load, and an SPA
+ * locale change (a language switch, or signing in as a French user) never has
+ * one. Guarded for the SSR pass, where there is no document to stamp.
  */
 export function setMessages(locale: string, messages: Messages): void {
     i18n.locale = locale;
     i18n.messages = messages;
+
+    if (typeof document !== 'undefined') {
+        document.documentElement.lang = locale.replaceAll('_', '-');
+    }
 }
 
 /**

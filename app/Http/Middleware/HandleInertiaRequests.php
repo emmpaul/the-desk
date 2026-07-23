@@ -79,7 +79,14 @@ class HandleInertiaRequests extends Middleware
             // prop: it reaches the SSR render and first hydration (so the first
             // paint is already translated) but is excluded from every subsequent
             // SPA visit, keeping navigation payloads free of the catalog.
-            'translations' => Inertia::once(fn () => app(TranslationCatalog::class)->messages(app()->getLocale())),
+            //
+            // The once key carries the locale it holds, so "already loaded" means
+            // "already loaded *this* catalog". A visit that changes the effective
+            // locale without a document load — signing in as a French user from
+            // the English guest page — therefore ships the new catalog instead of
+            // leaving the client rendering the old one (#764).
+            'translations' => Inertia::once(fn () => app(TranslationCatalog::class)->messages(app()->getLocale()))
+                ->as('translations:'.app()->getLocale()),
             // A single deploy-time flag lets self-hosters lock down public
             // registration; when off, Fortify never registers the register
             // routes, so the frontend hides its "sign up" affordances to match.

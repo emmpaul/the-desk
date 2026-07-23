@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { i18n, setMessages, translate } from './i18n';
 
@@ -56,5 +57,17 @@ describe('setMessages', () => {
 
         expect(i18n.locale).toBe('fr');
         expect(i18n.messages).toEqual({ Hello: 'Bonjour' });
+    });
+
+    it('restamps the document language, which no SPA swap reloads', () => {
+        setMessages('fr', {});
+
+        expect(document.documentElement.lang).toBe('fr');
+    });
+
+    it('writes the document language as a BCP 47 tag', () => {
+        setMessages('pt_BR', {});
+
+        expect(document.documentElement.lang).toBe('pt-BR');
     });
 });
