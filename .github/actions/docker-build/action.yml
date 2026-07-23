@@ -16,8 +16,10 @@ inputs:
   runner:
     description: >-
       The runner label the calling job resolved, i.e. `${{ vars.CI_RUNNER }}`.
-      The Blacksmith path is taken only for a `blacksmith-*` label; anything
-      else — including an unset variable — builds on the GitHub-hosted path.
+      The Blacksmith path is taken for any label starting with `blacksmith` —
+      the sized ones like `blacksmith-4vcpu-ubuntu-2404` and the bare
+      `blacksmith` default alike. Anything else, an unset variable included,
+      builds on the GitHub-hosted path.
     required: false
     default: ''
   context:

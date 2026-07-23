@@ -77,9 +77,12 @@ under **Settings → Secrets and variables → Actions → Variables**:
 | `blacksmith-4vcpu-ubuntu-2404` | [Blacksmith](https://blacksmith.sh) 4-vCPU runners |
 | unset (or deleted)             | GitHub-hosted `ubuntu-latest`                      |
 
-GitHub-hosted is deliberately the fallback rather than the other way round: an
-unset — or unavailable — variable has to degrade to a runner that exists, so the
-repository is never stranded if the Blacksmith installation is removed.
+GitHub-hosted is deliberately the fallback rather than the other way round: with
+nothing set, a fresh fork still runs CI on a runner that exists. The fallback
+fires on an **unset** variable, though, not on an unreachable runner — a
+`CI_RUNNER` left naming a Blacksmith label after the installation is removed
+leaves every job queued against a label nothing answers to. Clear the variable
+first, then uninstall.
 
 `uses:` is the one workflow field that cannot take an expression, so the two
 Blacksmith-only Docker actions cannot follow the variable directly. They sit

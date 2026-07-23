@@ -1,10 +1,12 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
-    # `/` covers `.github/workflows`. Actions pinned anywhere else are invisible
-    # to dependabot unless their directory is listed too, and the Docker build
-    # actions live in a composite action because `uses:` cannot be templated
-    # with the runner variable (see CONTRIBUTING.md → CI runners).
+    # `/` covers `.github/workflows` plus an `action.yml` at the repository
+    # root — and nothing else, so a composite action in a subdirectory is
+    # invisible to dependabot until its own directory is listed. These two do
+    # not overlap for that reason. The Docker build actions live in such a
+    # composite action because `uses:` cannot be templated with the runner
+    # variable (see CONTRIBUTING.md → CI runners).
     directories:
       - "/"
       - "/.github/actions/docker-build"
