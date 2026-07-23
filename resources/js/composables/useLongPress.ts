@@ -47,6 +47,7 @@ export function useLongPress<T>(
 ): UseLongPress<T> {
     let timer: number | null = null;
     let origin: { x: number; y: number } | null = null;
+    let selectionAtStart = '';
     const pressing = ref(null) as Ref<T | null>;
 
     function disarm(): void {
@@ -67,11 +68,24 @@ export function useLongPress<T>(
         );
     }
 
-    /** Whether the user has meanwhile started selecting text instead. */
-    function selectingText(): boolean {
+    /** The selected text right now, or an empty string with nothing selected. */
+    function selectedText(): string {
         const selection = window.getSelection();
 
-        return selection !== null && !selection.isCollapsed;
+        return selection === null || selection.isCollapsed
+            ? ''
+            : selection.toString();
+    }
+
+    /**
+     * Whether the user is selecting text with this press: a live selection that
+     * did not exist when the press began. A selection left over from earlier
+     * (or dismissed by the press itself) is not selection activity.
+     */
+    function selectingText(): boolean {
+        const selection = selectedText();
+
+        return selection !== '' && selection !== selectionAtStart;
     }
 
     function start(event: PointerEvent, payload: T): void {
@@ -82,6 +96,7 @@ export function useLongPress<T>(
         }
 
         origin = { x: event.clientX, y: event.clientY };
+        selectionAtStart = selectedText();
         pressing.value = payload;
         timer = window.setTimeout(() => {
             timer = null;

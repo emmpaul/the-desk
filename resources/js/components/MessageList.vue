@@ -778,12 +778,16 @@ watch(isMobile, (mobile) => {
 });
 
 // A message deleted (or pruned from the window) while its sheet is up has no
-// actions left to offer.
-watch(actionSheetMessage, (current) => {
-    if (current === null || current.isDeleted) {
-        actionSheetOpen.value = false;
-    }
-});
+// actions left to offer. Watched through a getter so an in-place tombstone
+// patch from a broadcast closes it too, not only a replaced array entry.
+watch(
+    () => actionSheetMessage.value?.isDeleted,
+    (isDeleted) => {
+        if (isDeleted !== false) {
+            actionSheetOpen.value = false;
+        }
+    },
+);
 
 /** The message queued for deletion; a non-null value drives the confirm dialog. */
 const pendingDelete = ref<Message | null>(null);

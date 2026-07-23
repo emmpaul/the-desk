@@ -147,6 +147,20 @@ describe('useLongPress', () => {
         expect(onLongPress).not.toHaveBeenCalled();
     });
 
+    it('is not fooled by a selection left over from before the press', () => {
+        const onLongPress = vi.fn();
+        const press = useLongPress<string>({ enabled: ref(true), onLongPress });
+
+        const range = document.createRange();
+        range.selectNodeContents(body);
+        window.getSelection()?.addRange(range);
+
+        press.start(pointer('pointerdown'), 'm1');
+        vi.advanceTimersByTime(LONG_PRESS_MS);
+
+        expect(onLongPress).toHaveBeenCalledExactlyOnceWith('m1');
+    });
+
     it('ignores the gesture entirely while the viewport is desktop', () => {
         const onLongPress = vi.fn();
         const press = useLongPress<string>({
