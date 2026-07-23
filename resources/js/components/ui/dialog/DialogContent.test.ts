@@ -60,12 +60,16 @@ async function open(mobile?: 'sheet' | 'detail' | 'dialog'): Promise<HTMLElement
     return content as HTMLElement;
 }
 
+/** jsdom ships no `matchMedia`, so this is `undefined` — put back either way. */
+const realMatchMedia = window.matchMedia;
+
 beforeEach(() => standAt(390));
 
 afterEach(() => {
     app?.unmount();
     app = null;
     document.body.innerHTML = '';
+    window.matchMedia = realMatchMedia;
 });
 
 describe('below the md breakpoint', () => {
