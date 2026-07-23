@@ -65,8 +65,8 @@ describe('shouldDismissSheet', () => {
         expect(shouldDismissSheet({ offset: 4, height: 0, velocity: 0 })).toBe(
             false,
         );
-        expect(shouldDismissSheet({ offset: 200, height: 0, velocity: 0 })).toBe(
-            true,
-        );
+        expect(
+            shouldDismissSheet({ offset: 200, height: 0, velocity: 0 }),
+        ).toBe(true);
     });
 });
