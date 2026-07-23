@@ -119,6 +119,10 @@ describe('below the md breakpoint', () => {
         // The bottom tracks the on-screen keyboard so the list's end stays
         // reachable while typing (0 with no keyboard up).
         expect(content.style.bottom).toBe('0px');
+        // Beats a call-site width like the harness's `sm:max-w-md`, which
+        // opens at 640px — below the breakpoint, where it would otherwise
+        // shrink the overlay on a landscape phone.
+        expect(content.style.maxWidth).toBe('none');
     });
 
     it('leaves an opted-out dialog centred, with no handle', async () => {

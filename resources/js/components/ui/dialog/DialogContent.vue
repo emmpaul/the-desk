@@ -110,7 +110,9 @@ const contentStyle = computed<CSSProperties | undefined>(() => {
   if (asFullscreen.value) {
     // `inset-0` anchors to the layout viewport, which the on-screen keyboard
     // does not shrink — tracking it keeps the list's end reachable while typing.
-    return { bottom: `${keyboardInset.value}px` }
+    // Like the sheet, fullscreen has to beat any width the call site set for
+    // its desktop dialog (`sm:` opens at 640px, below the breakpoint).
+    return { bottom: `${keyboardInset.value}px`, maxWidth: "none" }
   }
 
   if (!asSheet.value) {
