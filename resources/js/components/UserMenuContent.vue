@@ -443,7 +443,9 @@ const handleLogout = () => {
             <SmilePlus
                 class="size-3.75 text-muted-foreground group-focus/item:text-brass"
             />
-            {{ $t('Set a status') }}
+            <span class="min-w-0 flex-1 truncate">{{
+                $t('Set a status')
+            }}</span>
         </DropdownMenuItem>
         <div
             v-else
@@ -514,16 +516,23 @@ const handleLogout = () => {
                     class="size-2.25"
                 />
             </span>
-            {{
+            <span class="min-w-0 flex-1 truncate">{{
                 togglesTo === 'away'
                     ? $t('Set yourself away')
                     : $t('Set yourself active')
-            }}
+            }}</span>
         </DropdownMenuItem>
         <!-- Pause notifications: the crescent row below the away toggle, its
              presets flowing out in a flyout. Choosing one applies in place;
              Custom… trades the menu for the dialog, and the trailing row links
-             to the recurring schedule in Settings. -->
+             to the recurring schedule in Settings.
+
+             Like its sibling rows, the label is a truncating flex child rather
+             than a bare text node: the menu is only as wide as the dock, and a
+             locale whose translation runs longer than the English (#760) would
+             otherwise wrap out of the fixed row height and shove the chevron
+             off-centre. Ellipsised text keeps the full string in the DOM, so the
+             accessible name stays complete. -->
         <DropdownMenuSub>
             <DropdownMenuSubTrigger
                 class="group/item mt-0.5 flex h-9 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 py-0 text-[13.5px] font-normal text-foreground data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground"
@@ -532,7 +541,9 @@ const handleLogout = () => {
                 <Moon
                     class="size-3.75 text-muted-foreground group-data-[highlighted]/item:text-brass group-data-[state=open]/item:text-brass"
                 />
-                {{ $t('Pause notifications') }}
+                <span class="min-w-0 flex-1 truncate">{{
+                    $t('Pause notifications')
+                }}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent
                 class="min-w-47 rounded-[14px] p-1.25"
@@ -624,7 +635,9 @@ const handleLogout = () => {
                 <Settings
                     class="size-3.75 text-muted-foreground group-focus/item:text-brass"
                 />
-                {{ $t('Settings') }}
+                <span class="min-w-0 flex-1 truncate">{{
+                    $t('Settings')
+                }}</span>
             </Link>
         </DropdownMenuItem>
     </div>
@@ -643,7 +656,9 @@ const handleLogout = () => {
             <Keyboard
                 class="size-3.75 text-muted-foreground group-focus/item:text-brass"
             />
-            {{ $t('Keyboard shortcuts') }}
+            <span class="min-w-0 flex-1 truncate">{{
+                $t('Keyboard shortcuts')
+            }}</span>
             <DropdownMenuShortcut
                 class="ml-auto inline-flex h-4.5 min-w-4 items-center justify-center rounded-[5px] border border-border px-1 font-mono text-[10px] font-semibold tracking-normal text-muted-foreground group-focus/item:border-primary-foreground/30 group-focus/item:text-primary-foreground"
                 >?</DropdownMenuShortcut
@@ -657,7 +672,7 @@ const handleLogout = () => {
             <Compass
                 class="size-3.75 text-muted-foreground group-focus/item:text-brass"
             />
-            {{ $t('Replay tour') }}
+            <span class="min-w-0 flex-1 truncate">{{ $t('Replay tour') }}</span>
         </DropdownMenuItem>
     </div>
 
