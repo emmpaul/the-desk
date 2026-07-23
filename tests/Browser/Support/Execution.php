@@ -56,7 +56,7 @@ final class Execution
     public static function instance(): self
     {
         if (! self::$instance instanceof self) {
-            self::$instance = new self();
+            self::$instance = new self;
         }
 
         return self::$instance;
