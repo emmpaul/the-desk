@@ -36,9 +36,7 @@ it('gives every retry attempt the remaining outer budget instead of 1000ms', fun
         Execution::instance()->waitForExpectation(function () use (&$attemptBudgets): int {
             $attemptBudgets[] = Client::instance()->timeout();
 
-            if (count($attemptBudgets) === 1) {
-                throw new ExpectationFailedException('force a retry');
-            }
+            throw_if(count($attemptBudgets) === 1, ExpectationFailedException::class, 'force a retry');
 
             return Client::instance()->timeout();
         });
