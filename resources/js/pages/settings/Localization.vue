@@ -138,6 +138,7 @@ function onSelectTimeFormat(value: unknown): void {
                         v-for="option in timeFormats"
                         :key="option.value"
                         :value="option.value"
+                        :data-test="`time-format-${option.value}`"
                     >
                         {{ option.label }}
                     </SelectItem>
