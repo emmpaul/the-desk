@@ -25,19 +25,30 @@ it('loads the patched Execution shadow instead of the vendor class', function ()
     expect($file)->toBe(dirname(__DIR__).'/Browser/Support/Execution.php');
 });
 
-it('gives a retry attempt the remaining outer budget instead of 1000ms', function (): void {
+it('gives every retry attempt the remaining outer budget instead of 1000ms', function (): void {
     $previousTimeout = Playwright::timeout();
     Playwright::setTimeout(15_000);
 
+    /** @var list<int> $attemptBudgets */
+    $attemptBudgets = [];
+
     try {
-        $attemptBudget = Execution::instance()->waitForExpectation(
-            fn (): int => Client::instance()->timeout(),
-        );
+        Execution::instance()->waitForExpectation(function () use (&$attemptBudgets): int {
+            $attemptBudgets[] = Client::instance()->timeout();
+
+            if (count($attemptBudgets) === 1) {
+                throw new ExpectationFailedException('force a retry');
+            }
+
+            return Client::instance()->timeout();
+        });
     } finally {
         Playwright::setTimeout($previousTimeout);
     }
 
-    expect($attemptBudget)->toBeGreaterThan(1_000);
+    expect($attemptBudgets)->toHaveCount(2)
+        ->and($attemptBudgets[0])->toBeGreaterThan(1_000)->toBeLessThanOrEqual(15_000)
+        ->and($attemptBudgets[1])->toBeGreaterThan(1_000)->toBeLessThanOrEqual($attemptBudgets[0]);
 });
 
 it('still retries a failing expectation until the outer clock expires', function (): void {
@@ -45,6 +56,7 @@ it('still retries a failing expectation until the outer clock expires', function
     Playwright::setTimeout(100);
 
     $attempts = 0;
+    $startedAt = hrtime(true);
 
     try {
         Execution::instance()->waitForExpectation(function () use (&$attempts): void {
@@ -60,5 +72,8 @@ it('still retries a failing expectation until the outer clock expires', function
         Playwright::setTimeout($previousTimeout);
     }
 
-    expect($attempts)->toBeGreaterThanOrEqual(2);
+    $elapsedMilliseconds = (hrtime(true) - $startedAt) / 1_000_000;
+
+    expect($attempts)->toBeGreaterThanOrEqual(2)
+        ->and($elapsedMilliseconds)->toBeGreaterThanOrEqual(100);
 });
