@@ -299,3 +299,28 @@ test('a sheet survives a locale whose words run longer than the English', functi
         (() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)()
         JS, true);
 });
+
+test('an open sheet has no serious accessibility violations in either theme', function (): void {
+    ['owner' => $alice, 'team' => $team, 'channel' => $channel] = browserTeamWithChannel();
+
+    // The sheet adds chrome the centred dialog never had — a grab handle, a new
+    // scrim token — and the automated gate does not audit a11y. axe-core reads
+    // the real rendered DOM, so a clean run covers both the handle's semantics
+    // (decorative, and unreachable by keyboard) and the scrim's contrast.
+    $page = openCreateChannelDialog(
+        signInThroughBrowser($alice),
+        390,
+        844,
+        browserChannelUrl($team, $channel),
+    )->assertNoAccessibilityIssues();
+
+    $page->script(<<<'JS'
+    () => {
+        localStorage.setItem('appearance', 'dark');
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+    }
+    JS);
+
+    $page->wait(0.5)->assertNoAccessibilityIssues();
+});
