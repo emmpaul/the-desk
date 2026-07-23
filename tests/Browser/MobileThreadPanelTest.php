@@ -160,10 +160,15 @@ test('back returns to the channel at the scroll position it was left at', functi
     }
     JS);
 
-    $page->wait(1)
+    // Both waits are state-based: the retrying assertions let the scroll settle
+    // and the reply page land before the next interaction.
+    $page->assertScript(
+        '(() => document.querySelector(\'[data-test="message-history"]\').scrollTop === 0)()',
+        true,
+    )
         ->click('[data-test=thread-summary]')
         ->assertVisible('[data-test=thread-back]')
-        ->wait(1)
+        ->assertSee('Thread reply 2')
         ->click('[data-test=thread-back]')
         ->assertNotPresent('[data-test=thread-panel]')
         // Still at the top — not re-pinned to the newest message...
