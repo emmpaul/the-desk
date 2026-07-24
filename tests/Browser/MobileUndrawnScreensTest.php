@@ -10,6 +10,7 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\SecurityEvent;
 use App\Models\UserGroup;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The screens the mobile design does not draw (#778): admin settings pages,
@@ -215,7 +216,7 @@ test('the lightbox truncates a long filename clear of its header buttons', funct
         'body' => 'Here is the screenshot.',
     ]);
 
-    Attachment::factory()->create([
+    $attachment = Attachment::factory()->create([
         'message_id' => $message->id,
         'user_id' => $alice->id,
         'channel_id' => $channel->id,
@@ -223,10 +224,37 @@ test('the lightbox truncates a long filename clear of its header buttons', funct
         'status' => AttachmentStatus::Attached,
     ]);
 
+    // A real blob behind the record: without it the image request 404s and the
+    // lightbox trigger never gets a stable click target.
+    Storage::disk($attachment->disk)->put(
+        $attachment->path,
+        (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true),
+    );
+
     signInThroughBrowser($alice)
         ->resize(360, 740)
         ->navigate(browserChannelUrl($team, $channel))
-        ->click('[data-test="attachment-image"]')
+        ->assertPresent('[data-test="attachment-image"]')
+        // The image stays inside the viewport even though its stored box
+        // (800 × 600 → 320 × 240) is wider than the phone's content column.
+        ->assertScript(<<<'JS'
+        (() => {
+            const trigger = document.querySelector('[data-test="attachment-image"]');
+
+            return trigger !== null
+                && trigger.getBoundingClientRect().right <= window.innerWidth + 1;
+        })()
+        JS, true)
+        // A scripted click: a pointer click can race the timeline's settling
+        // scroll and land on the hover toolbar instead of the image.
+        ->assertScript(<<<'JS'
+        (() => {
+            document.querySelector('[data-test="attachment-image"]').click();
+
+            return true;
+        })()
+        JS, true)
+        ->assertPresent('[data-test="attachment-lightbox"]')
         ->assertScript(<<<'JS'
         (() => {
             const dialog = document.querySelector('[data-test="attachment-lightbox"]');

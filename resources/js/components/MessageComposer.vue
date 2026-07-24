@@ -1953,7 +1953,7 @@ function onKeydown(event: KeyboardEvent): void {
                             variant="ghost"
                             size="icon"
                             data-test="composer-tools-toggle"
-                            class="size-8.5 shrink-0 rounded-full text-muted-foreground @lg:hidden max-md:size-11"
+                            class="size-8.5 shrink-0 rounded-full text-muted-foreground max-md:size-11 @lg:hidden"
                             :aria-expanded="toolsOpen"
                             :aria-label="
                                 toolsOpen
