@@ -88,11 +88,13 @@ describe('useEllipsizedText', () => {
         active = [];
         resizeCallbacks = [];
         observed = [];
+
         if (documentFontsDescriptor) {
             Object.defineProperty(document, 'fonts', documentFontsDescriptor);
         } else {
             delete (document as { fonts?: unknown }).fonts;
         }
+
         documentFontsDescriptor = undefined;
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
