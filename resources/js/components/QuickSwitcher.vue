@@ -294,7 +294,7 @@ function openReminders(): void {
                     />
                 </div>
                 <CommandList
-                    :aria-label="$t('Quick switcher')"
+                    :ariaLabel="$t('Quick switcher')"
                     class="max-md:max-h-none max-md:flex-1 max-md:p-1.5"
                 >
                     <CommandGroup
