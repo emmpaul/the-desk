@@ -101,8 +101,8 @@ test('the exports page catalog carries the new-export intro line in french', fun
         ->get(route('teams.audit-exports.index', $team))
         ->viewData('page');
 
-    expect($page['props']['translations'])
-        ->toHaveKey("One log, one format, one file. You'll get an email when it's ready.");
+    expect($page['props']['translations']["One log, one format, one file. You'll get an email when it's ready."])
+        ->toBe('Un journal, un format, un fichier. Vous recevrez un e-mail quand il sera prêt.');
 });
 
 test('a plain member cannot view the exports page', function (): void {
