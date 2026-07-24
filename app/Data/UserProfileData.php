@@ -23,6 +23,12 @@ class UserProfileData extends Data
         public ?string $roleLabel,
         public ?string $memberSince,
         public bool $isYou,
+        /** The member's live custom status, shown in full on the card and page. */
+        public ?UserStatusData $status = null,
+        // Whether the member is in do-not-disturb right now — the card names
+        // the state without exposing when it ends. Same curated boolean as
+        // UserData::$isDnd; the pause instant and schedule stay private.
+        public bool $isDnd = false,
     ) {}
 
     /**
@@ -46,6 +52,8 @@ class UserProfileData extends Data
             roleLabel: $membership->role->label(),
             memberSince: $membership->created_at?->toIso8601String(),
             isYou: $member->is($viewer),
+            status: UserStatusData::forUser($member),
+            isDnd: $member->isDndActive(),
         );
     }
 }

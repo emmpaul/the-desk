@@ -16,7 +16,7 @@ permissions: {}
 jobs:
   check-pins:
     name: Check the pinned PHP extension sources
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
 
     permissions:
       contents: read

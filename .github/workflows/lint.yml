@@ -5,6 +5,15 @@ on:
     branches:
       - develop
       - master
+    # Merging a release PR pushes a commit touching only files release-please
+    # owns, which cannot affect the app. Push runs carry no required checks, so
+    # a plain `paths-ignore` is safe here (unlike on `pull_request`, see the
+    # job-level skip below). Guarded by
+    # tests/Unit/ReleasePullRequestCiSkipTest.php (#820).
+    paths-ignore:
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - '.release-please-manifest*.json'
   pull_request:
     branches:
       - develop
@@ -19,7 +28,16 @@ permissions:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
+    # Release-please PRs only touch VERSION/manifest/changelog files, so this
+    # suite has nothing to check there. A job-level `if` (not a `paths` filter)
+    # keeps the PR mergeable: a skipped job reports its required check as
+    # *skipped*, which GitHub treats as satisfied, while a workflow that never
+    # starts leaves it stuck on *Expected*. The head-repo clause keeps the
+    # branch name from becoming a CI bypass: `head_ref` is attacker-controlled,
+    # so a fork branch named `release-please--anything` must still run
+    # everything. Guarded by tests/Unit/ReleasePullRequestCiSkipTest.php (#820).
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--') || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

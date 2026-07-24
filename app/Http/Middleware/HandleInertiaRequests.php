@@ -79,7 +79,14 @@ class HandleInertiaRequests extends Middleware
             // prop: it reaches the SSR render and first hydration (so the first
             // paint is already translated) but is excluded from every subsequent
             // SPA visit, keeping navigation payloads free of the catalog.
-            'translations' => Inertia::once(fn () => app(TranslationCatalog::class)->messages(app()->getLocale())),
+            //
+            // The once key carries the locale it holds, so "already loaded" means
+            // "already loaded *this* catalog". A visit that changes the effective
+            // locale without a document load — signing in as a French user from
+            // the English guest page — therefore ships the new catalog instead of
+            // leaving the client rendering the old one (#764).
+            'translations' => Inertia::once(fn () => app(TranslationCatalog::class)->messages(app()->getLocale()))
+                ->as('translations:'.app()->getLocale()),
             // A single deploy-time flag lets self-hosters lock down public
             // registration; when off, Fortify never registers the register
             // routes, so the frontend hides its "sign up" affordances to match.
@@ -142,6 +149,12 @@ class HandleInertiaRequests extends Middleware
             // is the single source of truth, shared the same way the settings page
             // sources its own options.
             'sidebarPositions' => SidebarPosition::options(),
+            // The auto-idle threshold rides every request because the detector
+            // that enforces it runs in the browser: a tab has to know how long
+            // "no activity" may last before it reports itself away.
+            'presence' => [
+                'awayAfterMinutes' => max((int) config('presence.away_after_minutes'), 1),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'currentTeam' => fn () => $user?->currentTeam ? $user->toUserTeam($user->currentTeam) : null,
             'teams' => fn () => $user?->toUserTeams(includeCurrent: true) ?? [],
@@ -503,8 +516,9 @@ class HandleInertiaRequests extends Middleware
             ->where('messages.user_id', '!=', $user->id)
             // System notices (member joined / left) are ambient: they never
             // advance the unread badge or raise a mention, so they are excluded
-            // from both the unread and mention counts.
-            ->where('messages.type', MessageType::Standard->value)
+            // from both the unread and mention counts. Every other type counts —
+            // a poll is user-authored and badges the channel like a message.
+            ->whereNotIn('messages.type', MessageType::systemValues())
             ->where(fn (Builder $query) => $query
                 ->whereNull('channel_members.last_read_message_id')
                 ->orWhereColumn('messages.id', '>', 'channel_members.last_read_message_id'));

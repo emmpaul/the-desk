@@ -254,7 +254,7 @@ function downloadUrl(entry: AuditExport): string {
                             variant="segmented"
                             size="none"
                             type="button"
-                            class="h-8 gap-1.5 px-4 text-[12.5px] font-medium"
+                            class="h-8 gap-1.5 px-4 text-[12.5px] font-medium max-md:h-11"
                             :aria-pressed="option.value === selectedLogType"
                             :data-test="`audit-export-log-${option.value}`"
                             @click="selectedLogType = option.value"
@@ -285,7 +285,7 @@ function downloadUrl(entry: AuditExport): string {
                             variant="segmented"
                             size="none"
                             type="button"
-                            class="h-8 px-4 text-[12.5px] font-medium"
+                            class="h-8 px-4 text-[12.5px] font-medium max-md:h-11"
                             :aria-pressed="option.value === selectedFormat"
                             :data-test="`audit-export-format-${option.value}`"
                             @click="selectedFormat = option.value"
@@ -301,12 +301,12 @@ function downloadUrl(entry: AuditExport): string {
                         {{ $t('Period') }}
                         <span class="font-normal">· {{ $t('optional') }}</span>
                     </span>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <DatePicker
                             :model-value="rangeStart || null"
                             :placeholder="$t('Start date')"
                             :field-label="$t('Start date')"
-                            class="w-40"
+                            class="w-40 max-md:h-11"
                             data-test="audit-export-range-start"
                             @update:model-value="rangeStart = $event ?? ''"
                         />
@@ -319,7 +319,7 @@ function downloadUrl(entry: AuditExport): string {
                             :field-label="$t('End date')"
                             :invalid="rangeError"
                             :min="rangeStart || null"
-                            class="w-40"
+                            class="w-40 max-md:h-11"
                             data-test="audit-export-range-end"
                             @update:model-value="rangeEnd = $event ?? ''"
                         />
@@ -328,7 +328,7 @@ function downloadUrl(entry: AuditExport): string {
                             variant="ghost"
                             size="icon-sm"
                             type="button"
-                            class="rounded-full text-muted-foreground"
+                            class="rounded-full text-muted-foreground max-md:size-11"
                             :aria-label="$t('Clear period')"
                             data-test="audit-export-range-clear"
                             @click="clearRange"
@@ -341,7 +341,7 @@ function downloadUrl(entry: AuditExport): string {
                 <!-- Submit -->
                 <Button
                     type="button"
-                    class="h-9 gap-2 rounded-full px-5.5"
+                    class="h-9 gap-2 rounded-full px-5.5 max-md:h-11"
                     :disabled="!canSubmit"
                     data-test="audit-export-submit"
                     @click="submit"
@@ -353,7 +353,7 @@ function downloadUrl(entry: AuditExport): string {
 
             <p
                 v-if="rangeError"
-                class="flex items-center gap-1.5 text-xs font-medium text-destructive"
+                class="flex items-center gap-1.5 text-xs font-medium text-destructive-text"
                 data-test="audit-export-range-error"
             >
                 <AlertCircle class="size-3.5" />
@@ -420,7 +420,7 @@ function downloadUrl(entry: AuditExport): string {
                 <li
                     v-for="entry in exports"
                     :key="entry.id"
-                    class="flex items-center gap-3.5 rounded-xl border border-border bg-card p-3.5 shadow-[0_2px_8px_rgba(29,26,21,0.05)]"
+                    class="flex items-center gap-3.5 rounded-xl border border-border bg-card p-3.5 shadow-[0_2px_8px_rgba(29,26,21,0.05)] max-md:flex-wrap"
                     :class="{ 'opacity-65': rowState(entry) === 'expired' }"
                     :data-test="`audit-export-row-${entry.id}`"
                 >
@@ -437,11 +437,11 @@ function downloadUrl(entry: AuditExport): string {
                         />
                     </div>
 
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold">
                             {{ entry.logTypeLabel }} · {{ entry.formatLabel }}
                         </p>
-                        <p class="truncate text-xs text-muted-foreground">
+                        <p class="text-xs text-muted-foreground md:truncate">
                             {{ rangeText(entry) }} ·
                             {{
                                 $t('requested by :name', {
@@ -469,7 +469,9 @@ function downloadUrl(entry: AuditExport): string {
                         </p>
                     </div>
 
-                    <div class="ml-auto flex items-center gap-2.5">
+                    <div
+                        class="ml-auto flex items-center gap-2.5 max-md:w-full max-md:justify-end"
+                    >
                         <!-- Generating -->
                         <span
                             v-if="rowState(entry) === 'generating'"
@@ -486,7 +488,7 @@ function downloadUrl(entry: AuditExport): string {
                             as="a"
                             :href="downloadUrl(entry)"
                             download
-                            class="h-8 gap-2 rounded-full px-4"
+                            class="h-8 gap-2 rounded-full px-4 max-md:h-11"
                             :data-test="`audit-export-download-${entry.id}`"
                         >
                             <Download class="size-3.5" />
@@ -496,7 +498,7 @@ function downloadUrl(entry: AuditExport): string {
                         <!-- Failed -->
                         <template v-else-if="rowState(entry) === 'failed'">
                             <span
-                                class="inline-flex items-center rounded-full border border-destructive/25 bg-destructive/10 px-3 py-1 text-[11.5px] font-semibold text-destructive"
+                                class="inline-flex items-center rounded-full border border-destructive/25 bg-destructive/10 px-3 py-1 text-[11.5px] font-semibold text-destructive-text"
                                 data-test="audit-export-status-failed"
                             >
                                 {{ $t('Failed') }}
@@ -505,7 +507,7 @@ function downloadUrl(entry: AuditExport): string {
                                 variant="outline"
                                 size="sm"
                                 type="button"
-                                class="rounded-full"
+                                class="rounded-full max-md:h-11"
                                 :disabled="hasPending"
                                 :data-test="`audit-export-retry-${entry.id}`"
                                 @click="retry(entry)"

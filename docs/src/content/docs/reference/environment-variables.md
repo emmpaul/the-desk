@@ -55,6 +55,17 @@ The stack **refuses to start** without these (no defaults):
 | `DB_USERNAME` | `laravel` | PostgreSQL user.                |
 | `DB_PASSWORD` | —         | Required secret (see above).    |
 
+## Queue workers
+
+Background work — real-time broadcasts, mail, link previews, webhook delivery,
+exports — runs through Redis on the `queue` and `queue-broadcasts` services (see
+[Architecture](/reference/architecture/#why-broadcasts-get-their-own-worker)).
+Neither needs configuring; the one tunable is how a worker waits for work.
+
+| Variable                 | Default | Notes                                                                                            |
+| ------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
+| `REDIS_QUEUE_BLOCK_FOR`  | `1`     | Seconds a worker holds a blocking read on Redis open before it looks again. A job on the worker's **first** queue starts the instant it is dispatched however high this is, so raising it never slows real-time updates. What it does set is how long a job on a **secondary** queue can sit before the worker rechecks it — on the shared `queue` worker, that is `default`, so raising this to `10` can leave mail or a link preview waiting up to ten seconds to start. Values below `1` are floored to `1`: the underlying Redis command reads `0` as "wait forever", which would strand everything but broadcasts. |
+
 ## Mail (SMTP)
 
 | Variable            | Notes                                        |
@@ -337,3 +348,29 @@ To enable it, download a free **GeoLite2 City** database from
 required) and mount the `.mmdb` file at `GEOIP_DATABASE_PATH`. The database is not
 bundled: MaxMind's licence does not allow redistribution, and it is refreshed
 regularly, so you keep it up to date yourself.
+
+## Presence
+
+Every member sees a small dot beside their teammates' avatars: **filled** when
+someone is active, a **hollow ring** when they are away, and none at all when
+they are not connected. Away has two sources — a member can set it by hand from
+the user menu (which persists until they unset it), and each browser tab reports
+itself idle after a stretch with no pointer, keyboard, scroll, or focus activity.
+Someone counts as away only once **every** device they are signed in on has gone
+idle, so a laptop in use keeps them active however long a phone has been asleep.
+
+| Variable                      | Default | Notes                                                                                                 |
+| ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| `PRESENCE_AWAY_AFTER_MINUTES` | `10`    | Minutes a tab may go without activity before it reports itself idle. Floored at `1`; there is no "never". |
+
+Idle detection runs in the browser, so the threshold is served to each client
+with the page rather than baked into the build — changing it takes effect on
+every client's next page load, with no rebuild.
+
+:::note[Presence needs no extra service]
+Who is *connected* comes from the Reverb presence channel the app already uses;
+active-versus-away is tracked in the cache (Redis in the bundled production
+stack). Nothing is written to the database except a member's own manual away
+setting, and if the cache is unavailable everyone simply reads as active — the
+same as before the feature existed.
+:::

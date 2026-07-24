@@ -204,6 +204,37 @@ test('a command run from a thread echoes into that thread', function (): void {
     ]);
 });
 
+test('a command run from a thread whose root is a poll echoes into that thread', function (): void {
+    [$owner, $team, $general] = commandTeam();
+    $root = Message::factory()->poll()->for($general)->for($owner)->create();
+
+    $this->actingAs($owner)
+        ->post(route('channels.commands.store', ['team' => $team->slug, 'channel' => $general->slug]), [
+            'body' => '/shrug in the poll thread',
+            'client_uuid' => (string) Str::uuid7(),
+            'thread_root_id' => $root->id,
+        ]);
+
+    $this->assertDatabaseHas('messages', [
+        'channel_id' => $general->id,
+        'thread_root_id' => $root->id,
+        'body' => 'in the poll thread ¯\_(ツ)_/¯',
+    ]);
+});
+
+test('a command rejects a thread root that is a system notice', function (): void {
+    [$owner, $team, $general] = commandTeam();
+    $notice = Message::factory()->for($general)->for($owner)->memberJoined()->create();
+
+    $this->actingAs($owner)
+        ->post(route('channels.commands.store', ['team' => $team->slug, 'channel' => $general->slug]), [
+            'body' => '/shrug',
+            'client_uuid' => (string) Str::uuid7(),
+            'thread_root_id' => $notice->id,
+        ])
+        ->assertInvalid(['thread_root_id']);
+});
+
 test('a command rejects a thread root from another channel', function (): void {
     [$owner, $team, $general] = commandTeam();
     $other = Channel::factory()->for($team)->create();

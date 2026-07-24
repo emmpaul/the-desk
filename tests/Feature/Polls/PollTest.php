@@ -360,3 +360,22 @@ test('a poll can be posted into a thread', function (): void {
     expect($poll->thread_root_id)->toBe($root->id)
         ->and($poll->sent_to_channel)->toBeTrue();
 });
+
+test('a poll can be posted into a thread whose root is a poll', function (): void {
+    [$owner, $team, $general] = pollTeam();
+    $root = Message::factory()->poll()->for($general)->for($owner)->create();
+
+    postPoll($owner, $team, $general, ['thread_root_id' => $root->id])->assertRedirect();
+
+    $threaded = Message::where('type', MessageType::Poll)->whereNotNull('thread_root_id')->firstOrFail();
+
+    expect($threaded->thread_root_id)->toBe($root->id);
+});
+
+test('a poll cannot be posted into a thread rooted on a system notice', function (): void {
+    [$owner, $team, $general] = pollTeam();
+    $notice = Message::factory()->for($general)->for($owner)->memberJoined()->create();
+
+    postPoll($owner, $team, $general, ['thread_root_id' => $notice->id])
+        ->assertInvalid(['thread_root_id']);
+});

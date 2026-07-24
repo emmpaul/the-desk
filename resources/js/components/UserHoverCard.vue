@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { AtSign, MessageSquare, UserRound } from '@lucide/vue';
-import { ref } from 'vue';
+import { AtSign, MessageSquare, Moon, UserRound } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import PresenceDot from '@/components/PresenceDot.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,10 +11,13 @@ import {
     HoverCardContent,
     HoverCardTrigger,
 } from '@/components/ui/hover-card';
+import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useInitials } from '@/composables/useInitials';
 import { useOpenDirectMessage } from '@/composables/useOpenDirectMessage';
 import { fetchUserProfile } from '@/composables/useUserProfileCard';
-import { formatLocalTime } from '@/lib/datetime';
+import { formatLocalTime, formatTimeOfDay } from '@/lib/datetime';
+import { presenceLabelKey } from '@/lib/presence';
+import type { RenderedPresence } from '@/lib/presence';
 import { show } from '@/routes/teams/members';
 import type { UserProfile } from '@/types';
 
@@ -21,7 +25,17 @@ const props = defineProps<{
     teamSlug: string;
     userId: string;
     name: string;
-    online?: boolean;
+    /**
+     * How the member reads on the team presence roster. Absent on the surfaces
+     * that open a card without a roster to hand, which then show no dot at all.
+     */
+    presence?: RenderedPresence;
+    /**
+     * The roster's do-not-disturb answer, painting the crescent badge before
+     * the profile fetch lands. The fetched profile is the fresher claim once
+     * loaded.
+     */
+    isDnd?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,6 +48,14 @@ const { openDirectMessage } = useOpenDirectMessage(() => props.teamSlug);
 const profile = ref<UserProfile | null>(null);
 const loading = ref(false);
 const loaded = ref(false);
+
+/**
+ * Whether the card shows the member as in do-not-disturb: the fetched profile
+ * once it has landed, the roster's prop until then.
+ */
+const showsDnd = computed(() =>
+    profile.value ? profile.value.isDnd : (props.isDnd ?? false),
+);
 
 /**
  * Lazily load the profile the first time the card opens; the fetch is memoised
@@ -53,6 +75,17 @@ async function onOpenChange(open: boolean): Promise<void> {
 function localTime(): string | null {
     return formatLocalTime(profile.value?.timezone ?? null, new Date());
 }
+
+/**
+ * When the member's status clears, as a time of day in the *viewer's* zone —
+ * "until 3:00 PM" is only useful against the reader's own clock. Null for a
+ * status that never clears.
+ */
+const statusClearsAt = computed(() =>
+    profile.value?.status?.expiresAt
+        ? formatTimeOfDay(profile.value.status.expiresAt)
+        : null,
+);
 
 function onMention(): void {
     emit('mention', { id: props.userId, name: props.name });
@@ -93,16 +126,14 @@ function onMessage(): void {
                                 getInitials(profile?.name ?? name)
                             }}</AvatarFallback>
                         </Avatar>
-                        <span
+                        <PresenceDot
+                            v-if="presence"
                             data-test="hover-card-presence"
-                            :data-online="online === true"
-                            :aria-label="online ? $t('Online') : $t('Offline')"
-                            class="absolute right-0 bottom-0 size-3 rounded-full ring-[2.5px] ring-popover"
-                            :class="
-                                online
-                                    ? 'bg-emerald-500'
-                                    : 'bg-muted-foreground/60'
-                            "
+                            :presence="presence"
+                            :is-dnd="showsDnd"
+                            surface-class="bg-popover"
+                            size="48"
+                            class="ring-popover"
                         />
                     </div>
                     <div class="min-w-0 flex-1">
@@ -133,6 +164,37 @@ function onMessage(): void {
                             >
                                 {{ profile.roleLabel }}
                             </Badge>
+                            <!-- The card is the one surface with room to spell
+                                 the presence out, so away gets the word beside
+                                 its ring rather than only the dot's shape. -->
+                            <span
+                                v-if="presence"
+                                data-test="hover-card-presence-label"
+                                class="flex items-center gap-1.5 text-xs"
+                                :class="
+                                    presence === 'away'
+                                        ? 'font-serif text-muted-foreground italic'
+                                        : 'text-muted-foreground'
+                                "
+                            >
+                                <PresenceDot
+                                    :presence="presence"
+                                    surface-class="bg-popover"
+                                    class="size-2"
+                                />
+                                {{ $t(presenceLabelKey(presence)) }}
+                            </span>
+                            <!-- The card names the DND state outright — the
+                                 one thing teammates learn; when it ends stays
+                                 the owner's business. -->
+                            <span
+                                v-if="showsDnd"
+                                data-test="hover-card-dnd"
+                                class="flex items-center gap-1.5 font-serif text-xs text-muted-foreground italic"
+                            >
+                                <Moon class="size-3" aria-hidden="true" />
+                                {{ $t('Notifications paused') }}
+                            </span>
                             <span
                                 v-if="localTime()"
                                 class="text-xs text-muted-foreground"
@@ -140,6 +202,31 @@ function onMessage(): void {
                             >
                         </div>
                     </div>
+                </div>
+
+                <!-- The status band: the one surface with room for the emoji,
+                     the full text, and when it clears. Absent entirely when the
+                     member has no live status. -->
+                <div
+                    v-if="profile?.status"
+                    data-test="hover-card-status"
+                    class="flex items-center gap-2.5 rounded-[10px] border border-border bg-muted px-3 py-2"
+                >
+                    <UserStatusEmoji
+                        :status="profile.status"
+                        :name="profile.name"
+                        class="text-[15px]"
+                    />
+                    <span
+                        v-if="profile.status.text"
+                        class="min-w-0 flex-1 truncate text-xs text-foreground"
+                        >{{ profile.status.text }}</span
+                    >
+                    <span
+                        v-if="statusClearsAt"
+                        class="shrink-0 font-serif text-[10.5px] text-muted-foreground italic"
+                        >{{ $t('until :time', { time: statusClearsAt }) }}</span
+                    >
                 </div>
 
                 <div class="space-y-2">

@@ -54,7 +54,7 @@ class StoreMessageRequest extends ApiRequest
                 'uuid',
                 Rule::exists('messages', 'id')
                     ->where('channel_id', $this->channel()->id)
-                    ->where('type', MessageType::Standard->value)
+                    ->whereNotIn('type', MessageType::systemValues())
                     ->whereNull('deleted_at'),
             ],
             // A thread reply must target a live root message in this same channel;
@@ -65,7 +65,7 @@ class StoreMessageRequest extends ApiRequest
                 'uuid',
                 Rule::exists('messages', 'id')
                     ->where('channel_id', $this->channel()->id)
-                    ->where('type', MessageType::Standard->value)
+                    ->whereNotIn('type', MessageType::systemValues())
                     ->whereNull('deleted_at')
                     ->whereNull('thread_root_id'),
             ],

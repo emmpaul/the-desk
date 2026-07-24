@@ -103,7 +103,7 @@ function bodyPreview(body: string): string {
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="gap-0 p-0 sm:max-w-lg">
+        <DialogContent mobile="detail" class="gap-0 p-0 sm:max-w-lg">
             <DialogHeader class="gap-1 px-6 pt-6 pb-4">
                 <div class="flex items-center gap-2 pr-7">
                     <DialogTitle class="text-[20px]">{{
@@ -229,7 +229,7 @@ function bodyPreview(body: string): string {
                                     type="button"
                                     :aria-label="$t('Cancel scheduled message')"
                                     data-test="scheduled-cancel"
-                                    class="size-7 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                    class="size-7 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive-text"
                                     @click="cancelSend(scheduled)"
                                 >
                                     <Trash2 class="size-3.5" />

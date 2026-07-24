@@ -223,7 +223,7 @@ function submitOutgoing(): void {
                 </div>
                 <Button
                     type="button"
-                    class="rounded-full"
+                    class="rounded-full max-md:h-11"
                     data-test="new-bot-button"
                     @click="showBotDialog = true"
                 >
@@ -324,7 +324,7 @@ function submitOutgoing(): void {
                 <Button
                     type="button"
                     variant="outline"
-                    class="rounded-full"
+                    class="rounded-full max-md:h-11"
                     data-test="new-incoming-button"
                     :disabled="bots.length === 0"
                     @click="showIncomingDialog = true"
@@ -401,7 +401,7 @@ function submitOutgoing(): void {
                 <Button
                     type="button"
                     variant="outline"
-                    class="rounded-full"
+                    class="rounded-full max-md:h-11"
                     data-test="new-outgoing-button"
                     @click="showOutgoingDialog = true"
                 >
@@ -454,7 +454,7 @@ function submitOutgoing(): void {
                     </span>
                     <span
                         v-else
-                        class="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-destructive"
+                        class="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-destructive-text"
                     >
                         <span
                             class="size-1.5 rounded-full bg-destructive"

@@ -112,6 +112,36 @@ test('a reply cannot start on a deleted root', function (): void {
         ->assertInvalid(['thread_root_id']);
 });
 
+test('a reply persists in a thread whose root is a poll', function (): void {
+    Event::fake([MessageSent::class]);
+
+    [$owner, $team, $general] = threadTeamWithGeneral();
+    $root = Message::factory()->poll()->for($general)->for($owner)->create();
+    $clientUuid = (string) Str::uuid7();
+
+    postThreadReply($team, $general, $owner, $root, [
+        'body' => 'poll thread reply',
+        'client_uuid' => $clientUuid,
+        'sent_to_channel' => true,
+    ])->assertRedirect(route('channels.show', ['team' => $team->slug, 'channel' => $general->slug]));
+
+    $this->assertDatabaseHas('messages', [
+        'client_uuid' => $clientUuid,
+        'body' => 'poll thread reply',
+        'thread_root_id' => $root->id,
+        'sent_to_channel' => true,
+    ]);
+
+    expect($root->refresh()->reply_count)->toBe(1);
+
+    Event::assertDispatched(MessageSent::class, function (MessageSent $event) use ($root, $clientUuid): bool {
+        $payload = $event->message->toArray();
+
+        return $payload['clientUuid'] === $clientUuid
+            && $payload['threadRootId'] === $root->id;
+    });
+});
+
 test('a non-uuid thread root is rejected', function (): void {
     [$owner, $team, $general] = threadTeamWithGeneral();
     $root = Message::factory()->for($general)->for($owner)->create();

@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner';
 import { show } from '@/actions/App/Http/Controllers/Channels/ChannelController';
 import { store as hideDirectMessage } from '@/actions/App/Http/Controllers/Channels/HideDirectMessageController';
 import AvatarStack from '@/components/AvatarStack.vue';
+import PresenceDot from '@/components/PresenceDot.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
@@ -14,18 +15,23 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useInitials } from '@/composables/useInitials';
 import { useTranslations } from '@/composables/useTranslations';
 import { groupDmSidebarName } from '@/lib/groupDm';
 import { notificationIndicator } from '@/lib/notificationIndicator';
+import { presenceLabelKey } from '@/lib/presence';
+import type { RenderedPresence } from '@/lib/presence';
 import type { Channel } from '@/types/channels';
 
 const props = defineProps<{
     channel: Channel;
     teamSlug: string;
     activeChannelSlug: string | null;
-    /** Whether the DM's participant is currently on the team presence roster. */
-    online: boolean;
+    /** How the DM's participant reads on the team presence roster. */
+    presence: RenderedPresence;
+    /** Whether the DM's participant is in do-not-disturb, for the crescent badge. */
+    isDnd?: boolean;
     /** Whether this is the viewer's own self-DM (renders "You"). */
     isSelf: boolean;
 }>();
@@ -114,7 +120,7 @@ function hide(): void {
             as-child
             :is-active="isActive"
             :data-muted="channel.muted"
-            class="h-8 gap-2 rounded-[9px] py-0 pr-2.5 pl-2.5 text-[13.5px] text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-[0_2px_6px_rgba(29,26,21,0.25)] data-[active=true]:hover:bg-sidebar-primary data-[active=true]:hover:text-sidebar-primary-foreground data-[muted=true]:opacity-55 data-[muted=true]:hover:opacity-100"
+            class="h-11 gap-2 rounded-[10px] py-0 pr-2.5 pl-2.5 text-[15px] text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-[0_2px_6px_rgba(29,26,21,0.25)] data-[active=true]:hover:bg-sidebar-primary data-[active=true]:hover:text-sidebar-primary-foreground data-[muted=true]:opacity-55 data-[muted=true]:hover:opacity-100 md:h-8 md:rounded-[9px] md:text-[13.5px]"
         >
             <Link
                 :href="show({ team: teamSlug, channel: channel.slug }).url"
@@ -148,23 +154,25 @@ function hide(): void {
                             {{ getInitials(channel.name) }}
                         </AvatarFallback>
                     </Avatar>
-                    <span
+                    <PresenceDot
                         data-test="dm-presence-dot"
-                        :data-online="online"
-                        aria-hidden="true"
-                        class="absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2"
-                        :class="[
-                            online
-                                ? 'bg-emerald-500'
-                                : 'bg-muted-foreground/50',
-                            isActive ? 'ring-sidebar-primary' : 'ring-sidebar',
-                        ]"
+                        :presence="presence"
+                        :is-dnd="isDnd ?? false"
+                        :surface-class="
+                            isActive ? 'bg-sidebar-primary' : 'bg-sidebar'
+                        "
+                        size="18"
+                        :class="
+                            isActive ? 'ring-sidebar-primary' : 'ring-sidebar'
+                        "
                     />
                     <!-- The presence is announced through a screen-reader-only
                          label rather than an aria-label on the role-less dot,
                          which assistive tech ignores on a bare <span>. -->
                     <span data-test="dm-presence-label" class="sr-only">{{
-                        online ? $t('Online') : $t('Offline')
+                        isDnd
+                            ? $t('Notifications paused')
+                            : $t(presenceLabelKey(presence))
                     }}</span>
                 </span>
                 <span
@@ -176,6 +184,14 @@ function hide(): void {
                     "
                     >{{ displayName }}</span
                 >
+                <!-- A 1:1 row carries the other person's status emoji beside
+                     their name; a group row has no single status to show. -->
+                <UserStatusEmoji
+                    v-if="!isGroup && !isSelf"
+                    :status="soloParticipant?.status"
+                    :name="displayName"
+                    class="text-xs"
+                />
                 <!-- The mute / notification-level cue sits just after the name,
                      left of the right-aligned unread badge so the two never
                      collide. A tooltip names the state on hover/focus. -->

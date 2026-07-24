@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import {
     Compass,
     Keyboard,
@@ -9,27 +9,44 @@ import {
     PanelLeft,
     PanelRight,
     Settings,
+    SmilePlus,
     Sun,
+    X,
 } from '@lucide/vue';
 import type { Component } from 'vue';
 import { computed } from 'vue';
 import MenuSegmentedControl from '@/components/MenuSegmentedControl.vue';
+import PresenceDot from '@/components/PresenceDot.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuShortcut,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useAppearance } from '@/composables/useAppearance';
+import { useDndPauseDialog } from '@/composables/useDndPauseDialog';
 import { useInitials } from '@/composables/useInitials';
+import { useIsMobile } from '@/composables/useIsMobile';
 import { useKeyboardShortcutsModal } from '@/composables/useKeyboardShortcutsModal';
 import { useOnboardingTour } from '@/composables/useOnboardingTour';
 import { useSidebarPosition } from '@/composables/useSidebarPosition';
 import { useTranslations } from '@/composables/useTranslations';
 import { useUpdateStatus } from '@/composables/useUpdateStatus';
+import { useUserMenu } from '@/composables/useUserMenu';
+import { useUserStatusDialog } from '@/composables/useUserStatusDialog';
+import { dndPauseLabel } from '@/lib/dndPause';
+import { presenceLabelKey } from '@/lib/presence';
 import { logout } from '@/routes';
+import { edit as appearanceEdit } from '@/routes/appearance';
 import { edit } from '@/routes/profile';
-import type { Appearance, SidebarPosition, Team, User } from '@/types';
+import { index as settingsIndex } from '@/routes/settings';
+import type { Appearance, SidebarPosition, User } from '@/types';
 
 type Props = {
     user: User;
@@ -40,12 +57,22 @@ const { getInitials } = useInitials();
 const { t } = useTranslations();
 const { open: openKeyboardShortcuts } = useKeyboardShortcutsModal();
 const { open: replayOnboardingTour } = useOnboardingTour();
+const { open: openStatusDialog } = useUserStatusDialog();
 
 // Quick theme + sidebar switchers reuse the same composables (and shared
 // `sidebarPositions` prop) as Settings → Appearance, so flipping either here
 // reflects there and back with no extra persistence.
 const { appearance, updateAppearance } = useAppearance();
 const { sidebarPosition, updateSidebarPosition } = useSidebarPosition();
+
+/**
+ * Below the breakpoint Settings opens on its full-screen index; from md up it
+ * opens straight on the profile pane beside the settings side nav.
+ */
+const isMobile = useIsMobile();
+const settingsHref = computed(() =>
+    isMobile.value ? settingsIndex() : edit(),
+);
 
 const themeOptions = computed<
     { value: Appearance; label: string; icon: Component }[]
@@ -75,14 +102,33 @@ const appName = computed(() => page.props.name);
 
 const props = defineProps<Props>();
 
-const currentTeam = computed(() => page.props.currentTeam as Team | null);
 const hasAvatar = computed(
     () => !!props.user.avatar && props.user.avatar !== '',
 );
 
-const handleLogout = () => {
-    router.flushAll();
-};
+// All menu state and mutation handlers are shared with the mobile bottom
+// sheet (`UserMenuSheet`) through one composable, so the two presentations of
+// the same menu can never drift apart. The rows pass their `@select` event so
+// the handlers can prevent the default dismissal and apply in place.
+const {
+    currentTeam,
+    ownStatus,
+    ownPresence,
+    togglesTo,
+    isDnd,
+    pausedUntil,
+    quietHoursUntil,
+    clearsAt,
+    pausePresets,
+    clearStatus,
+    togglePresence,
+    choosePause,
+    resumeNotifications,
+    snoozeSchedule,
+    handleLogout,
+} = useUserMenu();
+
+const { open: openDndPauseDialog } = useDndPauseDialog();
 </script>
 
 <template>
@@ -104,19 +150,58 @@ const handleLogout = () => {
                             {{ getInitials(user.name) }}
                         </AvatarFallback>
                     </Avatar>
-                    <span
-                        aria-hidden="true"
-                        class="absolute right-0 bottom-0 size-2.75 rounded-full border-2 border-muted bg-emerald-600"
+                    <PresenceDot
+                        data-test="user-menu-presence"
+                        :presence="ownPresence"
+                        :is-dnd="isDnd"
+                        surface-class="bg-muted"
+                        size="42"
+                        class="ring-muted"
                     />
                 </span>
                 <div class="min-w-0 flex-1">
-                    <div
-                        class="truncate font-serif text-[19px] leading-tight font-semibold tracking-[-0.01em] text-foreground"
-                    >
-                        {{ user.name }}
+                    <!-- The name gains the inline status emoji, previewing
+                         exactly what teammates see beside it. -->
+                    <div class="flex items-center gap-1.5">
+                        <span
+                            class="truncate font-serif text-[19px] leading-tight font-semibold tracking-[-0.01em] text-foreground"
+                        >
+                            {{ user.name }}
+                        </span>
+                        <UserStatusEmoji
+                            :status="ownStatus"
+                            :name="user.name"
+                            class="text-sm"
+                            decorative
+                        />
                     </div>
-                    <div class="mt-0.5 truncate text-xs text-muted-foreground">
-                        {{ user.email }}
+                    <!-- The subtitle doubles as the current-state readout: a
+                         green "Active" or an italic serif "Away", ahead of the
+                         address the viewer is signed in as. -->
+                    <div
+                        class="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-xs text-muted-foreground"
+                    >
+                        <!-- In DND the readout names the pause instead of the
+                             presence — the state the viewer most needs to know
+                             they are in — in the same italic serif as away. -->
+                        <span
+                            data-test="user-menu-presence-label"
+                            class="shrink-0 font-medium"
+                            :class="
+                                isDnd || ownPresence === 'away'
+                                    ? 'font-serif text-muted-foreground italic'
+                                    : 'text-emerald-700 dark:text-emerald-400'
+                            "
+                            >{{
+                                isDnd
+                                    ? $t('Notifications paused')
+                                    : $t(presenceLabelKey(ownPresence))
+                            }}</span
+                        >
+                        <span aria-hidden="true" class="shrink-0"
+                            >&middot;</span
+                        >
+                        <span class="truncate">{{ user.email }}</span>
                     </div>
                 </div>
             </div>
@@ -133,28 +218,227 @@ const handleLogout = () => {
         </div>
     </DropdownMenuLabel>
 
-    <!-- Reserved slot: per-user status is not shipped yet, so the row is a
-         non-interactive placeholder marked "Later" until the feature lands. -->
+    <!-- Presence: the status row, and the entry point for everything the
+         presence menu will carry. With nothing set it is a plain "Set a status"
+         item; once set it becomes a card showing the status and when it clears,
+         with an inline ✕ that clears it outright (no dialog). Clicking the card
+         body reopens the dialog to edit. -->
     <div class="px-2 pt-3.5 pb-1">
         <DropdownMenuLabel
             class="px-2.5 pb-1.5 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
             >{{ $t('Status') }}</DropdownMenuLabel
         >
+        <!-- While in DND the section leads with the paused card: crescent,
+             when it lifts in italic serif, and a one-tap pill — Resume for a
+             manual pause, Snooze for quiet hours (lifts tonight's window and
+             lets the standing schedule resume on its own). -->
         <div
-            class="flex h-9 items-center gap-2.5 rounded-[10px] border border-dashed border-border px-2.5 text-[13.5px] text-muted-foreground"
-            data-test="change-status-placeholder"
+            v-if="isDnd"
+            data-test="dnd-paused-card"
+            class="mb-1 flex min-h-11 items-center gap-2.5 rounded-[10px] border border-border bg-muted px-2.5 py-1.5"
         >
-            <span aria-hidden="true" class="flex w-3.75 justify-center">
+            <Moon class="size-4 shrink-0 text-muted-foreground" />
+            <span class="flex min-w-0 flex-1 flex-col">
                 <span
-                    class="size-2.25 rounded-full border-2 border-muted-foreground"
+                    class="truncate text-[13px] font-semibold text-foreground"
+                    >{{ $t('Paused') }}</span
+                >
+                <span
+                    v-if="pausedUntil"
+                    data-test="dnd-paused-until"
+                    class="truncate font-serif text-[11px] text-muted-foreground italic"
+                    >{{ $t('until :time', { time: pausedUntil }) }}</span
+                >
+                <span
+                    v-else-if="quietHoursUntil"
+                    data-test="dnd-paused-until"
+                    class="truncate font-serif text-[11px] text-muted-foreground italic"
+                    >{{
+                        $t('quiet hours · until :time', {
+                            time: quietHoursUntil,
+                        })
+                    }}</span
+                >
+            </span>
+            <DropdownMenuItem
+                v-if="pausedUntil"
+                :as-child="true"
+                class="shrink-0 rounded-full p-0 focus:bg-transparent"
+                data-test="dnd-resume-menu-item"
+                @select="resumeNotifications"
+            >
+                <Button
+                    variant="unstyled"
+                    size="none"
+                    type="button"
+                    class="inline-flex h-6.5 cursor-pointer items-center rounded-full border border-border px-3 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground"
+                >
+                    {{ $t('Resume') }}
+                </Button>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                v-else-if="quietHoursUntil"
+                :as-child="true"
+                class="shrink-0 rounded-full p-0 focus:bg-transparent"
+                data-test="dnd-snooze-menu-item"
+                @select="snoozeSchedule"
+            >
+                <Button
+                    variant="unstyled"
+                    size="none"
+                    type="button"
+                    class="inline-flex h-6.5 cursor-pointer items-center rounded-full border border-border px-3 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground"
+                >
+                    {{ $t('Snooze schedule today') }}
+                </Button>
+            </DropdownMenuItem>
+        </div>
+        <DropdownMenuItem
+            v-if="!ownStatus"
+            class="group/item flex h-9 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 py-0 text-[13.5px] font-normal text-foreground focus:bg-primary focus:text-primary-foreground"
+            data-test="set-status-menu-item"
+            @select="openStatusDialog"
+        >
+            <SmilePlus
+                class="size-3.75 text-muted-foreground group-focus/item:text-brass"
+            />
+            <span class="min-w-0 flex-1 truncate">{{
+                $t('Set a status')
+            }}</span>
+        </DropdownMenuItem>
+        <div
+            v-else
+            class="flex min-h-11 items-center gap-2.5 rounded-[10px] border border-border bg-muted px-2.5 py-1.5"
+        >
+            <DropdownMenuItem
+                :as-child="true"
+                class="min-w-0 flex-1 rounded-md p-0 focus:bg-transparent"
+                data-test="edit-status-menu-item"
+                @select="openStatusDialog"
+            >
+                <Button
+                    variant="unstyled"
+                    size="none"
+                    type="button"
+                    class="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+                >
+                    <UserStatusEmoji
+                        :status="ownStatus"
+                        :name="user.name"
+                        class="text-base"
+                        decorative
+                    />
+                    <span class="flex min-w-0 flex-col">
+                        <span
+                            class="truncate text-[13px] font-semibold text-foreground"
+                            >{{ ownStatus.text ?? $t('Status set') }}</span
+                        >
+                        <span
+                            v-if="clearsAt"
+                            class="truncate font-serif text-[11px] text-muted-foreground italic"
+                            >{{
+                                $t('clears at :time', { time: clearsAt })
+                            }}</span
+                        >
+                    </span>
+                </Button>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                :as-child="true"
+                class="shrink-0 rounded-full p-0 focus:bg-transparent"
+                data-test="clear-status-menu-item"
+                @select="clearStatus"
+            >
+                <Button
+                    variant="unstyled"
+                    size="none"
+                    type="button"
+                    :aria-label="$t('Clear status')"
+                    class="flex size-5.5 cursor-pointer items-center justify-center rounded-full bg-secondary text-muted-foreground hover:text-foreground"
+                >
+                    <X class="size-2.75" />
+                </Button>
+            </DropdownMenuItem>
+        </div>
+        <!-- The manual away toggle. Its leading glyph previews the state it
+             would switch *to*, so the row reads as an action rather than as a
+             second copy of the readout above. -->
+        <DropdownMenuItem
+            class="group/item mt-0.5 flex h-9 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 py-0 text-[13.5px] font-normal text-foreground focus:bg-primary focus:text-primary-foreground"
+            data-test="toggle-presence-menu-item"
+            @select="togglePresence"
+        >
+            <span class="flex w-3.75 justify-center">
+                <PresenceDot
+                    :presence="togglesTo"
+                    surface-class="bg-popover group-focus/item:bg-primary"
+                    class="size-2.25"
                 />
             </span>
-            {{ $t('Change status') }}
-            <span
-                class="ml-auto rounded-full border border-brass/40 bg-brass-fill px-1.75 py-0.5 text-[9px] font-bold tracking-[0.09em] text-brass-fill-foreground uppercase"
-                >{{ $t('Later') }}</span
+            <span class="min-w-0 flex-1 truncate">{{
+                togglesTo === 'away'
+                    ? $t('Set yourself away')
+                    : $t('Set yourself active')
+            }}</span>
+        </DropdownMenuItem>
+        <!-- Pause notifications: the crescent row below the away toggle, its
+             presets flowing out in a flyout. Choosing one applies in place;
+             Custom… trades the menu for the dialog, and the trailing row links
+             to the recurring schedule in Settings.
+
+             Like its sibling rows, the label is a truncating flex child rather
+             than a bare text node: the menu is only as wide as the dock, and a
+             locale whose translation runs longer than the English (#760) would
+             otherwise wrap out of the fixed row height and shove the chevron
+             off-centre. Ellipsised text keeps the full string in the DOM, so the
+             accessible name stays complete. -->
+        <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+                class="group/item mt-0.5 flex h-9 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 py-0 text-[13.5px] font-normal text-foreground data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground"
+                data-test="pause-notifications-menu-item"
             >
-        </div>
+                <Moon
+                    class="size-3.75 text-muted-foreground group-data-[highlighted]/item:text-brass group-data-[state=open]/item:text-brass"
+                />
+                <span class="min-w-0 flex-1 truncate">{{
+                    $t('Pause notifications')
+                }}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent
+                class="min-w-47 rounded-[14px] p-1.25"
+                data-test="pause-notifications-submenu"
+            >
+                <DropdownMenuItem
+                    v-for="preset in pausePresets"
+                    :key="preset"
+                    class="flex h-8 cursor-pointer items-center rounded-[9px] px-2.75 text-[13px] focus:bg-primary focus:text-primary-foreground"
+                    :data-test="`pause-preset-${preset}`"
+                    @select="(event: Event) => choosePause(preset, event)"
+                >
+                    {{ dndPauseLabel(preset) }}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    class="flex h-8 cursor-pointer items-center rounded-[9px] px-2.75 text-[13px] focus:bg-primary focus:text-primary-foreground"
+                    data-test="pause-preset-custom"
+                    @select="openDndPauseDialog"
+                >
+                    {{ dndPauseLabel('custom') }}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator class="mx-1.5" />
+                <DropdownMenuItem
+                    :as-child="true"
+                    class="flex h-8 cursor-pointer items-center justify-between rounded-[9px] px-2.75 text-[12.5px] text-muted-foreground focus:bg-primary focus:text-primary-foreground"
+                    data-test="quiet-hours-menu-item"
+                >
+                    <Link :href="appearanceEdit()">
+                        {{ $t('Quiet hours') }}
+                        <span class="text-[11px] opacity-70">{{
+                            $t('Settings')
+                        }}</span>
+                    </Link>
+                </DropdownMenuItem>
+            </DropdownMenuSubContent>
+        </DropdownMenuSub>
     </div>
 
     <!-- Appearance: quick theme + sidebar switchers, grouped ahead of navigation.
@@ -206,11 +490,13 @@ const handleLogout = () => {
             :as-child="true"
             class="group/item flex h-9 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 py-0 text-[13.5px] font-normal text-foreground focus:bg-primary focus:text-primary-foreground"
         >
-            <Link :href="edit()" data-test="settings-menu-item" prefetch>
+            <Link :href="settingsHref" data-test="settings-menu-item" prefetch>
                 <Settings
                     class="size-3.75 text-muted-foreground group-focus/item:text-brass"
                 />
-                {{ $t('Settings') }}
+                <span class="min-w-0 flex-1 truncate">{{
+                    $t('Settings')
+                }}</span>
             </Link>
         </DropdownMenuItem>
     </div>
@@ -229,7 +515,9 @@ const handleLogout = () => {
             <Keyboard
                 class="size-3.75 text-muted-foreground group-focus/item:text-brass"
             />
-            {{ $t('Keyboard shortcuts') }}
+            <span class="min-w-0 flex-1 truncate">{{
+                $t('Keyboard shortcuts')
+            }}</span>
             <DropdownMenuShortcut
                 class="ml-auto inline-flex h-4.5 min-w-4 items-center justify-center rounded-[5px] border border-border px-1 font-mono text-[10px] font-semibold tracking-normal text-muted-foreground group-focus/item:border-primary-foreground/30 group-focus/item:text-primary-foreground"
                 >?</DropdownMenuShortcut
@@ -243,7 +531,7 @@ const handleLogout = () => {
             <Compass
                 class="size-3.75 text-muted-foreground group-focus/item:text-brass"
             />
-            {{ $t('Replay tour') }}
+            <span class="min-w-0 flex-1 truncate">{{ $t('Replay tour') }}</span>
         </DropdownMenuItem>
     </div>
 

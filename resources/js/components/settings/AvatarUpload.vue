@@ -57,7 +57,7 @@ function removePhoto(): void {
 </script>
 
 <template>
-    <div class="flex items-center gap-5">
+    <div class="flex flex-wrap items-center gap-5">
         <div class="relative size-20 shrink-0">
             <Avatar class="size-20 overflow-hidden rounded-full">
                 <AvatarImage
@@ -97,7 +97,7 @@ function removePhoto(): void {
                 <Button
                     type="button"
                     size="sm"
-                    class="rounded-full"
+                    class="rounded-full max-md:h-11"
                     :disabled="uploadForm.processing || removeForm.processing"
                     data-test="upload-avatar-button"
                     @click="choosePhoto"
@@ -121,7 +121,7 @@ function removePhoto(): void {
                     type="button"
                     variant="outline"
                     size="sm"
-                    class="rounded-full text-destructive hover:text-destructive"
+                    class="rounded-full text-destructive-text hover:text-destructive-text max-md:h-11"
                     :disabled="uploadForm.processing || removeForm.processing"
                     data-test="remove-avatar-button"
                     @click="removePhoto"
@@ -133,7 +133,7 @@ function removePhoto(): void {
             <p
                 v-if="uploadForm.errors.photo"
                 role="alert"
-                class="text-sm text-destructive"
+                class="text-sm text-destructive-text"
                 data-test="avatar-error"
             >
                 {{ uploadForm.errors.photo }}

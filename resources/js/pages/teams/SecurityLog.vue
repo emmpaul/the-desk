@@ -112,7 +112,7 @@ function dotClass(event: TeamSecurityEvent): string {
         <div class="flex flex-wrap items-center gap-3">
             <Select v-model="typeFilter">
                 <SelectTrigger
-                    class="w-56"
+                    class="w-56 max-md:data-[size=default]:h-11"
                     data-test="security-log-type-filter"
                 >
                     <SelectValue :placeholder="$t('All events')" />
@@ -131,7 +131,7 @@ function dotClass(event: TeamSecurityEvent): string {
 
             <Select v-model="actorFilter">
                 <SelectTrigger
-                    class="w-56"
+                    class="w-56 max-md:data-[size=default]:h-11"
                     data-test="security-log-actor-filter"
                 >
                     <SelectValue :placeholder="$t('All members')" />
@@ -168,7 +168,7 @@ function dotClass(event: TeamSecurityEvent): string {
             <li
                 v-for="event in events.data"
                 :key="event.id"
-                class="flex items-center gap-3 px-4 py-3"
+                class="flex items-center gap-3 px-4 py-3 max-md:flex-wrap"
                 :data-test="`security-log-event-${event.id}`"
             >
                 <span
@@ -176,20 +176,22 @@ function dotClass(event: TeamSecurityEvent): string {
                     :class="dotClass(event)"
                 />
 
-                <div class="flex min-w-0 flex-col gap-px">
+                <div
+                    class="flex min-w-0 flex-1 flex-col gap-px max-md:basis-3/4"
+                >
                     <p
-                        class="flex items-center gap-2 text-[13.5px] font-semibold"
+                        class="flex items-center gap-2 text-[13.5px] font-semibold max-md:flex-wrap"
                     >
                         <span class="truncate">{{ event.actorName }}</span>
                         <span
                             v-if="event.isNewDevice"
-                            class="inline-flex h-4.75 shrink-0 items-center rounded-full border border-destructive/25 bg-destructive/10 px-2.5 text-[10.5px] font-semibold tracking-[0.05em] text-destructive uppercase"
+                            class="inline-flex h-4.75 shrink-0 items-center rounded-full border border-destructive/25 bg-destructive/10 px-2.5 text-[10.5px] font-semibold tracking-[0.05em] text-destructive-text uppercase"
                             data-test="security-log-new-device-badge"
                         >
                             {{ $t('New device') }}
                         </span>
                     </p>
-                    <p class="truncate text-xs text-muted-foreground">
+                    <p class="text-xs text-muted-foreground md:truncate">
                         {{ event.label }}
                         &middot;
                         {{

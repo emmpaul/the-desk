@@ -28,6 +28,31 @@ test('the sidebar "New message" action is a keyboard-operable button', function 
         ->assertPresent('@new-dm-input');
 });
 
+test('the New Direct Message palette has no serious accessibility violations, light or dark', function (): void {
+    ['owner' => $alice] = browserTeamWithChannel();
+
+    // The settle lets the dialog's fade finish: axe blends the mid-animation
+    // opacity into its contrast arithmetic otherwise (#775).
+    $page = signInThroughBrowser($alice)
+        ->keys('@new-dm-trigger', 'Enter')
+        ->assertVisible('@new-dm-input')
+        ->wait(0.5)
+        ->assertNoAccessibilityIssues();
+
+    // Re-audit against the dark palette; persisting to localStorage first keeps
+    // the appearance controller from re-resolving 'system' back to light.
+    $page->script(<<<'JS'
+    () => {
+        localStorage.setItem('appearance', 'dark');
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+    }
+    JS);
+
+    $page->wait(0.5)
+        ->assertNoAccessibilityIssues();
+});
+
 test('the sidebar "Create channel" action is a keyboard-operable button', function (): void {
     ['owner' => $alice] = browserTeamWithChannel();
 
@@ -55,6 +80,34 @@ test('the shell exposes a skip link targeting a focusable main region', function
         ->assertScript(
             "document.querySelector('a[href], button, input, textarea, select')?.getAttribute('data-test')",
             'skip-to-content',
+        );
+});
+
+test('an open dropdown menu takes the shell out of the tab order and hands it back on close', function (): void {
+    ['owner' => $alice] = browserTeamWithChannel();
+
+    $page = signInThroughBrowser($alice)
+        ->click('@sidebar-menu-button')
+        ->assertPresent('@settings-menu-item')
+        ->wait(0.5)
+        // The menu hides the shell from assistive tech, so the skip link has to
+        // leave the tab order with it rather than stay focusable inside an
+        // `aria-hidden` region (#730).
+        ->assertScript(
+            'document.querySelector(\'a[data-test="skip-to-content"]\').closest("[inert]") !== null',
+        );
+
+    $page->keys('[data-test="settings-menu-item"]', 'Escape')
+        ->wait(0.5)
+        ->assertNotPresent('@settings-menu-item')
+        // Closing restores both halves: the skip link is reachable again, and
+        // focus lands back on the trigger it left from.
+        ->assertScript(
+            'document.querySelector(\'a[data-test="skip-to-content"]\').closest("[inert]") === null',
+        )
+        ->assertScript(
+            'document.activeElement?.getAttribute("data-test")',
+            'sidebar-menu-button',
         );
 });
 

@@ -42,6 +42,7 @@ import CreateChannelModal from '@/components/CreateChannelModal.vue';
 import CreateTeamModal from '@/components/CreateTeamModal.vue';
 import DemoBanner from '@/components/DemoBanner.vue';
 import DirectMessageListItem from '@/components/DirectMessageListItem.vue';
+import DndPauseDialog from '@/components/DndPauseDialog.vue';
 import InviteMemberModal from '@/components/InviteMemberModal.vue';
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -78,9 +79,11 @@ import {
 } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import UpdateIndicator from '@/components/UpdateIndicator.vue';
+import UserStatusDialog from '@/components/UserStatusDialog.vue';
 import { adjacentSlug } from '@/composables/keyboardShortcuts';
 import { useChimeNotifications } from '@/composables/useChimeNotifications';
 import { useDemoMode } from '@/composables/useDemoMode';
+import { useDndPauseDialog } from '@/composables/useDndPauseDialog';
 import { useInitials } from '@/composables/useInitials';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useKeyboardShortcutsModal } from '@/composables/useKeyboardShortcutsModal';
@@ -90,18 +93,22 @@ import {
     shouldAutoStartTour,
     useOnboardingTour,
 } from '@/composables/useOnboardingTour';
+import { usePresenceReporter } from '@/composables/usePresenceReporter';
+import { useQuickSwitcher } from '@/composables/useQuickSwitcher';
 import { useSidebarBadges } from '@/composables/useSidebarBadges';
 import { useSidebarPosition } from '@/composables/useSidebarPosition';
 import { useTeamPresence } from '@/composables/useTeamPresence';
 import { useTeamSwitch } from '@/composables/useTeamSwitch';
 import { useTimezone } from '@/composables/useTimezone';
 import { useTranslations } from '@/composables/useTranslations';
+import { useUserStatusDialog } from '@/composables/useUserStatusDialog';
 import { backgroundVisit } from '@/lib/backgroundVisit';
 import {
     partitionChannels,
     toggleCollapsedSection,
 } from '@/lib/channelSections';
 import type { SidebarSectionKey } from '@/lib/channelSections';
+import { dmParticipantPresence } from '@/lib/presence';
 import type { Channel, ChannelSection } from '@/types/channels';
 import type { MessageReminder } from '@/types/messages';
 import type { RoleOption } from '@/types/teams';
@@ -146,8 +153,12 @@ const currentUserId = computed(() => String(page.props.auth.user.id));
 /** The current team's members, feeding the DM entry points (people picker + ⌘K). */
 const teamMembers = computed(() => page.props.teamMembers ?? []);
 
-/** Online roster for the current team, driving the presence dot on each DM row. */
-const { onlineIds } = useTeamPresence(() => currentTeam.value?.id);
+/** Live presence for the current team, driving the dot on each DM row. */
+const { presenceFor, isDndFor } = useTeamPresence(() => currentTeam.value?.id);
+
+// Report this tab's own idle state from the layout every authenticated surface
+// mounts, so someone reading a settings page still counts as here.
+usePresenceReporter();
 
 /** The "New message" people picker opened from the "Direct messages" header. */
 const newDmOpen = ref(false);
@@ -549,9 +560,12 @@ const { getInitials } = useInitials();
 const { switchTeam } = useTeamSwitch();
 const { start: startOnboardingTour } = useOnboardingTour();
 
-const quickSwitcherOpen = ref(false);
+const { isOpen: quickSwitcherOpen, toggle: toggleQuickSwitcher } =
+    useQuickSwitcher();
 const { isOpen: shortcutsOpen, toggle: toggleShortcuts } =
     useKeyboardShortcutsModal();
+const { isOpen: statusDialogOpen } = useUserStatusDialog();
+const { isOpen: dndPauseDialogOpen } = useDndPauseDialog();
 
 /**
  * The viewer's still-pending reminders in this team, feeding the "Reminders"
@@ -667,8 +681,7 @@ function moveChannel(delta: number): void {
 }
 
 useKeyboardShortcuts({
-    'quick-switcher': () =>
-        (quickSwitcherOpen.value = !quickSwitcherOpen.value),
+    'quick-switcher': () => toggleQuickSwitcher(),
     'previous-channel': () => moveChannel(-1),
     'next-channel': () => moveChannel(1),
     'show-shortcuts': () => toggleShortcuts(),
@@ -729,7 +742,7 @@ onMounted(() => {
             :class="[
                 'p-3.5',
                 {
-                    'md:top-(--demo-banner-height) md:h-[calc(100svh-var(--demo-banner-height))]':
+                    'md:top-(--demo-banner-height) md:h-[calc(100dvh-var(--demo-banner-height))]':
                         demoMode,
                 },
             ]"
@@ -852,7 +865,7 @@ onMounted(() => {
                         <Button
                             variant="ghost"
                             data-test="quick-switcher-trigger"
-                            class="flex h-8 w-full items-center justify-start gap-2 rounded-[9px] bg-muted px-2.5 text-[13px] font-normal text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            class="flex h-9.5 w-full items-center justify-start gap-2 rounded-[10px] bg-muted px-3 text-[13.5px] font-normal text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground md:h-8 md:rounded-[9px] md:px-2.5 md:text-[13px]"
                             @click="quickSwitcherOpen = true"
                         >
                             <Search class="size-3.25 shrink-0" />
@@ -1246,9 +1259,16 @@ onMounted(() => {
                                     :channel="dm"
                                     :team-slug="currentTeam?.slug ?? ''"
                                     :active-channel-slug="activeChannelSlug"
-                                    :online="
+                                    :presence="
+                                        dmParticipantPresence(
+                                            dm.dmUserId,
+                                            presenceFor,
+                                            page.props.auth.user.presence,
+                                        )
+                                    "
+                                    :is-dnd="
                                         dm.dmUserId != null &&
-                                        onlineIds.has(dm.dmUserId)
+                                        isDndFor(dm.dmUserId)
                                     "
                                     :is-self="dm.dmUserId === currentUserId"
                                 />
@@ -1300,7 +1320,7 @@ onMounted(() => {
                                 <SidebarMenuItem>
                                     <SidebarMenuButton
                                         as-child
-                                        class="h-7.5 gap-2 rounded-[9px] px-2.5 text-[13px] text-muted-foreground hover:bg-sidebar-accent/60"
+                                        class="h-10.5 gap-2 rounded-[10px] px-2.5 text-[14px] text-muted-foreground hover:bg-sidebar-accent/60 md:h-7.5 md:rounded-[9px] md:text-[13px]"
                                     >
                                         <Link
                                             v-if="currentTeam"
@@ -1324,7 +1344,7 @@ onMounted(() => {
                                 <SidebarMenuItem>
                                     <SidebarMenuButton
                                         data-test="reminders-trigger"
-                                        class="h-7.5 gap-2 rounded-[9px] px-2.5 text-[13px] text-muted-foreground hover:bg-sidebar-accent/60"
+                                        class="h-10.5 gap-2 rounded-[10px] px-2.5 text-[14px] text-muted-foreground hover:bg-sidebar-accent/60 md:h-7.5 md:rounded-[9px] md:text-[13px]"
                                         @click="remindersDialogOpen = true"
                                     >
                                         <AlarmClock class="size-3.25" />
@@ -1340,7 +1360,7 @@ onMounted(() => {
                                 <SidebarMenuItem>
                                     <SidebarMenuButton
                                         as-child
-                                        class="h-7.5 gap-2 rounded-[9px] px-2.5 text-[13px] text-muted-foreground hover:bg-sidebar-accent/60"
+                                        class="h-10.5 gap-2 rounded-[10px] px-2.5 text-[14px] text-muted-foreground hover:bg-sidebar-accent/60 md:h-7.5 md:rounded-[9px] md:text-[13px]"
                                     >
                                         <Link
                                             v-if="currentTeam"
@@ -1362,7 +1382,7 @@ onMounted(() => {
                                 <SidebarMenuItem>
                                     <SidebarMenuButton
                                         as-child
-                                        class="h-7.5 gap-2 rounded-[9px] px-2.5 text-[13px] text-muted-foreground hover:bg-sidebar-accent/60"
+                                        class="h-10.5 gap-2 rounded-[10px] px-2.5 text-[14px] text-muted-foreground hover:bg-sidebar-accent/60 md:h-7.5 md:rounded-[9px] md:text-[13px]"
                                     >
                                         <Link
                                             v-if="currentTeam"
@@ -1388,22 +1408,23 @@ onMounted(() => {
             </SidebarFooter>
         </Sidebar>
 
-        <!-- Main card: fills the screen on mobile, floats on the warm canvas
-             (matching the dock) from md up. -->
+        <!-- Main card: below the breakpoint the card *is* the screen — one pane
+             on an 8px canvas gutter, no rail beside it. From md up it floats on
+             the warm canvas (matching the dock). -->
         <!-- Mirror the floating gap onto the correct edge: with the dock on the
              right, the inset reorders ahead of it and takes its outer margin on
              the left instead of the right. -->
         <SidebarInset
             id="main"
             tabindex="-1"
-            class="flex flex-col overflow-hidden focus-visible:outline-none md:my-3.5 md:rounded-[14px] md:border md:border-border md:bg-card md:shadow-sm"
+            class="mx-2 my-2 flex flex-col overflow-hidden rounded-[14px] border border-border bg-card shadow-sm focus-visible:outline-none md:my-3.5"
             :class="[
                 sidebarPosition === 'right'
-                    ? 'md:order-first md:ml-3.5'
-                    : 'md:mr-3.5',
+                    ? 'md:order-first md:mr-0 md:ml-3.5'
+                    : 'md:mr-3.5 md:ml-0',
                 demoMode
-                    ? 'h-[calc(100svh-var(--demo-banner-height))] md:h-[calc(100svh-1.75rem-var(--demo-banner-height))]'
-                    : 'h-svh md:h-[calc(100svh-1.75rem)]',
+                    ? 'h-[calc(100dvh-1rem-var(--demo-banner-height))] md:h-[calc(100dvh-1.75rem-var(--demo-banner-height))]'
+                    : 'h-[calc(100dvh-1rem)] md:h-[calc(100dvh-1.75rem)]',
             ]"
         >
             <slot />
@@ -1428,6 +1449,8 @@ onMounted(() => {
             :members="teamMembers"
             :current-user-id="currentUserId"
             :team-slug="currentTeam.slug"
+            :presence-for="presenceFor"
+            :is-dnd-for="isDndFor"
             @open-reminders="remindersDialogOpen = true"
         />
 
@@ -1440,6 +1463,10 @@ onMounted(() => {
         />
 
         <KeyboardShortcutsModal v-model:open="shortcutsOpen" />
+
+        <UserStatusDialog v-model:open="statusDialogOpen" />
+
+        <DndPauseDialog v-model:open="dndPauseDialogOpen" />
 
         <RemindersDialog
             v-model:open="remindersDialogOpen"

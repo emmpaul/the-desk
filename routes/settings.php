@@ -6,14 +6,21 @@ use App\Http\Controllers\Settings\AboutController;
 use App\Http\Controllers\Settings\AppearanceController;
 use App\Http\Controllers\Settings\AvatarController;
 use App\Http\Controllers\Settings\DataExportController;
+use App\Http\Controllers\Settings\DndController;
+use App\Http\Controllers\Settings\DndScheduleController;
+use App\Http\Controllers\Settings\DndScheduleSnoozeController;
 use App\Http\Controllers\Settings\LocaleController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\PersonalAccessTokenController;
+use App\Http\Controllers\Settings\PresenceController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\ReadReceiptsController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
+use App\Http\Controllers\Settings\SettingsIndexController;
 use App\Http\Controllers\Settings\SidebarPositionController;
+use App\Http\Controllers\Settings\StatusController;
+use App\Http\Controllers\Settings\TimeFormatController;
 use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Teams\AnalyticsController;
 use App\Http\Controllers\Teams\AuditController;
@@ -35,13 +42,30 @@ use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function (): void {
-    Route::redirect('settings', '/settings/profile');
+    Route::get('settings', [SettingsIndexController::class, 'index'])->name('settings.index');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::post('settings/avatar', [AvatarController::class, 'store'])->name('avatar.store');
     Route::delete('settings/avatar', [AvatarController::class, 'destroy'])->name('avatar.destroy');
+
+    // The custom status is set from the user menu's presence section, which is
+    // reachable from every workspace surface — so it sits beside the avatar in
+    // the plain `auth` group rather than behind the verified-email gate.
+    Route::put('settings/status', [StatusController::class, 'update'])->name('status.update');
+    Route::delete('settings/status', [StatusController::class, 'destroy'])->name('status.destroy');
+
+    // The manual away toggle sits beside the status in the same presence menu,
+    // and is reachable from every workspace surface for the same reason.
+    Route::put('settings/presence', [PresenceController::class, 'update'])->name('presence.update');
+
+    // Do-not-disturb rides the same presence menu: the pause is set and ended
+    // from it, and the recurring quiet-hours schedule from its dialog.
+    Route::put('settings/dnd', [DndController::class, 'update'])->name('dnd.update');
+    Route::delete('settings/dnd', [DndController::class, 'destroy'])->name('dnd.destroy');
+    Route::put('settings/dnd-schedule', [DndScheduleController::class, 'update'])->name('dnd-schedule.update');
+    Route::put('settings/dnd-schedule/snooze', [DndScheduleSnoozeController::class, 'update'])->name('dnd-schedule.snooze');
 
     Route::patch('settings/timezone', [TimezoneController::class, 'update'])->name('timezone.update');
 
@@ -79,6 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 
     Route::get('settings/language', [LocaleController::class, 'edit'])->name('locale.edit');
     Route::patch('settings/language', [LocaleController::class, 'update'])->name('locale.update');
+    Route::patch('settings/time-format', [TimeFormatController::class, 'update'])->name('time-format.update');
 
     // Human personal access tokens for the public REST API. JSON endpoints only
     // (the settings UI ships in a follow-up); the whole surface 404s when the

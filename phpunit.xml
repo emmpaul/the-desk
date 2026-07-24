@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
 >
     <testsuites>
@@ -40,8 +40,11 @@
             stays green. Pinning also keeps DEMO_MODE defined at the process
             level, so the immutable env repository never "adopts" the .env value
             as its own and re-writes it on later application refreshes. `force`
-            makes the pin win even over an exported/process-level DEMO_MODE, so
-            the suite is deterministic no matter how the flag arrives.
+            re-applies the pin even when DEMO_MODE is already defined at the
+            process level — but PHPUnit writes it to putenv() and $_ENV only, so
+            an exported value would still win from $_SERVER; tests/bootstrap.php
+            clears that copy (#756). Between them the suite is deterministic no
+            matter how the flag arrives.
         -->
         <env name="DEMO_MODE" value="false" force="true"/>
         <!--
@@ -70,11 +73,39 @@
         <env name="SSO_DEFAULT_TEAM_ID" value=""/>
         <env name="SCIM_TOKEN" value=""/>
         <env name="GIPHY_API_KEY" value=""/>
+        <!--
+            Keep the suite independent of a locally-built SSR bundle. Inertia
+            dispatches to the SSR render server whenever a bundle exists at
+            bootstrap/ssr/ (a git-ignored artifact CI never builds). A developer
+            who has run the SSR build then has one on disk, and from that point
+            every Inertia render inside a test fires an outbound POST to
+            127.0.0.1:13714 that pollutes Http::fake(). Forcing SSR off here
+            makes the gate deterministic no matter whether that artifact exists.
+        -->
+        <env name="INERTIA_SSR_ENABLED" value="false"/>
         <!-- Avatars resolve through the image proxy, which fetches the remote
              image server-side. Left enabled, every rendered avatar would make the
              suite reach gravatar.com — and in the browser tests that fetch blocks
              the single-process app server the page is talking to. Tests that
              exercise Gravatar itself opt back in with config()->set(). -->
         <env name="GRAVATAR_ENABLED" value="false"/>
+        <!--
+            Keep the browser-facing Reverb connection derived from the
+            server-facing one, as it is out of the box. App\Support\ReverbConfig
+            prefers these overrides over `options.*`, so any value in the host's
+            .env — which bin/worktree copies verbatim into every worktree —
+            shadows the config() overrides the reverb tests make, and they fail
+            on a machine-specific port ("Failed asserting that 20012 is
+            identical to 443", issue #732). Pinning them empty restores the
+            fallback; tests that exercise a real override opt back in with
+            config()->set(), and the browser suite sets all three explicitly.
+            `force` re-applies the pin even when the name is already defined at
+            the process level, so it also survives a `putenv` from an earlier
+            bootstrap; an exported value additionally needs the $_SERVER copy
+            tests/bootstrap.php clears (#756).
+        -->
+        <env name="REVERB_HOST_PUBLIC" value="" force="true"/>
+        <env name="REVERB_PORT_PUBLIC" value="" force="true"/>
+        <env name="REVERB_SCHEME_PUBLIC" value="" force="true"/>
     </php>
 </phpunit>

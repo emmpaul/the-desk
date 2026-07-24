@@ -28,6 +28,36 @@ function hexToRgb(hex: string): Rgb {
     return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as Rgb;
 }
 
+/** Convert an `hsl(H S% L%)` triple to RGB (CSS Color 4 space-separated form). */
+function hslToRgb(hue: number, saturation: number, lightness: number): Rgb {
+    const s = saturation / 100;
+    const l = lightness / 100;
+    const a = s * Math.min(l, 1 - l);
+    const channel = (n: number): number => {
+        const k = (n + hue / 30) % 12;
+
+        return Math.round(
+            (l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))) * 255,
+        );
+    };
+
+    return [channel(0), channel(8), channel(4)] as Rgb;
+}
+
+/**
+ * Parse a token value into RGB. Surfaces ship as `#rrggbb`, but the fill tokens
+ * (`--destructive`) ship as `hsl(H S% L%)`, so both forms must resolve.
+ */
+function parseColor(value: string): Rgb {
+    const hsl = /hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)/.exec(value);
+
+    if (hsl) {
+        return hslToRgb(Number(hsl[1]), Number(hsl[2]), Number(hsl[3]));
+    }
+
+    return hexToRgb(value);
+}
+
 /** Composite a translucent foreground over an opaque background. */
 function flatten(fg: Rgb, alpha: number, bg: Rgb): Rgb {
     return fg.map((c, i) => c * alpha + bg[i] * (1 - alpha)) as Rgb;
@@ -220,6 +250,75 @@ describe('theme contrast (WCAG AA)', () => {
                     hexToRgb(dark['brass-fill-foreground']),
                     hexToRgb(dark[surface]),
                 ),
+            ).toBeGreaterThanOrEqual(AA_TEXT);
+        },
+    );
+
+    // The `linkDestructive` <Button> variant paints --destructive-text as inline
+    // text (e.g. the "Delete"/"Revoke" row action in teams/Emojis.vue), down to
+    // `text-xs`. Reusing the --destructive *fill* token there measured 3.92:1 on
+    // the dark card (#678); this dedicated text form must clear body-text AA on
+    // both the card row and the bare page background, in each theme.
+    const destructiveTextSurfaces = ['card', 'background'] as const;
+
+    it.each(destructiveTextSurfaces)(
+        'light --destructive-text meets AA on --%s',
+        (surface) => {
+            expect(
+                contrast(
+                    parseColor(light['destructive-text']),
+                    hexToRgb(light[surface]),
+                ),
+            ).toBeGreaterThanOrEqual(AA_TEXT);
+        },
+    );
+
+    it.each(destructiveTextSurfaces)(
+        'dark --destructive-text meets AA on --%s',
+        (surface) => {
+            expect(
+                contrast(
+                    parseColor(dark['destructive-text']),
+                    hexToRgb(dark[surface]),
+                ),
+            ).toBeGreaterThanOrEqual(AA_TEXT);
+        },
+    );
+
+    // Destructive status pills, the failed-attachment chip, the auto-disable
+    // banner and the destructive dropdown item's focus state all paint that same
+    // text on a translucent `bg-destructive/10` tint rather than a bare surface
+    // (#717). The tint composites against whatever sits behind it — `--card` on
+    // desktop, `--background` on the mobile full-bleed pane — and each composite
+    // is dimmer for the text than the bare surface was, so both must be locked.
+    const DESTRUCTIVE_TINT_ALPHA = 0.1; // matches the `bg-destructive/10` utility
+
+    it.each(destructiveTextSurfaces)(
+        'light --destructive-text meets AA on the destructive tint over --%s',
+        (surface) => {
+            const tint = flatten(
+                parseColor(light['destructive']),
+                DESTRUCTIVE_TINT_ALPHA,
+                hexToRgb(light[surface]),
+            );
+
+            expect(
+                contrast(parseColor(light['destructive-text']), tint),
+            ).toBeGreaterThanOrEqual(AA_TEXT);
+        },
+    );
+
+    it.each(destructiveTextSurfaces)(
+        'dark --destructive-text meets AA on the destructive tint over --%s',
+        (surface) => {
+            const tint = flatten(
+                parseColor(dark['destructive']),
+                DESTRUCTIVE_TINT_ALPHA,
+                hexToRgb(dark[surface]),
+            );
+
+            expect(
+                contrast(parseColor(dark['destructive-text']), tint),
             ).toBeGreaterThanOrEqual(AA_TEXT);
         },
     );

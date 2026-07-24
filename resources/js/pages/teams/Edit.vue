@@ -40,6 +40,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useDemoMode } from '@/composables/useDemoMode';
 import { useInitials } from '@/composables/useInitials';
 import { useTranslations } from '@/composables/useTranslations';
@@ -176,10 +177,12 @@ const confirmTransferOwnership = (member: TeamMember) => {
     <Head :title="pageTitle" />
 
     <div>
-        <!-- Page header -->
-        <header class="border-b border-border pb-6">
+        <!-- Page header. Below the breakpoint the pushed screen's own header
+             already carries the trail and the team name, so only the ownership
+             badge survives there. -->
+        <header class="border-b border-border pb-6 max-md:border-0 max-md:pb-0">
             <nav
-                class="flex items-center gap-1.5 text-xs text-muted-foreground"
+                class="hidden items-center gap-1.5 text-xs text-muted-foreground md:flex"
                 :aria-label="$t('breadcrumb')"
             >
                 <Link :href="index()" class="hover:text-foreground">
@@ -191,8 +194,8 @@ const confirmTransferOwnership = (member: TeamMember) => {
                 }}</span>
             </nav>
 
-            <div class="mt-2 flex flex-wrap items-end gap-3">
-                <div class="min-w-0">
+            <div class="flex flex-wrap items-end gap-3 md:mt-2">
+                <div class="min-w-0 max-md:hidden">
                     <h1
                         class="font-serif text-3xl font-semibold tracking-tight"
                     >
@@ -328,12 +331,24 @@ const confirmTransferOwnership = (member: TeamMember) => {
                                 class="text-sm font-medium text-muted-foreground"
                                 >{{ $t('(you)') }}</span
                             >
+                            <UserStatusEmoji
+                                :status="member.status"
+                                :name="member.name"
+                                class="align-[-1px] text-xs"
+                            />
                         </Link>
                         <div
                             v-if="member.email"
                             class="truncate text-sm text-muted-foreground"
                         >
                             {{ member.email }}
+                        </div>
+                        <div
+                            v-if="member.status?.text"
+                            data-test="member-status-text"
+                            class="truncate text-sm text-muted-foreground"
+                        >
+                            {{ member.status.text }}
                         </div>
                     </div>
 
@@ -772,7 +787,9 @@ const confirmTransferOwnership = (member: TeamMember) => {
             class="py-6"
         >
             <div class="mb-3">
-                <h2 class="font-serif text-lg font-semibold text-destructive">
+                <h2
+                    class="font-serif text-lg font-semibold text-destructive-text"
+                >
                     {{ $t('Delete team') }}
                 </h2>
                 <p class="mt-0.5 max-w-xl text-sm text-muted-foreground">
@@ -787,7 +804,7 @@ const confirmTransferOwnership = (member: TeamMember) => {
                 <Button
                     data-test="delete-team-button"
                     variant="outline"
-                    class="rounded-full border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+                    class="rounded-full border-destructive/40 text-destructive-text hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive-text"
                     :disabled="disabled"
                     @click="deleteDialogOpen = true"
                     >{{ $t('Delete team…') }}</Button

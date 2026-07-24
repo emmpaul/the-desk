@@ -55,6 +55,13 @@ defineOptions({
 
 const { getInitials } = useInitials();
 
+/** The row's member-count label, e.g. "3 members". */
+function memberCountLabel(group: UserGroup): string {
+    return group.membersCount === 1
+        ? translate(':count member', { count: group.membersCount })
+        : translate(':count members', { count: group.membersCount });
+}
+
 const createForm = useForm({ name: '', slug: '' });
 
 function submitCreate(): void {
@@ -238,7 +245,7 @@ function confirmRemoval(): void {
                             v-model="createForm.name"
                             data-test="group-name-input"
                             :placeholder="$t('Dev Team')"
-                            class="sm:w-56"
+                            class="max-md:h-11 sm:w-56"
                             autocomplete="off"
                         />
                         <InputError :message="createForm.errors.name" />
@@ -248,7 +255,7 @@ function confirmRemoval(): void {
                             v-model="createForm.slug"
                             data-test="group-slug-input"
                             placeholder="@dev-team"
-                            class="font-mono sm:w-48"
+                            class="font-mono max-md:h-11 sm:w-48"
                             autocapitalize="off"
                             autocomplete="off"
                             spellcheck="false"
@@ -258,7 +265,7 @@ function confirmRemoval(): void {
                     <Button
                         type="submit"
                         data-test="group-create-button"
-                        class="rounded-full"
+                        class="rounded-full max-md:h-11"
                         :disabled="createForm.processing"
                     >
                         <Plus class="size-4" /> {{ $t('Create') }}
@@ -275,7 +282,7 @@ function confirmRemoval(): void {
                 v-model="search"
                 data-test="group-search"
                 :placeholder="$t('Search groups')"
-                class="rounded-full pl-9"
+                class="rounded-full pl-9 max-md:h-11"
             />
         </div>
 
@@ -291,7 +298,7 @@ function confirmRemoval(): void {
             <li
                 v-for="group in filteredGroups"
                 :key="group.id"
-                class="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
+                class="flex items-center gap-3 rounded-xl border border-border bg-card p-3 max-md:flex-wrap"
                 :data-test="`group-row-${group.slug}`"
             >
                 <div
@@ -299,47 +306,52 @@ function confirmRemoval(): void {
                 >
                     <Users class="size-4" aria-hidden="true" />
                 </div>
-                <div class="flex min-w-0 flex-1 flex-col">
+                <div class="flex min-w-0 flex-1 flex-col max-md:basis-3/5">
                     <span
                         class="truncate font-mono text-sm font-semibold text-foreground"
                         >@{{ group.slug }}</span
                     >
-                    <span class="truncate text-xs text-muted-foreground">{{
-                        group.name
-                    }}</span>
+                    <span class="truncate text-xs text-muted-foreground"
+                        >{{ group.name
+                        }}<span class="md:hidden">
+                            · {{ memberCountLabel(group) }}</span
+                        ></span
+                    >
                 </div>
-                <span class="w-28 shrink-0 text-xs text-muted-foreground">{{
-                    group.membersCount === 1
-                        ? $t(':count member', { count: group.membersCount })
-                        : $t(':count members', { count: group.membersCount })
-                }}</span>
+                <span
+                    class="w-28 shrink-0 text-xs text-muted-foreground max-md:hidden"
+                    >{{ memberCountLabel(group) }}</span
+                >
                 <!-- Icon actions rather than inline text links: the destructive
                      token at 12px does not clear 4.5:1 on `bg-card` in the dark
                      theme, while an icon only owes the 3:1 graphics threshold. -->
-                <Button
+                <div
                     v-if="permissions.canManageUserGroups"
-                    variant="ghost"
-                    size="icon-sm"
-                    type="button"
-                    :data-test="`group-edit-${group.slug}`"
-                    :aria-label="$t('Edit :name', { name: group.name })"
-                    class="shrink-0 rounded-full"
-                    @click="openEditor(group)"
+                    class="flex shrink-0 items-center gap-1 max-md:ml-auto"
                 >
-                    <Pencil class="size-4" />
-                </Button>
-                <Button
-                    v-if="permissions.canManageUserGroups"
-                    variant="ghost"
-                    size="icon-sm"
-                    type="button"
-                    :data-test="`group-remove-${group.slug}`"
-                    :aria-label="$t('Delete :name', { name: group.name })"
-                    class="shrink-0 rounded-full text-destructive"
-                    @click="pendingRemoval = group"
-                >
-                    <Trash2 class="size-4" />
-                </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        type="button"
+                        :data-test="`group-edit-${group.slug}`"
+                        :aria-label="$t('Edit :name', { name: group.name })"
+                        class="shrink-0 rounded-full max-md:size-11"
+                        @click="openEditor(group)"
+                    >
+                        <Pencil class="size-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        type="button"
+                        :data-test="`group-remove-${group.slug}`"
+                        :aria-label="$t('Delete :name', { name: group.name })"
+                        class="shrink-0 rounded-full text-destructive-text max-md:size-11"
+                        @click="pendingRemoval = group"
+                    >
+                        <Trash2 class="size-4" />
+                    </Button>
+                </div>
             </li>
         </ul>
     </div>

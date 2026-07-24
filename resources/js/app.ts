@@ -4,11 +4,15 @@ import { initializeTheme } from '@/composables/useAppearance';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import MainLayout from '@/layouts/MainLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { setTimeFormat } from '@/lib/clock';
 import { reverbEchoConfig } from '@/lib/echo';
 import type { ReverbRuntimeConfig } from '@/lib/echo';
 import { initializeFlashToast } from '@/lib/flashToast';
 import { setMessages, translate } from '@/lib/i18n';
 import type { Messages } from '@/lib/i18n';
+import { initializeLocaleSync } from '@/lib/localeSync';
+import { initializeOverlayInert } from '@/lib/overlayInert';
+import type { TimeFormat } from '@/types';
 
 /**
  * Seeded from the server-shared props at boot (see `withApp`), so both Echo and
@@ -23,7 +27,10 @@ void createInertiaApp({
     // Seed the translation catalog from the server-shared props before the first
     // render — on both the SSR pass and the client — so the initial paint is
     // already in the active locale (no flash of English on refresh). `translations`
-    // is a once prop, so it rides the initial document only, not every visit.
+    // is a once prop keyed by locale, so it rides the initial document and then
+    // only the visits that change language — `initializeLocaleSync` adopts those.
+    // The clock-style preference is seeded the same way, so the first paint's
+    // times of day are already on the viewer's chosen clock.
     // Also expose the translation helper as a global `$t` for templates.
     withApp(app, { page }) {
         const props = page.props as {
@@ -31,6 +38,7 @@ void createInertiaApp({
             reverb?: ReverbRuntimeConfig;
             locale?: string;
             translations?: Messages;
+            auth?: { user?: { time_format?: TimeFormat } | null };
         };
 
         appName = props.name ?? 'Laravel';
@@ -43,6 +51,8 @@ void createInertiaApp({
         }
 
         setMessages(props.locale ?? 'en', props.translations ?? {});
+
+        setTimeFormat(props.auth?.user?.time_format ?? 'auto');
 
         app.config.globalProperties.$t = translate;
     },
@@ -69,4 +79,8 @@ void createInertiaApp({
 
 initializeTheme();
 
+initializeLocaleSync();
+
 initializeFlashToast();
+
+initializeOverlayInert();

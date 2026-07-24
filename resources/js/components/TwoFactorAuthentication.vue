@@ -3,6 +3,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import DemoLock from '@/components/DemoLock.vue';
 import FormField from '@/components/FormField.vue';
+import SafeHtml from '@/components/SafeHtml.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { confirm, disable, enable, recoveryCodes } from '@/routes/two-factor';
@@ -73,7 +74,7 @@ function regenerateRecoveryCodes(): void {
             <DemoLock v-slot="{ disabled }">
                 <Button
                     variant="outline"
-                    class="rounded-full px-6"
+                    class="rounded-full px-6 max-md:h-11"
                     :loading="processing"
                     :disabled="disabled"
                     data-test="enable-two-factor-button"
@@ -98,11 +99,13 @@ function regenerateRecoveryCodes(): void {
                 }}
             </p>
 
-            <div
+            <SafeHtml
                 v-if="state.qrSvg"
+                as="div"
                 class="inline-flex rounded-xl border border-border bg-white p-4"
                 data-test="two-factor-qr"
-                v-html="state.qrSvg"
+                :html="state.qrSvg"
+                variant="qrCode"
             />
 
             <p v-if="state.secretKey" class="text-sm text-muted-foreground">
@@ -133,7 +136,7 @@ function regenerateRecoveryCodes(): void {
 
                 <div class="flex items-center gap-3">
                     <Button
-                        class="rounded-full px-6"
+                        class="rounded-full px-6 max-md:h-11"
                         :loading="confirmForm.processing"
                         data-test="confirm-two-factor-button"
                     >
@@ -142,7 +145,7 @@ function regenerateRecoveryCodes(): void {
                     <Button
                         type="button"
                         variant="ghost"
-                        class="rounded-full"
+                        class="rounded-full max-md:h-11"
                         :loading="processing"
                         data-test="cancel-two-factor-button"
                         @click="disableTwoFactor"
@@ -209,7 +212,7 @@ function regenerateRecoveryCodes(): void {
             <div class="flex flex-wrap items-center gap-3">
                 <Button
                     variant="outline"
-                    class="rounded-full"
+                    class="rounded-full max-md:h-11"
                     data-test="show-recovery-codes-button"
                     @click="showRecoveryCodes = !showRecoveryCodes"
                 >
@@ -221,7 +224,7 @@ function regenerateRecoveryCodes(): void {
                 </Button>
                 <Button
                     variant="outline"
-                    class="rounded-full"
+                    class="rounded-full max-md:h-11"
                     :loading="processing"
                     data-test="regenerate-recovery-codes-button"
                     @click="regenerateRecoveryCodes"

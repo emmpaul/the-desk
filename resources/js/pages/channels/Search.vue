@@ -14,6 +14,7 @@ import {
     show,
 } from '@/actions/App/Http/Controllers/Channels/ChannelController';
 import { index as search } from '@/actions/App/Http/Controllers/Channels/SearchController';
+import SafeHtml from '@/components/SafeHtml.vue';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
@@ -32,10 +33,6 @@ import { useDebouncedPost } from '@/composables/useDebouncedPost';
 import { getInitials } from '@/composables/useInitials';
 import { useTranslations } from '@/composables/useTranslations';
 import { formatCalendarDate, formatDateTime } from '@/lib/datetime';
-import {
-    sanitizeHtml,
-    SEARCH_SNIPPET_SANITIZE_CONFIG,
-} from '@/lib/sanitizeHtml';
 import { groupSearchResults } from '@/lib/searchResultGroups';
 import {
     emptyFilters,
@@ -424,16 +421,6 @@ function jumpHref(result: MessageSearchResult): string {
         { query: { message: result.message.id } },
     ).url;
 }
-
-/**
- * The snippet arrives fully escaped from `App\Support\MessageSnippet`, with
- * `<mark>` as its only markup. Sanitizing it again on the client keeps the
- * `v-html` surface behind the same trust boundary as every other one, so a
- * future server-side change can't turn this into an injection point.
- */
-function snippetHtml(snippet: string): string {
-    return sanitizeHtml(snippet, SEARCH_SNIPPET_SANITIZE_CONFIG);
-}
 </script>
 
 <template>
@@ -514,7 +501,7 @@ function snippetHtml(snippet: string): string {
                 <!-- author facet -->
                 <span
                     v-if="authorName !== null"
-                    class="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary py-0 pr-1.5 pl-1.5 text-xs font-medium text-primary-foreground"
+                    class="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary py-0 pr-1.5 pl-1.5 text-xs font-medium text-primary-foreground max-md:h-11 max-md:pr-0 max-md:pl-3"
                     data-test="facet-author"
                 >
                     <span
@@ -527,7 +514,7 @@ function snippetHtml(snippet: string): string {
                         variant="unstyled"
                         size="none"
                         type="button"
-                        class="flex size-4 items-center justify-center rounded-full text-primary-foreground/70 hover:text-primary-foreground"
+                        class="flex size-4 items-center justify-center rounded-full text-primary-foreground/70 hover:text-primary-foreground max-md:size-11"
                         :aria-label="$t('Remove author filter')"
                         @click="clearAuthor"
                     >
@@ -540,7 +527,7 @@ function snippetHtml(snippet: string): string {
                             variant="unstyled"
                             size="none"
                             type="button"
-                            class="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+                            class="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground max-md:h-11 max-md:px-4"
                             data-test="facet-author-picker"
                         >
                             {{ $t('Author') }}
@@ -553,7 +540,7 @@ function snippetHtml(snippet: string): string {
                             :placeholder="$t('Filter people…')"
                             :aria-label="$t('Filter people')"
                             data-test="facet-author-filter"
-                            class="mb-1 h-8 text-xs"
+                            class="mb-1 h-8 text-xs max-md:h-11"
                             @keydown.stop
                         />
                         <div class="max-h-56 overflow-y-auto">
@@ -563,7 +550,7 @@ function snippetHtml(snippet: string): string {
                                 v-for="member in filteredMembers"
                                 :key="member.id"
                                 type="button"
-                                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent"
+                                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent max-md:min-h-11"
                                 data-test="facet-author-option"
                                 @click="setAuthor(member.id)"
                             >
@@ -581,7 +568,7 @@ function snippetHtml(snippet: string): string {
                 <!-- channel facet -->
                 <span
                     v-if="channelName !== null"
-                    class="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground"
+                    class="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground max-md:h-11 max-md:pr-0"
                     data-test="facet-channel"
                 >
                     <span aria-hidden="true" class="text-brass">#</span
@@ -590,7 +577,7 @@ function snippetHtml(snippet: string): string {
                         variant="unstyled"
                         size="none"
                         type="button"
-                        class="flex size-4 items-center justify-center rounded-full text-primary-foreground/70 hover:text-primary-foreground"
+                        class="flex size-4 items-center justify-center rounded-full text-primary-foreground/70 hover:text-primary-foreground max-md:size-11"
                         :aria-label="$t('Remove channel filter')"
                         @click="clearChannel"
                     >
@@ -603,7 +590,7 @@ function snippetHtml(snippet: string): string {
                             variant="unstyled"
                             size="none"
                             type="button"
-                            class="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+                            class="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground max-md:h-11 max-md:px-4"
                             data-test="facet-channel-picker"
                         >
                             <span
@@ -619,7 +606,7 @@ function snippetHtml(snippet: string): string {
                             v-model="channelFilter"
                             :placeholder="$t('Filter channels…')"
                             :aria-label="$t('Filter channels')"
-                            class="mb-1 h-8 text-xs"
+                            class="mb-1 h-8 text-xs max-md:h-11"
                             @keydown.stop
                         />
                         <div class="max-h-56 overflow-y-auto">
@@ -629,7 +616,7 @@ function snippetHtml(snippet: string): string {
                                 variant="unstyled"
                                 size="none"
                                 type="button"
-                                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent"
+                                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent max-md:min-h-11"
                                 data-test="facet-channel-option"
                                 @click="setChannel(channel.id)"
                             >
@@ -658,7 +645,7 @@ function snippetHtml(snippet: string): string {
                 <!-- date facet -->
                 <span
                     v-if="dateChipLabel !== null"
-                    class="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary py-0 pr-1.5 pl-3 text-xs font-medium text-primary-foreground"
+                    class="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary py-0 pr-1.5 pl-3 text-xs font-medium text-primary-foreground max-md:h-11 max-md:pr-0"
                     data-test="facet-date"
                 >
                     <Calendar class="size-3 text-brass" aria-hidden="true" />
@@ -667,7 +654,7 @@ function snippetHtml(snippet: string): string {
                         variant="unstyled"
                         size="none"
                         type="button"
-                        class="flex size-4 items-center justify-center rounded-full text-primary-foreground/70 hover:text-primary-foreground"
+                        class="flex size-4 items-center justify-center rounded-full text-primary-foreground/70 hover:text-primary-foreground max-md:size-11"
                         :aria-label="$t('Remove date filter')"
                         @click="clearDate"
                     >
@@ -685,7 +672,7 @@ function snippetHtml(snippet: string): string {
                             variant="unstyled"
                             size="none"
                             type="button"
-                            class="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+                            class="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground max-md:h-11 max-md:px-4"
                             data-test="facet-date-picker"
                         >
                             <Calendar class="size-3" aria-hidden="true" />
@@ -700,7 +687,7 @@ function snippetHtml(snippet: string): string {
                             variant="unstyled"
                             size="none"
                             type="button"
-                            class="flex w-full items-center rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent"
+                            class="flex w-full items-center rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent max-md:min-h-11"
                             :data-test="`facet-date-preset-${preset.key}`"
                             @click="setDateRange(preset.after, preset.before)"
                         >
@@ -710,7 +697,7 @@ function snippetHtml(snippet: string): string {
                             variant="unstyled"
                             size="none"
                             type="button"
-                            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent"
+                            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent max-md:min-h-11"
                             data-test="facet-date-custom"
                             @click="showCustomRange = !showCustomRange"
                         >
@@ -762,7 +749,7 @@ function snippetHtml(snippet: string): string {
                     size="none"
                     v-if="hasFilters"
                     type="button"
-                    class="ml-1 border-b border-dotted border-muted-foreground/60 pb-px text-xs text-muted-foreground hover:text-foreground"
+                    class="ml-1 border-b border-dotted border-muted-foreground/60 pb-px text-xs text-muted-foreground hover:text-foreground max-md:inline-flex max-md:h-11 max-md:items-center"
                     data-test="facet-clear-all"
                     @click="clearAllFilters"
                 >
@@ -864,7 +851,10 @@ function snippetHtml(snippet: string): string {
                                     {{ result.message.user.name }}
                                 </span>
                                 <span class="text-muted-foreground">
-                                    <span class="text-brass">#</span
+                                    <span
+                                        v-if="!result.isDirectMessage"
+                                        class="text-brass"
+                                        >#</span
                                     >{{ result.channelName }}
                                 </span>
                                 <span
@@ -884,10 +874,12 @@ function snippetHtml(snippet: string): string {
                                     }}
                                 </span>
                             </div>
-                            <p
+                            <SafeHtml
+                                as="p"
                                 class="search-snippet mt-0.5 line-clamp-2 text-[14px] leading-[1.55] break-words text-foreground/90"
-                                v-html="snippetHtml(result.snippet)"
-                            ></p>
+                                :html="result.snippet"
+                                variant="searchSnippet"
+                            />
                             <span
                                 v-if="result.message.threadReplyCount > 0"
                                 class="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"
@@ -915,9 +907,9 @@ function snippetHtml(snippet: string): string {
 
 <style scoped>
 /*
- * Server-sanitized `<mark>` highlights ride in via v-html; style them with the
- * brass reaction-pill tokens, which carry an AA-contrast foreground in both
- * light and dark themes.
+ * Server-built `<mark>` highlights are rendered through `<SafeHtml>`; style them
+ * with the brass reaction-pill tokens, which carry an AA-contrast foreground in
+ * both light and dark themes.
  */
 .search-snippet :deep(mark) {
     background-color: var(--brass-fill);

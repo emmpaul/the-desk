@@ -4,8 +4,10 @@ namespace Database\Factories;
 
 use App\Enums\AppLocale;
 use App\Enums\ChimeSound;
+use App\Enums\PresenceState;
 use App\Enums\SidebarPosition;
 use App\Enums\TeamRole;
+use App\Enums\TimeFormat;
 use App\Enums\UserType;
 use App\Models\Team;
 use App\Models\User;
@@ -41,9 +43,11 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
             'locale' => AppLocale::English->value,
+            'time_format' => TimeFormat::Auto->value,
             'chime_sound' => ChimeSound::Ping->value,
             'share_read_receipts' => true,
             'sidebar_position' => SidebarPosition::Left->value,
+            'presence_state' => PresenceState::Active->value,
             // Factory users are onboarded by default so the first-run tour never
             // auto-fires in unrelated feature/browser tests; opt into the pre-tour
             // state with the notOnboarded() helper below.

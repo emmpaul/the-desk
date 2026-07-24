@@ -194,10 +194,10 @@ const typing = useTypingIndicator(() => {
 const typingNames = typing.typingNames;
 
 /**
- * Live roster of team members currently online, driving the presence dots on
- * message avatars. Follows the team across channel switches.
+ * Live presence for the team, driving the dots on message avatars, the masthead
+ * and the facepile. Follows the team across channel switches.
  */
-const { onlineIds } = useTeamPresence(() => props.team.id);
+const { presenceFor, isDndFor } = useTeamPresence(() => props.team.id);
 
 /**
  * Read positions of the channel's other members who share read receipts, keyed
@@ -369,6 +369,18 @@ const {
     scrollToLatest: (smooth) =>
         messageListRef.value?.scrollToLatest(smooth ? 'smooth' : 'auto'),
 });
+
+/**
+ * Whether the timeline has conversation scrolled above its top edge. Below the
+ * breakpoint the masthead sits over the timeline rather than beside it, so it
+ * takes a hairline shadow exactly when there is something passing under it.
+ */
+const timelineScrolled = ref(false);
+
+function onTimelineScroll(): void {
+    onScroll();
+    timelineScrolled.value = (scrollContainer.value?.scrollTop ?? 0) > 0;
+}
 
 /** `Inertia::scroll` delivers messages newest-first; reverse for display. */
 const serverMessages = computed<Message[]>(() =>
@@ -624,9 +636,16 @@ const stickyDayLabel = computed<string | null>(() => {
  * Debounced and gated on tab focus: a channel is only "read" while the user is
  * actually looking at it, and a burst of arriving messages collapses to one
  * request. The redirect refreshes just the shared `channels` prop.
+ *
+ * The Echo socket id rides along so the resulting `ReadStateAdvanced` broadcast
+ * skips this tab: the response above already brings it fresh counts, and its
+ * own signal would only buy a second, redundant sidebar reload. The reader's
+ * *other* devices still receive it, which is the point of the broadcast.
  */
 const readPost = useDebouncedPost(
     () => {
+        const socketId = echo().socketId();
+
         router.post(
             markChannelRead({
                 team: props.team.slug,
@@ -641,6 +660,7 @@ const readPost = useDebouncedPost(
                 preserveScroll: true,
                 preserveState: true,
                 only: ['channels'],
+                headers: socketId ? { 'X-Socket-ID': socketId } : {},
             },
         );
     },
@@ -767,6 +787,7 @@ watch(
     () => {
         mainStream.reset();
         resetScrollPin();
+        timelineScrolled.value = false;
         replyTarget.value = null;
         typing.reset();
         pinsPanelOpen.value = false;
@@ -1156,13 +1177,18 @@ function archive(): void {
         {{ sendFailureAnnouncement }}
     </div>
 
-    <div class="flex min-h-0 flex-1 overflow-hidden">
+    <!-- `relative` anchors the thread panel below `lg`, where it covers this
+         whole pane — masthead included — rather than being a flex sibling
+         squeezing the channel beside it: a full-screen push below `md`, a
+         card-sized overlay through the tablet band (#788). -->
+    <div class="relative flex min-h-0 flex-1 overflow-hidden">
         <div class="relative flex min-w-0 flex-1 flex-col">
             <ChannelMasthead
                 :channel="props.channel"
                 :team-slug="props.team.slug"
                 :members="props.members"
-                :online-ids="onlineIds"
+                :presence-for="presenceFor"
+                :is-dnd-for="isDndFor"
                 :title="mastheadTitle"
                 :can-manage-preferences="props.canManagePreferences"
                 :can-archive="props.canArchive"
@@ -1175,6 +1201,7 @@ function archive(): void {
                 :notification-level="notificationLevel"
                 :notification-status="notificationStatus"
                 :connection-pill="connection.pill.value"
+                :scrolled="timelineScrolled"
                 @toggle-star="toggleStar"
                 @notification-level-change="onNotificationLevelChange"
                 @mute-change="onMuteChange"
@@ -1289,7 +1316,7 @@ function archive(): void {
                         :register-container="setScrollContainer"
                         :pinned-to-bottom="pinnedToBottom"
                         :new-message-count="newMessageCount"
-                        @scroll="onScroll"
+                        @scroll="onTimelineScroll"
                         @jump="jumpToPresent"
                     >
                         <Transition
@@ -1340,7 +1367,8 @@ function archive(): void {
                                 :can-moderate="canModerate"
                                 :can-react="props.canReact"
                                 :can-pin="props.canReact"
-                                :online-ids="onlineIds"
+                                :presence-for="presenceFor"
+                                :is-dnd-for="isDndFor"
                                 :readers="channelReadersList"
                                 :highlight-message-id="highlightedMessageId"
                                 :unread-divider-id="unreadDividerId"
@@ -1517,7 +1545,8 @@ function archive(): void {
                 :can-moderate="canModerate"
                 :can-react="props.canReact"
                 :can-pin="props.canReact"
-                :online-ids="onlineIds"
+                :presence-for="presenceFor"
+                :is-dnd-for="isDndFor"
                 :loading="threadLoading"
                 :read-only="props.channel.isArchived"
                 @close="closeThread"

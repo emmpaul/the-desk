@@ -85,10 +85,10 @@ function isSvg(attachment: AttachmentData): boolean {
         <!-- Single image: natural ratio, sized from stored dimensions (no shift). -->
         <div
             v-if="images.length === 1"
-            class="group relative overflow-hidden rounded-2xl border border-border"
+            class="group relative max-w-full overflow-hidden rounded-2xl border border-border"
             :style="{
                 width: `${singleBox.width}px`,
-                height: `${singleBox.height}px`,
+                aspectRatio: `${singleBox.width} / ${singleBox.height}`,
             }"
         >
             <img

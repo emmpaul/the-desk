@@ -4,6 +4,7 @@ namespace App\Actions\Channels;
 
 use App\Data\UserData;
 use App\Events\MessageRead;
+use App\Events\ReadStateAdvanced;
 use App\Models\Channel;
 use App\Models\User;
 
@@ -17,10 +18,15 @@ class MarkChannelRead
      * mention badges. A channel with no messages leaves the pointer untouched,
      * and a non-member is a no-op because there is no pivot row to update.
      *
-     * When the pointer actually advances and the user shares read receipts, a
-     * {@see MessageRead} event is broadcast so peers can update their "Seen by"
-     * affordance. The advance guard also avoids re-broadcasting on the frequent
-     * no-op calls the client fires on every incoming message and window focus.
+     * A real advance broadcasts two independent signals. {@see ReadStateAdvanced}
+     * always goes to the reader's own other devices so their sidebar badge
+     * clears there too, skipping the device that just read (it already gets
+     * fresh counts in this request's response). {@see MessageRead} goes to peers
+     * so they can update their "Seen by" affordance, and only for a user who
+     * shares read receipts — that preference governs what peers see, never
+     * whether a user's own devices stay in step. The advance guard keeps both
+     * silent on the frequent no-op calls the client fires on every incoming
+     * message and window focus.
      */
     public function handle(Channel $channel, User $user): void
     {
@@ -37,6 +43,8 @@ class MarkChannelRead
         }
 
         $member->update(['last_read_message_id' => $latestMessageId]);
+
+        broadcast(new ReadStateAdvanced($user->id, $channel->id))->toOthers();
 
         if ($user->share_read_receipts) {
             event(new MessageRead($channel, UserData::fromUser($user), $latestMessageId));

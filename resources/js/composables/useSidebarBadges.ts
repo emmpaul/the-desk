@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { echo } from '@laravel/echo-vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useChannelFleetSubscription } from '@/composables/useChannelFleetSubscription';
 import { useDebouncedPost } from '@/composables/useDebouncedPost';
 import { backgroundVisit } from '@/lib/backgroundVisit';
@@ -20,6 +21,13 @@ const REFRESH_DEBOUNCE_MS = 500;
  * `channels` so the badge updates without a manual navigation. A single reload
  * recomputes every channel's count, so bursts across channels collapse to one
  * request.
+ *
+ * The same reload also answers {@see \App\Events\ReadStateAdvanced} on the
+ * viewer's own private `user.{id}` channel, which is how *clearing* a badge
+ * reaches their other devices: reading on a phone would otherwise leave the
+ * desktop showing the channel unread until its next navigation. Sharing one
+ * debounced reload with the arrival side means a read and an arrival landing
+ * together still cost a single request.
  */
 export function useSidebarBadges(): void {
     const page = usePage();
@@ -32,9 +40,10 @@ export function useSidebarBadges(): void {
     // reload defaults to preserving scroll and page state; it re-evaluates the
     // shared `channels` prop to recompute every badge count, plus the aggregate
     // `hasUnreadThreads` flag behind the sidebar's Threads dot. A teammate's
-    // message decides when it fires, so it runs as a background visit
-    // ({@see backgroundVisit}) — otherwise an arrival landing mid-navigation
-    // cancels the visit the user actually asked for.
+    // message — or another of the viewer's own devices — decides when it fires,
+    // so it runs as a background visit ({@see backgroundVisit}); otherwise an
+    // arrival landing mid-navigation cancels the visit the user actually asked
+    // for.
     const refresh = useDebouncedPost(
         () =>
             router.reload({
@@ -59,5 +68,24 @@ export function useSidebarBadges(): void {
         if (decision) {
             refresh.schedule();
         }
+    });
+
+    function ownChannelName(): string {
+        return `user.${currentUserId.value}`;
+    }
+
+    // Echo opens a websocket, so touch it only in the browser (never on the SSR
+    // pass). The authenticated user is stable for the session, so a single
+    // subscribe/teardown pair is enough.
+    onMounted(() => {
+        echo()
+            .private(ownChannelName())
+            .listen('ReadStateAdvanced', () => {
+                refresh.schedule();
+            });
+    });
+
+    onBeforeUnmount(() => {
+        echo().leave(ownChannelName());
     });
 }

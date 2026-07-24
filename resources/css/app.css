@@ -45,10 +45,12 @@
 
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-text: var(--destructive-text);
 
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+    --color-scrim: var(--scrim);
 
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
@@ -136,8 +138,18 @@
     --accent-foreground: #1d1a15;
     --destructive: hsl(0 72% 45%);
     --destructive-foreground: #f3efe4;
+    /* Destructive as inline *text* (error captions, status pills, the
+       `linkDestructive` <Button> variant, down to text-xs). Darkened from
+       --destructive so it clears WCAG AA 4.5:1 on both --card and --background,
+       which the fill token only just met on the page background (#678), and on
+       the dimmer `bg-destructive/10` tint composited over either (#717). */
+    --destructive-text: hsl(0 72% 40%);
     --border: #e3dfd5;
     --input: #e0dbcd;
+    /* Scrim behind a bottom sheet — ink at 50%, per the mobile design (#772).
+       Lighter than the desktop dialog's, because a sheet leaves the screen you
+       came from visible above it and that is the point of the treatment. */
+    --scrim: rgba(29, 26, 21, 0.5);
     /* Focus indicator — decoupled from --brass and darkened to a bronze so the
        ring itself clears the 3:1 non-text threshold (WCAG 2.4.7/1.4.11) on the
        sand background; --brass keeps its lighter accent value (#269). */
@@ -198,8 +210,17 @@
     --accent-foreground: #f3efe4;
     --destructive: hsl(0 72% 55%);
     --destructive-foreground: #f3efe4;
+    /* Lightened from --destructive so destructive inline text (error captions,
+       status pills, the `linkDestructive` variant) clears WCAG AA 4.5:1 on the
+       dark card; the fill token measured 3.92:1 as text there (#678). Lightened
+       again for the `bg-destructive/10` tint, which composites *up* on a dark
+       surface and left the text at 4.37:1 (#717). */
+    --destructive-text: hsl(0 72% 64%);
     --border: #2e2a21;
     --input: #2a271f;
+    /* Deeper than the light theme's: the sheet is a light-on-dark card here, so
+       the wash has to darken a surface that is already dark to separate them. */
+    --scrim: rgba(0, 0, 0, 0.6);
     --ring: #c9a35c;
     --brass: #c9a35c;
     /* Light brass so badge/pill text stays legible on the dark brass fill; the

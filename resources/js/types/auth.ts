@@ -1,6 +1,7 @@
 import type { ChimeSound } from './chimes';
 import type { AppLocale } from './locale';
 import type { SidebarPosition } from './sidebar';
+import type { TimeFormat } from './timeFormat';
 
 export type User = {
     id: number;
@@ -10,7 +11,21 @@ export type User = {
     title: string | null;
     phone: string | null;
     timezone: string | null;
+    /** The viewer's own live custom status; null when unset or already lapsed. */
+    status: App.Data.UserStatusData | null;
+    /**
+     * The viewer's own effective presence — their manual override, or what their
+     * live connections say when they have set none.
+     */
+    presence: App.Enums.PresenceState;
+    /**
+     * The viewer's own full do-not-disturb configuration. Only ever serialised
+     * to its owner; teammates receive the bare `isDnd` boolean instead.
+     */
+    dnd: App.Data.UserDndData;
     locale: AppLocale;
+    /** Whether times of day render on a 12- or 24-hour clock, or follow the language. */
+    time_format: TimeFormat;
     avatar?: string;
     email_verified_at: string | null;
     created_at: string;

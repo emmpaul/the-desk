@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Teams;
 
 use App\Actions\Teams\CreateTeam;
+use App\Data\UserStatusData;
 use App\Enums\AuditAction;
 use App\Enums\SecurityEventType;
 use App\Enums\TeamPermission;
@@ -72,7 +73,7 @@ class TeamController extends Controller
                 'isPersonal' => $team->is_personal,
                 'role' => $user->teamRole($team)?->value,
             ],
-            'members' => $team->members()->get()->map(function (User $member) use ($canViewRoster): array {
+            'members' => $team->roster()->get()->map(function (User $member) use ($canViewRoster): array {
                 /** @var Membership $membership */
                 $membership = $member->getRelation('pivot');
 
@@ -83,6 +84,7 @@ class TeamController extends Controller
                     'avatar' => $member->avatar ?? null,
                     'role' => $membership->role->value,
                     'role_label' => $membership->role->label(),
+                    'status' => UserStatusData::forUser($member),
                 ];
             }),
             'invitations' => $canViewRoster

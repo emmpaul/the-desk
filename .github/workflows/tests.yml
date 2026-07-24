@@ -5,6 +5,15 @@ on:
     branches:
       - develop
       - master
+    # Merging a release PR pushes a commit touching only files release-please
+    # owns, which cannot affect the app — the code it rides on was already fully
+    # tested when it landed. Push runs carry no required checks, so a plain
+    # `paths-ignore` is safe here (unlike on `pull_request`, see the job-level
+    # skip below). Guarded by tests/Unit/ReleasePullRequestCiSkipTest.php (#820).
+    paths-ignore:
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - '.release-please-manifest*.json'
   pull_request:
     branches:
       - develop
@@ -21,13 +30,21 @@ permissions:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # We develop and ship on 8.5, so CI exercises 8.5 only to keep Actions
-        # minutes down (see #260). 8.4 remains the supported composer floor via
-        # composer.json's `require`; it's just no longer tested on every run.
-        php-version: ['8.5']
+    # Release-please PRs only touch VERSION/manifest/changelog files, already
+    # fully tested on the branch they were cut from — yet every push to the base
+    # branch force-updates the release branch and re-fires this suite on the PR.
+    # A job-level `if` (not a `paths` filter) is what keeps the PR mergeable: a
+    # skipped job reports its required check as *skipped*, which GitHub treats as
+    # satisfied, while a workflow that never starts leaves it stuck on
+    # *Expected*. The head-repo clause keeps the branch name from becoming a CI
+    # bypass: `head_ref` is attacker-controlled, so a fork branch named
+    # `release-please--anything` must still run everything. The job must also
+    # stay matrix-free: a matrix job skipped by a job-level `if` never expands,
+    # so its check would report under the raw name and a matrix-expanded
+    # required context (`ci (8.5)`) would sit on *Expected* forever (#825).
+    # Guarded by tests/Unit/ReleasePullRequestCiSkipTest.php (#820, #825).
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--') || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
 
     # The schema relies on Postgres-only defaults (gen_random_uuid()), so tests
     # run against Postgres to match the local Sail environment.
@@ -63,7 +80,10 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
-          php-version: ${{ matrix.php-version }}
+          # We develop and ship on 8.5, so CI exercises 8.5 only to keep Actions
+          # minutes down (see #260). 8.4 remains the supported composer floor via
+          # composer.json's `require`; it's just no longer tested on every run.
+          php-version: '8.5'
           extensions: gd, imagick
           tools: composer:v2
           # CI does not enforce the coverage gate — that stays local via
@@ -137,7 +157,9 @@ jobs:
   # never folds into the 100% coverage gate above — the `browser` group is
   # excluded from phpunit's default suites and only runs via `pest tests/Browser`.
   browser:
-    runs-on: ubuntu-latest
+    # Skipped on release-please PRs for the same reason as the ci job above.
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--') || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
 
     services:
       postgres:

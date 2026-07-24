@@ -5,6 +5,7 @@ import importPlugin from 'eslint-plugin-import';
 import vue from 'eslint-plugin-vue';
 import vuejsAccessibility from 'eslint-plugin-vuejs-accessibility';
 import noArbitraryTailwindSpacing from './eslint-rules/no-arbitrary-tailwind-spacing.js';
+import noDestructiveFillAsText from './eslint-rules/no-destructive-fill-as-text.js';
 import noRawButton from './eslint-rules/no-raw-button.js';
 
 const controlStatements = [
@@ -34,6 +35,7 @@ export default defineConfigWithVueTs(
             local: {
                 rules: {
                     'no-arbitrary-tailwind-spacing': noArbitraryTailwindSpacing,
+                    'no-destructive-fill-as-text': noDestructiveFillAsText,
                     'no-raw-button': noRawButton,
                 },
             },
@@ -78,6 +80,33 @@ export default defineConfigWithVueTs(
             // new stray ones. Genuinely bespoke controls opt out per-occurrence
             // with `<!-- eslint-disable-next-line local/no-raw-button -- reason -->`.
             'local/no-raw-button': 'error',
+            // Keep the `--destructive` fill token out of text colours: it reads
+            // below WCAG AA as inline text on the dark card and on the
+            // `bg-destructive/10` tint (#678, #717). `error` (auto-fixable via
+            // `./vendor/bin/sail npm run lint`) because every occurrence was
+            // migrated to `text-destructive-text`, so the gate stays clean.
+            'local/no-destructive-fill-as-text': 'error',
+            // XSS trust boundary. Every run of HTML the client renders as markup
+            // must go through `<SafeHtml>`, which sanitizes it with DOMPurify
+            // against a named allowlist; a raw `v-html` anywhere else would
+            // bypass that boundary with nothing to catch it. Exempted for
+            // `SafeHtml.vue` itself just below — the one place the directive is
+            // allowed to appear.
+            'vue/no-v-html': 'error',
+        },
+    },
+    {
+        // `<SafeHtml>` owns the app's only `v-html`: it sanitizes its input
+        // before rendering it, which is precisely what the rule exists to
+        // guarantee everywhere else.
+        files: ['resources/js/components/SafeHtml.vue'],
+        rules: {
+            'vue/no-v-html': 'off',
+            // The directive sits on a `<component :is="as">`, which the rule
+            // reads as a component (where `v-html` would not render). `as` is
+            // typed to a closed set of plain HTML tags, so the case the rule
+            // guards against is unreachable here.
+            'vue/no-v-text-v-html-on-component': 'off',
         },
     },
     {
@@ -138,11 +167,13 @@ export default defineConfigWithVueTs(
         },
     },
     {
-        // The rule's own tests embed arbitrary `[Npx]` utilities as fixtures;
-        // don't let the rule rewrite them.
-        files: ['eslint-rules/**/*.test.ts'],
+        // The rules' own tests embed the utilities they flag as fixtures, and
+        // `no-destructive-fill-as-text` matches its own detection regex; don't
+        // let the rules rewrite either.
+        files: ['eslint-rules/**'],
         rules: {
             'local/no-arbitrary-tailwind-spacing': 'off',
+            'local/no-destructive-fill-as-text': 'off',
         },
     },
     {

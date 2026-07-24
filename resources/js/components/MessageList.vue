@@ -5,11 +5,14 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import InlineMarks from '@/components/InlineMarks.vue';
 import LinkPreview from '@/components/LinkPreview.vue';
 import MessageActions from '@/components/MessageActions.vue';
+import MessageActionsSheet from '@/components/MessageActionsSheet.vue';
 import MessageAttachments from '@/components/MessageAttachments.vue';
 import MessageForward from '@/components/MessageForward.vue';
 import MessagePoll from '@/components/MessagePoll.vue';
 import MessageQuote from '@/components/MessageQuote.vue';
 import MessageReactions from '@/components/MessageReactions.vue';
+import PresenceDot from '@/components/PresenceDot.vue';
+import SafeHtml from '@/components/SafeHtml.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,17 +30,26 @@ import {
     HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import UserHoverCard from '@/components/UserHoverCard.vue';
+import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useCustomEmojis } from '@/composables/useCustomEmojis';
 import { useInitials } from '@/composables/useInitials';
+import { useIsMobile } from '@/composables/useIsMobile';
+import { useLongPress } from '@/composables/useLongPress';
 import { NEAR_BOTTOM_THRESHOLD } from '@/composables/useScrollPin';
 import { useTimelineVirtualizer } from '@/composables/useTimelineVirtualizer';
 import { useTranslations } from '@/composables/useTranslations';
 import { useUserGroups } from '@/composables/useUserGroups';
 import { formatDayLabel, formatTimeOfDay } from '@/lib/datetime';
-import { canReactToMessage, showsThreadSummary } from '@/lib/messageActions';
+import {
+    canReactToMessage,
+    hasAnyMessageAction,
+    showsThreadSummary,
+} from '@/lib/messageActions';
 import type { MessageActionContext } from '@/lib/messageActions';
 import { tokenizeMessageBody } from '@/lib/messageBody';
 import type { MessageBodySegment } from '@/lib/messageBody';
+import { presenceLabelKey } from '@/lib/presence';
+import type { RenderedPresence } from '@/lib/presence';
 import { readersForMessage } from '@/lib/readReceipts';
 import { buildTimelineItems, messageAccessibleName } from '@/lib/timeline';
 import type { TimelineGroup, TimelineItem } from '@/lib/timeline';
@@ -80,7 +92,16 @@ const props = defineProps<{
      * channel); the "Pinned by" indicator still renders read-only when false.
      */
     canPin?: boolean;
-    onlineIds?: Set<string>;
+    /**
+     * How each author reads on the team presence roster. Absent on the surfaces
+     * that render a timeline without one, where every author reads as offline.
+     */
+    presenceFor?: (userId: string) => RenderedPresence;
+    /**
+     * Whether each author is in do-not-disturb, driving the crescent badge on
+     * their dot. Absent on the same surfaces that carry no roster.
+     */
+    isDndFor?: (userId: string) => boolean;
     highlightMessageId?: string | null;
     /**
      * The message the "New messages" divider sits above — the first unread on
@@ -92,6 +113,12 @@ const props = defineProps<{
      * (you're already in the thread), so the panel only shows the conversation.
      */
     inThread?: boolean;
+    /**
+     * When set (> 0) inside a thread, a ":count replies" rule renders under the
+     * root message, separating it from the replies — the mobile thread push's
+     * treatment, where the panel header no longer carries the count.
+     */
+    replyDividerCount?: number;
     /** The root of the currently-open thread, highlighted in the main timeline. */
     activeThreadRootId?: string | null;
     /**
@@ -174,6 +201,16 @@ function isThreadRoot(item: TimelineGroup): boolean {
 }
 
 /**
+ * The reply-divider rule's label, shared by its visible text and the
+ * separator's accessible name.
+ */
+const replyDividerLabel = computed(() =>
+    props.replyDividerCount === 1
+        ? t(':count reply', { count: 1 })
+        : t(':count replies', { count: props.replyDividerCount ?? 0 }),
+);
+
+/**
  * How many reader avatars to preview on the "Seen by" row before collapsing the
  * rest into a "+N" overflow chip.
  */
@@ -253,10 +290,17 @@ const viewerTimeZone = computed(
 );
 
 /**
- * Whether a message author is currently present on the team presence roster.
+ * How a message author reads on the team presence roster.
  */
-function isOnline(authorId: string): boolean {
-    return props.onlineIds?.has(authorId) ?? false;
+function presenceOf(authorId: string): RenderedPresence {
+    return props.presenceFor?.(authorId) ?? 'offline';
+}
+
+/**
+ * Whether a message author shows the crescent DND badge on their dot.
+ */
+function dndOf(authorId: string): boolean {
+    return props.isDndFor?.(authorId) ?? false;
 }
 
 /**
@@ -687,6 +731,64 @@ function saveEdit(message: Message): void {
     cancelEdit();
 }
 
+/**
+ * The touch stand-in for the hover toolbar (design m4): below `md`, pressing
+ * and holding a message row opens its actions bottom sheet. The sheet resolves
+ * the message live by id, so reaction and pin state stay current while it is
+ * open, and the id survives the close animation.
+ */
+const isMobile = useIsMobile();
+const actionSheetId = ref<string | null>(null);
+const actionSheetOpen = ref(false);
+
+const actionSheetMessage = computed(
+    () =>
+        props.messages.find((entry) => entry.id === actionSheetId.value) ??
+        null,
+);
+
+const longPress = useLongPress<Message>({
+    enabled: isMobile,
+    onLongPress: openActionsSheet,
+});
+
+function openActionsSheet(message: Message): void {
+    if (
+        editingId.value === message.id ||
+        !hasAnyMessageAction(message, actionContext(message))
+    ) {
+        return;
+    }
+
+    actionSheetId.value = message.id;
+    actionSheetOpen.value = true;
+}
+
+/** The pressed row's hold cue while the long-press timer runs. */
+function isHeld(message: Message): boolean {
+    return longPress.pressing.value?.id === message.id;
+}
+
+// Crossing up over the breakpoint mid-press leaves the sheet stranded on a
+// hover-capable layout; the toolbar owns the actions there.
+watch(isMobile, (mobile) => {
+    if (!mobile) {
+        actionSheetOpen.value = false;
+    }
+});
+
+// A message deleted (or pruned from the window) while its sheet is up has no
+// actions left to offer. Watched through a getter so an in-place tombstone
+// patch from a broadcast closes it too, not only a replaced array entry.
+watch(
+    () => actionSheetMessage.value?.isDeleted,
+    (isDeleted) => {
+        if (isDeleted !== false) {
+            actionSheetOpen.value = false;
+        }
+    },
+);
+
 /** The message queued for deletion; a non-null value drives the confirm dialog. */
 const pendingDelete = ref<Message | null>(null);
 
@@ -775,6 +877,7 @@ function confirmDelete(): void {
 
                 <div
                     v-else-if="item.type === 'divider'"
+                    data-test="day-divider"
                     class="my-4 flex items-center gap-3"
                 >
                     <span aria-hidden="true" class="h-px flex-1 bg-border" />
@@ -810,7 +913,8 @@ function confirmDelete(): void {
                             :team-slug="props.teamSlug"
                             :user-id="item.author.id"
                             :name="item.author.name"
-                            :online="isOnline(item.author.id)"
+                            :presence="presenceOf(item.author.id)"
+                            :is-dnd="dndOf(item.author.id)"
                             @mention="(member) => emit('mention', member)"
                         >
                             <div class="relative size-8.5 cursor-pointer">
@@ -853,17 +957,14 @@ function confirmDelete(): void {
                                      via the sr-only text beside the name below,
                                      so this repeated dot is decorative to AT. A bot
                                      has no presence, so it shows no dot. -->
-                                <span
+                                <PresenceDot
                                     v-if="!item.author.isBot"
                                     data-test="presence-dot"
-                                    :data-online="isOnline(item.author.id)"
-                                    aria-hidden="true"
-                                    class="absolute right-0 bottom-0 size-2.5 rounded-full ring-2 ring-card"
-                                    :class="
-                                        isOnline(item.author.id)
-                                            ? 'bg-emerald-500'
-                                            : 'bg-muted-foreground/60'
-                                    "
+                                    :presence="presenceOf(item.author.id)"
+                                    :is-dnd="dndOf(item.author.id)"
+                                    surface-class="bg-card"
+                                    size="36"
+                                    class="ring-card"
                                 />
                             </div>
                         </UserHoverCard>
@@ -884,14 +985,23 @@ function confirmDelete(): void {
                             :team-slug="props.teamSlug"
                             :user-id="item.author.id"
                             :name="item.author.name"
-                            :online="isOnline(item.author.id)"
+                            :presence="presenceOf(item.author.id)"
+                            :is-dnd="dndOf(item.author.id)"
                             @mention="(member) => emit('mention', member)"
                         >
                             <span
+                                data-test="message-author-name"
                                 class="cursor-pointer text-[14px] font-semibold text-foreground hover:underline"
                                 >{{ item.author.name }}</span
                             >
                         </UserHoverCard>
+                        <!-- The author's status emoji rides beside their name;
+                             the full text lives on the hover card. -->
+                        <UserStatusEmoji
+                            :status="item.author.status"
+                            :name="item.author.name"
+                            class="ml-1.5 align-[-1px] text-[13px]"
+                        />
                         <!-- The uppercase "Bot" tag rides beside a bot author's
                              name; a bot has no presence, so it replaces the
                              Online/Offline announcement rather than adding to it. -->
@@ -902,11 +1012,10 @@ function confirmDelete(): void {
                             >{{ $t('Bot') }}</span
                         >
                         <span v-else class="sr-only">{{
-                            isOnline(item.author.id)
-                                ? $t('Online')
-                                : $t('Offline')
+                            $t(presenceLabelKey(presenceOf(item.author.id)))
                         }}</span>
                         <div role="list">
+                            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -- a touch-only long-press gesture; every action it opens stays reachable through the toolbar's focusable buttons -->
                             <div
                                 v-for="(message, index) in item.messages"
                                 :id="`message-${message.id}`"
@@ -919,7 +1028,7 @@ function confirmDelete(): void {
                                         viewerTimeZone,
                                     )
                                 "
-                                class="group/message relative -mx-2 rounded-md px-2 transition-colors duration-1000 hover:bg-muted/40"
+                                class="group/message relative -mx-2 rounded-md px-2 transition-colors duration-1000 hover:bg-muted/40 max-md:select-none max-md:[-webkit-touch-callout:none]"
                                 :class="[
                                     index === 0 ? 'mt-0.5' : 'mt-1.5',
                                     message.id === props.highlightMessageId
@@ -931,7 +1040,16 @@ function confirmDelete(): void {
                                     message.id === props.editingMessageId
                                         ? 'bg-brass-fill'
                                         : '',
+                                    isHeld(message)
+                                        ? 'scale-[0.98] opacity-80 transition-[transform,opacity] delay-100 duration-200'
+                                        : '',
                                 ]"
+                                @pointerdown="longPress.start($event, message)"
+                                @pointermove="longPress.move($event)"
+                                @pointerup="longPress.end()"
+                                @pointerleave="longPress.end()"
+                                @pointercancel="longPress.cancel()"
+                                @contextmenu="longPress.onContextMenu($event)"
                             >
                                 <!-- Per-message timestamp: revealed in the avatar
                                  gutter on hover, and hidden from AT since the
@@ -1068,10 +1186,11 @@ function confirmDelete(): void {
                                         )"
                                         :key="index"
                                     >
-                                        <span
+                                        <SafeHtml
                                             v-if="segment.kind === 'html'"
-                                            v-html="segment.html"
-                                        ></span>
+                                            :html="segment.html"
+                                            variant="messageBody"
+                                        />
                                         <InlineMarks
                                             v-else-if="
                                                 segment.kind === 'mention'
@@ -1393,6 +1512,29 @@ function confirmDelete(): void {
                         </div>
                     </div>
                 </div>
+
+                <!-- The mobile thread push moves the reply count out of the
+                     panel header and into this rule under the root, separating
+                     the parent message from its replies (design m3). -->
+                <div
+                    v-if="
+                        item.type === 'group' &&
+                        isThreadRoot(item) &&
+                        (props.replyDividerCount ?? 0) > 0
+                    "
+                    data-test="thread-replies-divider"
+                    role="separator"
+                    :aria-label="replyDividerLabel"
+                    class="mt-4 flex items-center gap-2.5"
+                >
+                    <span
+                        aria-hidden="true"
+                        class="text-[11px] font-semibold tracking-[0.06em] whitespace-nowrap text-muted-foreground uppercase"
+                    >
+                        {{ replyDividerLabel }}
+                    </span>
+                    <span aria-hidden="true" class="h-px flex-1 bg-border" />
+                </div>
             </div>
         </div>
 
@@ -1464,5 +1606,36 @@ function confirmDelete(): void {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <MessageActionsSheet
+            v-model:open="actionSheetOpen"
+            :message="actionSheetMessage"
+            :current-user-id="props.currentUserId"
+            :can-react="props.canReact"
+            :can-pin="props.canPin"
+            :can-moderate="props.canModerate"
+            :in-thread="props.inThread"
+            :pending="
+                actionSheetMessage ? isPending(actionSheetMessage) : false
+            "
+            :viewer-time-zone="viewerTimeZone"
+            @react="
+                (emoji) =>
+                    actionSheetMessage &&
+                    emit('react', actionSheetMessage, emoji)
+            "
+            @open-thread="
+                actionSheetMessage && emit('openThread', actionSheetMessage.id)
+            "
+            @reply="actionSheetMessage && emit('reply', actionSheetMessage)"
+            @forward="actionSheetMessage && emit('forward', actionSheetMessage)"
+            @pin="actionSheetMessage && emit('pin', actionSheetMessage)"
+            @unpin="actionSheetMessage && emit('unpin', actionSheetMessage)"
+            @remind-custom="
+                actionSheetMessage && emit('remindCustom', actionSheetMessage)
+            "
+            @edit="actionSheetMessage && startEdit(actionSheetMessage)"
+            @delete="actionSheetMessage && requestDelete(actionSheetMessage)"
+        />
     </div>
 </template>

@@ -4,11 +4,14 @@ namespace App\Providers;
 
 use App\Models\PersonalAccessToken;
 use App\Support\IpGeolocator;
+use App\Support\PresenceRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -31,6 +34,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(IpGeolocator::class, fn (): IpGeolocator => new IpGeolocator(
             (string) config('geolocation.database_path'),
         ));
+
+        // One instance per request, so the presence aggregate a page needs for
+        // dozens of rendered users costs one cache read per distinct user.
+        $this->app->singleton(PresenceRegistry::class);
     }
 
     /**
@@ -42,6 +49,21 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureDefaults();
         $this->configureRateLimiting();
+        $this->configureQueueRouting();
+    }
+
+    /**
+     * Keep every broadcast off the shared `default` queue.
+     *
+     * Broadcasts are latency-critical and tiny; the jobs they would otherwise
+     * queue behind are neither — a link unfurl spends up to five seconds on
+     * outbound HTTP, and a webhook delivery or an export longer still. One
+     * registration covers every event, present and future, because queue routes
+     * match a queueable's interfaces as well as its class.
+     */
+    protected function configureQueueRouting(): void
+    {
+        Queue::route(ShouldBroadcast::class, queue: 'broadcasts');
     }
 
     /**

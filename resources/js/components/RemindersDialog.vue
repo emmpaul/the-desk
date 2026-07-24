@@ -79,7 +79,7 @@ function openReminder(reminder: MessageReminder): void {
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="gap-4 sm:max-w-lg">
+        <DialogContent mobile="detail" class="gap-4 sm:max-w-lg">
             <DialogHeader>
                 <!-- Right padding leaves room for the dialog's own close button
                      so the "Clear all" action never sits under it. -->
@@ -105,7 +105,7 @@ function openReminder(reminder: MessageReminder): void {
                         size="none"
                         type="button"
                         data-test="reminders-clear-all"
-                        class="ml-auto font-sans text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-destructive"
+                        class="ml-auto font-sans text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-destructive-text"
                         @click="emit('clearAll')"
                     >
                         {{ $t('Clear all') }}
@@ -242,7 +242,7 @@ function openReminder(reminder: MessageReminder): void {
                                 type="button"
                                 data-test="reminder-clear"
                                 :aria-label="$t('Clear reminder')"
-                                class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-destructive"
+                                class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-destructive-text"
                                 @click="emit('clear', reminder.id)"
                             >
                                 <X class="size-4" />
