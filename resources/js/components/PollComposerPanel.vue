@@ -135,7 +135,7 @@ function submit(): void {
         role="dialog"
         :aria-label="$t('Create a poll')"
         data-test="poll-builder"
-        class="absolute bottom-full left-0 z-20 mb-2 flex w-[25rem] max-w-full flex-col overflow-hidden rounded-2xl border bg-popover shadow-[0_16px_40px_rgba(29,26,21,0.18)]"
+        class="absolute bottom-full left-0 z-20 mb-2 flex max-h-[calc(100dvh-7rem)] w-[25rem] max-w-full flex-col overflow-hidden rounded-2xl border bg-popover shadow-[0_16px_40px_rgba(29,26,21,0.18)]"
         @keydown.esc="emit('close')"
     >
         <div
@@ -160,7 +160,7 @@ function submit(): void {
             </Button>
         </div>
 
-        <div class="flex flex-col gap-3 p-3.5">
+        <div class="flex min-h-0 flex-col gap-3 overflow-y-auto p-3.5">
             <div class="flex flex-col gap-1.5">
                 <label
                     for="poll-question"
