@@ -183,6 +183,29 @@ test('the welcome preview thread pill stays inside its row on a phone', function
         JS, true);
 });
 
+test('the poll builder fits a landscape phone viewport', function (): void {
+    ['owner' => $alice, 'team' => $team, 'channel' => $channel] = browserTeamWithChannel();
+
+    signInThroughBrowser($alice)
+        ->resize(740, 360)
+        ->navigate(browserChannelUrl($team, $channel))
+        ->type('[data-test="message-composer-input"]', '/poll')
+        ->keys('[data-test="message-composer-input"]', ['Enter'])
+        ->assertScript(<<<'JS'
+        (() => {
+            const panel = document.querySelector('[data-test="poll-builder"]');
+
+            if (!panel) {
+                return false;
+            }
+
+            const rect = panel.getBoundingClientRect();
+
+            return rect.top >= -1 && rect.bottom <= window.innerHeight + 1;
+        })()
+        JS, true);
+});
+
 test('the lightbox truncates a long filename clear of its header buttons', function (): void {
     ['owner' => $alice, 'team' => $team, 'channel' => $channel] = browserTeamWithChannel();
 

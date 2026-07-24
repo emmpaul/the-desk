@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
             ref="grid"
             role="listbox"
             :aria-label="$t('GIF results')"
-            class="max-h-72 overflow-y-auto p-2"
+            class="max-h-[min(18rem,calc(100dvh-12rem))] overflow-y-auto p-2"
             @scroll="onScroll"
         >
             <div
