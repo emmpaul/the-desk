@@ -415,6 +415,7 @@ const footerStyle = {
                         :model-value="appearance"
                         :options="themeOptions"
                         :aria-label="$t('Theme')"
+                        standalone
                         data-test="menu-theme-switcher"
                         @update:model-value="
                             (value) => updateAppearance(value as Appearance)
