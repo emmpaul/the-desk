@@ -5,6 +5,15 @@ on:
     branches:
       - develop
       - master
+    # Merging a release PR pushes a commit touching only files release-please
+    # owns, which cannot affect the app — the code it rides on was already fully
+    # tested when it landed. Push runs carry no required checks, so a plain
+    # `paths-ignore` is safe here (unlike on `pull_request`, see the job-level
+    # skip below). Guarded by tests/Unit/ReleasePullRequestCiSkipTest.php (#820).
+    paths-ignore:
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - '.release-please-manifest*.json'
   pull_request:
     branches:
       - develop
@@ -21,6 +30,17 @@ permissions:
 
 jobs:
   ci:
+    # Release-please PRs only touch VERSION/manifest/changelog files, already
+    # fully tested on the branch they were cut from — yet every push to the base
+    # branch force-updates the release branch and re-fires this suite on the PR.
+    # A job-level `if` (not a `paths` filter) is what keeps the PR mergeable: a
+    # skipped job reports its required check as *skipped*, which GitHub treats as
+    # satisfied, while a workflow that never starts leaves it stuck on
+    # *Expected*. The head-repo clause keeps the branch name from becoming a CI
+    # bypass: `head_ref` is attacker-controlled, so a fork branch named
+    # `release-please--anything` must still run everything. Guarded by
+    # tests/Unit/ReleasePullRequestCiSkipTest.php (#820).
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--') || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     strategy:
       matrix:
@@ -137,6 +157,8 @@ jobs:
   # never folds into the 100% coverage gate above — the `browser` group is
   # excluded from phpunit's default suites and only runs via `pest tests/Browser`.
   browser:
+    # Skipped on release-please PRs for the same reason as the ci job above.
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-please--') || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
 
     services:
