@@ -14,7 +14,6 @@ use App\Models\User;
  * as if it were pre-filled. The rendered placeholder is now ellipsized to the
  * textarea's width while the accessible name keeps the full text.
  */
-
 const COMPOSER_FULL_PLACEHOLDER = 'Message Bartholomew Montgomery Featherstone';
 
 /**
