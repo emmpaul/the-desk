@@ -64,7 +64,7 @@ function selectPerson(id: string): void {
                 class="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             />
         </div>
-        <CommandList>
+        <CommandList :ariaLabel="$t('People')">
             <CommandGroup v-if="people.length > 0" :heading="$t('People')">
                 <CommandItem
                     v-for="person in people"

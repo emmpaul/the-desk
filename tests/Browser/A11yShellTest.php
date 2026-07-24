@@ -28,6 +28,31 @@ test('the sidebar "New message" action is a keyboard-operable button', function 
         ->assertPresent('@new-dm-input');
 });
 
+test('the New Direct Message palette has no serious accessibility violations, light or dark', function (): void {
+    ['owner' => $alice] = browserTeamWithChannel();
+
+    // The settle lets the dialog's fade finish: axe blends the mid-animation
+    // opacity into its contrast arithmetic otherwise (#775).
+    $page = signInThroughBrowser($alice)
+        ->keys('@new-dm-trigger', 'Enter')
+        ->assertVisible('@new-dm-input')
+        ->wait(0.5)
+        ->assertNoAccessibilityIssues();
+
+    // Re-audit against the dark palette; persisting to localStorage first keeps
+    // the appearance controller from re-resolving 'system' back to light.
+    $page->script(<<<'JS'
+    () => {
+        localStorage.setItem('appearance', 'dark');
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+    }
+    JS);
+
+    $page->wait(0.5)
+        ->assertNoAccessibilityIssues();
+});
+
 test('the sidebar "Create channel" action is a keyboard-operable button', function (): void {
     ['owner' => $alice] = browserTeamWithChannel();
 
