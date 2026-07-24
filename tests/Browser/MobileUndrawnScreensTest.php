@@ -38,7 +38,8 @@ function rendersFullTextInsideViewport(string $selector): string
 
 /**
  * Whether every element the selector matches offers at least a 44px-tall
- * touch target.
+ * touch target. Rounded before comparing: `h-11` is exactly 44 CSS px, but
+ * the rect can report a sub-pixel sliver under it.
  */
 function offersPhoneTouchTargets(string $selector): string
 {
@@ -47,7 +48,7 @@ function offersPhoneTouchTargets(string $selector): string
         const targets = [...document.querySelectorAll('{$selector}')];
 
         return targets.length > 0
-            && targets.every(el => el.getBoundingClientRect().height >= 43);
+            && targets.every(el => Math.round(el.getBoundingClientRect().height) >= 44);
     })()
     JS;
 }

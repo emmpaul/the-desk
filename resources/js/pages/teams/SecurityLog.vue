@@ -177,7 +177,7 @@ function dotClass(event: TeamSecurityEvent): string {
                 />
 
                 <div
-                    class="flex min-w-0 flex-1 flex-col gap-px max-md:basis-3/5"
+                    class="flex min-w-0 flex-1 flex-col gap-px max-md:basis-3/4"
                 >
                     <p
                         class="flex items-center gap-2 text-[13.5px] font-semibold max-md:flex-wrap"
