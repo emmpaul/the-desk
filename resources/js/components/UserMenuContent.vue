@@ -38,9 +38,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useAppearance } from '@/composables/useAppearance';
-import { useIsMobile } from '@/composables/useIsMobile';
 import { useDndPauseDialog } from '@/composables/useDndPauseDialog';
 import { useInitials } from '@/composables/useInitials';
+import { useIsMobile } from '@/composables/useIsMobile';
 import { useKeyboardShortcutsModal } from '@/composables/useKeyboardShortcutsModal';
 import { useOnboardingTour } from '@/composables/useOnboardingTour';
 import { useSidebarPosition } from '@/composables/useSidebarPosition';

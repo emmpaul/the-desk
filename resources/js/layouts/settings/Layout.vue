@@ -63,8 +63,9 @@ const backHref = computed(() =>
                     data-test="settings-detail-back"
                     class="-ml-1.5 size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
-                    <Link :href="backHref" :aria-label="$t('Back')">
+                    <Link :href="backHref">
                         <ChevronLeft class="size-4.5" />
+                        <span class="sr-only">{{ $t('Back') }}</span>
                     </Link>
                 </Button>
                 <h2

@@ -9,7 +9,6 @@ import UserStatusEmoji from '@/components/UserStatusEmoji.vue';
 import { useInitials } from '@/composables/useInitials';
 import { useIsMobile } from '@/composables/useIsMobile';
 import { useSettingsNavItems } from '@/composables/useSettingsNavItems';
-import { useTranslations } from '@/composables/useTranslations';
 import { useUpdateStatus } from '@/composables/useUpdateStatus';
 import { useUserStatusDialog } from '@/composables/useUserStatusDialog';
 import { isDndActiveNow } from '@/lib/dnd';
@@ -24,7 +23,6 @@ defineProps<{
 }>();
 
 const page = usePage();
-const { t } = useTranslations();
 const { getInitials } = useInitials();
 const { open: openStatusDialog } = useUserStatusDialog();
 const { workspaceUrl, navItems, teamAdminNavItems } = useSettingsNavItems();
@@ -51,7 +49,9 @@ onMounted(() => {
 const user = computed(() => page.props.auth.user);
 const currentTeam = computed(() => page.props.currentTeam);
 
-const hasAvatar = computed(() => !!user.value.avatar && user.value.avatar !== '');
+const hasAvatar = computed(
+    () => !!user.value.avatar && user.value.avatar !== '',
+);
 
 /** The viewer's own live status, from the shared prop so it tracks a set/clear. */
 const ownStatus = computed(() => page.props.auth.user.status ?? null);
@@ -86,7 +86,7 @@ const appName = computed(() => page.props.name);
         class="flex min-h-full flex-col gap-3.5 p-3.5 pt-0 md:hidden"
     >
         <header
-            class="-mx-3.5 mb-0.5 flex shrink-0 items-center gap-2 border-b border-border px-3.5 py-2.5"
+            class="sticky top-0 z-10 -mx-3.5 mb-0.5 flex shrink-0 items-center gap-2 border-b border-border bg-card px-3.5 py-2.5"
         >
             <Button
                 as-child
@@ -95,11 +95,9 @@ const appName = computed(() => page.props.name);
                 data-test="settings-index-back"
                 class="-ml-1.5 size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-                <Link
-                    :href="workspaceUrl"
-                    :aria-label="$t('Back to workspace')"
-                >
+                <Link :href="workspaceUrl">
                     <ChevronLeft class="size-4.5" />
+                    <span class="sr-only">{{ $t('Back to workspace') }}</span>
                 </Link>
             </Button>
             <h1
@@ -170,9 +168,7 @@ const appName = computed(() => page.props.name);
             <span v-else aria-hidden="true" class="text-base">😊</span>
             <span
                 class="min-w-0 flex-1 truncate text-sm"
-                :class="
-                    ownStatus ? 'text-foreground' : 'text-muted-foreground'
-                "
+                :class="ownStatus ? 'text-foreground' : 'text-muted-foreground'"
                 >{{ ownStatus?.text ?? $t('Update your status…') }}</span
             >
             <span
@@ -182,10 +178,7 @@ const appName = computed(() => page.props.name);
             >
         </Button>
 
-        <nav
-            :aria-label="$t('Settings')"
-            class="flex flex-col gap-3.5"
-        >
+        <nav :aria-label="$t('Settings')" class="flex flex-col gap-3.5">
             <div
                 class="divide-y divide-border overflow-hidden rounded-[14px] border border-border"
             >
